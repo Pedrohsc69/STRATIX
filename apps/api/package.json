@@ -1,0 +1,28 @@
+{
+  "name": "@stratix/api",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node --env-file=../../.env dist/main.js",
+    "start:dev": "node --env-file=../../.env -r ts-node/register -r tsconfig-paths/register src/main.ts",
+    "lint": "eslint \"src/**/*.ts\"",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.1.1",
+    "@nestjs/core": "^11.1.1",
+    "@nestjs/platform-express": "^11.1.1",
+    "@prisma/client": "^6.6.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.1",
+    "prisma": "^6.6.0",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.8.3"
+  }
+}
