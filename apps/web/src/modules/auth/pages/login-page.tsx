@@ -182,14 +182,16 @@ export function LoginPage() {
               </div>
 
               {/* Submit Button */}
-              <motion.button
-                type="submit"
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.99 }}
-                className="w-full py-3.5 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
-              >
-                Entrar
-              </motion.button>
+            
+                <motion.button
+                  type="submit"
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                  className="w-full py-3.5 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
+                >
+                  Entrar
+                </motion.button>
+              
             </form>
 
             {/* Sign Up Link */}

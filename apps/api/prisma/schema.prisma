@@ -7,90 +7,155 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  DIRETOR
-  GESTOR
-  COLABORADOR
+enum UserRole {
+  DIRECTOR
+  MANAGER
+  EMPLOYEE
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  DISABLED
+}
+
+enum CycleStatus {
+  ACTIVE
+  CLOSED
 }
 
 model User {
-  id           String      @id @default(uuid())
-  email        String      @unique
-  name         String
-  passwordHash String
-  role         Role
-  companyId    String?
-  company      Company?    @relation(fields: [companyId], references: [id])
-  memberships  DepartmentMember[]
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  id       String   @id @default(uuid())
+  name     String
+  email    String   @unique
+  password String
+  role     UserRole
+  status   UserStatus @default(PENDING)
+
+  isActive Boolean @default(false)
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  departmentId String?
+  department   Department? @relation("UserDepartment", fields: [departmentId], references: [id])
+
+  managedDepartments Department[] @relation("DepartmentManager")
+
+  okrs OKR[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Invite {
+  id        String @id @default(uuid())
+
+  email     String  @unique
+  role UserRole
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id])
+
+  token String @unique
+
+  expiresAt DateTime
+  accepted  Boolean @default(false)
+
+  createdAt DateTime @default(now())
 }
 
 model Company {
-  id          String       @id @default(uuid())
-  name        String
-  departments Department[]
+  id        String @id @default(uuid())
+  name      String
+  cnpj      String @unique
+
   users       User[]
-  cycles      Cycle[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  departments Department[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Department {
-  id          String             @id @default(uuid())
-  name        String
-  companyId   String
-  company     Company            @relation(fields: [companyId], references: [id])
-  objectives  Objective[]
-  memberships DepartmentMember[]
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
+  id        String @id @default(uuid())
+  name      String
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  users User[] @relation("UserDepartment")
+
+  managerId String?
+  manager   User? @relation("DepartmentManager", fields: [managerId], references: [id])
+
+  cycles StrategicCycle[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
-model DepartmentMember {
-  id           String     @id @default(uuid())
+model StrategicCycle {
+  id        String   @id @default(uuid())
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  status    CycleStatus
+
   departmentId String
-  userId       String
   department   Department @relation(fields: [departmentId], references: [id])
-  user         User       @relation(fields: [userId], references: [id])
-  createdAt    DateTime   @default(now())
 
-  @@unique([departmentId, userId])
-}
-
-model Cycle {
-  id         String      @id @default(uuid())
-  name       String
-  startsAt   DateTime
-  endsAt     DateTime
-  companyId  String
-  company    Company     @relation(fields: [companyId], references: [id])
   objectives Objective[]
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Objective {
-  id           String      @id @default(uuid())
-  title        String
-  description  String?
-  cycleId      String
-  departmentId String
-  cycle        Cycle       @relation(fields: [cycleId], references: [id])
-  department   Department  @relation(fields: [departmentId], references: [id])
-  okrs         Okr[]
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  id          String @id @default(uuid())
+  name        String
+  description String
+
+  cycleId String
+  cycle   StrategicCycle @relation(fields: [cycleId], references: [id])
+
+  okrs OKR[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
-model Okr {
-  id          String   @id @default(uuid())
-  title       String
-  metric      String
-  current     Float    @default(0)
-  target      Float
+model OKR {
+  id          String  @id @default(uuid())
+  name        String
+  targetValue Float
+  currentValue Float
+
   objectiveId String
   objective   Objective @relation(fields: [objectiveId], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+
+  responsibleId String
+  responsible   User @relation(fields: [responsibleId], references: [id])
+
+  progress ProgressOKR[]
+
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProgressOKR {
+  id        String   @id @default(uuid())
+  value     Float
+  date      DateTime
+  comment   String
+
+  okrId String
+  okr   OKR @relation(fields: [okrId], references: [id])
+
+  createdAt DateTime @default(now())
 }

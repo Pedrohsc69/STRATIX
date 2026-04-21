@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Link, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 import {
   User,
   Mail,
@@ -19,7 +19,9 @@ import {
   X,
   ArrowRight,
   Check,
-  Sparkles
+  Sparkles,
+  Network,
+  AlertCircle
 } from "lucide-react";
 import { BarChart, Bar, XAxis, ResponsiveContainer } from "recharts";
 
@@ -29,6 +31,12 @@ const dashboardData = [
   { name: "Q3", value: 92 },
   { name: "Q4", value: 118 }
 ];
+
+interface Department {
+  id: string;
+  name: string;
+  managerName: string;
+}
 
 interface OnboardingData {
   // Step 1 - Diretor
@@ -41,9 +49,8 @@ interface OnboardingData {
   companyName: string;
   cnpj: string;
   businessArea: string;
-  // Step 3 - Departamento
-  departmentName: string;
-  managerName: string;
+  // Step 3 - Departamentos
+  departments: Department[];
   // Step 4 - Convites
   invites: Array<{
     email: string;
@@ -52,7 +59,7 @@ interface OnboardingData {
   }>;
 }
 
-export function RegisterPage() {
+export  function RegisterPage() {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
@@ -67,9 +74,13 @@ export function RegisterPage() {
     companyName: "",
     cnpj: "",
     businessArea: "",
-    departmentName: "",
-    managerName: "",
+    departments: [],
     invites: []
+  });
+
+  const [newDepartment, setNewDepartment] = useState({
+    name: "",
+    managerName: ""
   });
 
   const [newInvite, setNewInvite] = useState({
@@ -83,7 +94,7 @@ export function RegisterPage() {
   const steps = [
     { number: 1, title: "Conta de Diretor" },
     { number: 2, title: "Empresa" },
-    { number: 3, title: "Estrutura" },
+    { number: 3, title: "Departamentos" },
     { number: 4, title: "Equipe" }
   ];
 
@@ -116,7 +127,9 @@ export function RegisterPage() {
     }
 
     if (step === 3) {
-      // Departamento é opcional
+      if (formData.departments.length === 0) {
+        newErrors.departments = "Crie pelo menos um departamento para continuar";
+      }
     }
 
     setErrors(newErrors);
@@ -131,18 +144,65 @@ export function RegisterPage() {
     }
   };
 
-  const handleSkipDepartment = () => {
-    setCurrentStep(4);
+  const handleAddDepartment = () => {
+    if (!newDepartment.name.trim()) {
+      setErrors({ ...errors, departmentName: "Nome do departamento é obrigatório" });
+      return;
+    }
+
+    const department: Department = {
+      id: Date.now().toString(),
+      name: newDepartment.name.trim(),
+      managerName: newDepartment.managerName.trim()
+    };
+
+    setFormData({
+      ...formData,
+      departments: [...formData.departments, department]
+    });
+
+    setNewDepartment({ name: "", managerName: "" });
+
+    // Clear department error if it exists
+    const newErrors = { ...errors };
+    delete newErrors.departmentName;
+    delete newErrors.departments;
+    setErrors(newErrors);
+  };
+
+  const handleRemoveDepartment = (id: string) => {
+    setFormData({
+      ...formData,
+      departments: formData.departments.filter(dept => dept.id !== id)
+    });
   };
 
   const handleAddInvite = () => {
-    if (newInvite.email && newInvite.role) {
-      setFormData({
-        ...formData,
-        invites: [...formData.invites, { ...newInvite }]
-      });
-      setNewInvite({ email: "", role: "Colaborador", department: "" });
+    const newErrors: Record<string, string> = {};
+
+    if (!newInvite.email) {
+      newErrors.inviteEmail = "E-mail é obrigatório";
     }
+    if (!newInvite.department) {
+      newErrors.inviteDepartment = "Selecione um departamento";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors({ ...errors, ...newErrors });
+      return;
+    }
+
+    setFormData({
+      ...formData,
+      invites: [...formData.invites, { ...newInvite }]
+    });
+    setNewInvite({ email: "", role: "Colaborador", department: "" });
+
+    // Clear invite errors
+    const clearedErrors = { ...errors };
+    delete clearedErrors.inviteEmail;
+    delete clearedErrors.inviteDepartment;
+    setErrors(clearedErrors);
   };
 
   const handleRemoveInvite = (index: number) => {
@@ -441,7 +501,6 @@ export function RegisterPage() {
                     Continuar
                     <ArrowRight className="w-5 h-5" />
                   </button>
-                  
                 </motion.div>
               )}
 
@@ -534,7 +593,7 @@ export function RegisterPage() {
                 </motion.div>
               )}
 
-              {/* Step 3 - Estrutura Inicial */}
+              {/* Step 3 - Criação de Departamentos */}
               {currentStep === 3 && (
                 <motion.div
                   key="step3"
@@ -544,65 +603,110 @@ export function RegisterPage() {
                   transition={{ duration: 0.3 }}
                 >
                   <div className="mb-8">
-                    <h2 className="text-3xl font-semibold text-primary mb-2">Crie seu primeiro departamento</h2>
-                    <p className="text-muted-foreground">Configure a estrutura inicial da sua organização</p>
+                    <h2 className="text-3xl font-semibold text-primary mb-2">Crie a estrutura inicial da sua empresa</h2>
+                    <p className="text-muted-foreground">Usuários precisam estar vinculados a um departamento</p>
                   </div>
 
-                  <div className="space-y-4">
-                    {/* Nome do Departamento */}
+                  {/* Organization Hierarchy Info */}
+                  <div className="bg-accent/5 border border-accent/20 rounded-lg p-4 mb-6">
+                    <div className="flex items-start gap-3">
+                      <Network className="w-5 h-5 text-accent mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-foreground mb-2">Estrutura Organizacional</p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span className="px-2 py-1 bg-primary/10 rounded text-primary font-medium">Empresa</span>
+                          <ArrowRight className="w-3 h-3" />
+                          <span className="px-2 py-1 bg-accent/10 rounded text-accent font-medium">Departamento</span>
+                          <ArrowRight className="w-3 h-3" />
+                          <span className="px-2 py-1 bg-secondary/10 rounded text-secondary font-medium">Usuário</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Add Department Form */}
+                  <div className="space-y-3 mb-6">
                     <div>
                       <label className="block text-sm font-medium text-foreground mb-2">Nome do departamento</label>
                       <div className="relative">
                         <Target className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                         <input
                           type="text"
-                          value={formData.departmentName}
-                          onChange={(e) => setFormData({ ...formData, departmentName: e.target.value })}
-                          className="w-full pl-12 pr-4 py-3 bg-input-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent transition-all"
+                          value={newDepartment.name}
+                          onChange={(e) => setNewDepartment({ ...newDepartment, name: e.target.value })}
+                          className={`w-full pl-12 pr-4 py-3 bg-input-background border rounded-lg focus:outline-none focus:ring-2 transition-all ${
+                            errors.departmentName ? "border-destructive" : "border-border focus:ring-accent"
+                          }`}
                           placeholder="Ex: Comercial, Marketing, Tecnologia"
+                          onKeyPress={(e) => e.key === 'Enter' && handleAddDepartment()}
                         />
                       </div>
+                      {errors.departmentName && <p className="mt-1.5 text-sm text-destructive">{errors.departmentName}</p>}
                     </div>
 
-                    {/* Nome do Gestor */}
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-2">
-                        Nome do gestor <span className="text-muted-foreground">(opcional)</span>
-                      </label>
-                      <div className="relative">
-                        <Users className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                        <input
-                          type="text"
-                          value={formData.managerName}
-                          onChange={(e) => setFormData({ ...formData, managerName: e.target.value })}
-                          className="w-full pl-12 pr-4 py-3 bg-input-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent transition-all"
-                          placeholder="Nome do gestor responsável"
-                        />
-                      </div>
-                    </div>
+                    <button
+                      onClick={handleAddDepartment}
+                      className="w-full py-2.5 bg-accent text-white font-medium rounded-lg hover:bg-accent/90 transition-all flex items-center justify-center gap-2"
+                    >
+                      <Plus className="w-5 h-5" />
+                      Adicionar departamento
+                    </button>
+                  </div>
 
-                    <div className="bg-accent/5 border border-accent/20 rounded-lg p-4">
-                      <p className="text-sm text-muted-foreground">
-                        Você poderá adicionar mais departamentos e estruturar sua organização após o cadastro.
+                  {/* Departments List */}
+                  {formData.departments.length > 0 ? (
+                    <div className="space-y-2 mb-6">
+                      <p className="text-sm font-medium text-foreground mb-3">
+                        Departamentos criados ({formData.departments.length})
                       </p>
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {formData.departments.map((dept) => (
+                          <div
+                            key={dept.id}
+                            className="flex items-center justify-between p-4 bg-background border border-border rounded-lg"
+                          >
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-foreground">{dept.name}</p>
+                              {dept.managerName && (
+                                <p className="text-xs text-muted-foreground mt-1">Gestor: {dept.managerName}</p>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => handleRemoveDepartment(dept.id)}
+                              className="p-2 text-muted-foreground hover:text-destructive transition-colors"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="py-8 text-center mb-6">
+                      <div className="w-16 h-16 bg-muted/30 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <Target className="w-8 h-8 text-muted-foreground/40" />
+                      </div>
+                      <p className="text-sm text-muted-foreground">Nenhum departamento criado ainda</p>
+                      <p className="text-xs text-muted-foreground mt-1">Crie pelo menos um para continuar</p>
+                    </div>
+                  )}
 
-                  <div className="flex gap-3 mt-6">
-                    <button
-                      onClick={handleSkipDepartment}
-                      className="flex-1 py-3.5 bg-background text-foreground font-medium rounded-lg hover:bg-muted transition-all border border-border"
-                    >
-                      Pular por enquanto
-                    </button>
-                    <button
-                      onClick={handleNext}
-                      className="flex-1 py-3.5 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
-                    >
-                      Criar e continuar
-                      <ArrowRight className="w-5 h-5" />
-                    </button>
-                  </div>
+                  {/* Error Message */}
+                  {errors.departments && (
+                    <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg flex items-start gap-3">
+                      <AlertCircle className="w-5 h-5 text-destructive mt-0.5 flex-shrink-0" />
+                      <p className="text-sm text-destructive">{errors.departments}</p>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleNext}
+                    disabled={formData.departments.length === 0}
+                    className="w-full py-3.5 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary"
+                  >
+                    Continuar
+                    <ArrowRight className="w-5 h-5" />
+                  </button>
                 </motion.div>
               )}
 
@@ -617,42 +721,73 @@ export function RegisterPage() {
                 >
                   <div className="mb-8">
                     <h2 className="text-3xl font-semibold text-primary mb-2">Convide sua equipe</h2>
-                    <p className="text-muted-foreground">Adicione gestores e colaboradores à plataforma</p>
+                    <p className="text-muted-foreground">Adicione gestores e colaboradores aos departamentos</p>
                   </div>
 
                   {/* Add Invite Form */}
                   <div className="space-y-3 mb-6">
-                    <div className="flex gap-3">
-                      <div className="flex-1">
-                        <input
-                          type="email"
-                          value={newInvite.email}
-                          onChange={(e) => setNewInvite({ ...newInvite, email: e.target.value })}
-                          className="w-full px-4 py-2.5 bg-input-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-sm"
-                          placeholder="email@empresa.com"
-                        />
-                      </div>
-                      <select
-                        value={newInvite.role}
-                        onChange={(e) => setNewInvite({ ...newInvite, role: e.target.value })}
-                        className="px-4 py-2.5 bg-input-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-sm"
-                      >
-                        <option value="Gestor">Gestor</option>
-                        <option value="Colaborador">Colaborador</option>
-                      </select>
-                      <button
-                        onClick={handleAddInvite}
-                        disabled={!newInvite.email}
-                        className="px-4 py-2.5 bg-accent text-white rounded-lg hover:bg-accent/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <Plus className="w-5 h-5" />
-                      </button>
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">E-mail</label>
+                      <input
+                        type="email"
+                        value={newInvite.email}
+                        onChange={(e) => setNewInvite({ ...newInvite, email: e.target.value })}
+                        className={`w-full px-4 py-2.5 bg-input-background border rounded-lg focus:outline-none focus:ring-2 text-sm ${
+                          errors.inviteEmail ? "border-destructive" : "border-border focus:ring-accent"
+                        }`}
+                        placeholder="email@empresa.com"
+                      />
+                      {errors.inviteEmail && <p className="mt-1.5 text-sm text-destructive">{errors.inviteEmail}</p>}
                     </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">Papel</label>
+                        <select
+                          value={newInvite.role}
+                          onChange={(e) => setNewInvite({ ...newInvite, role: e.target.value })}
+                          className="w-full px-4 py-2.5 bg-input-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-sm"
+                        >
+                          <option value="Gestor">Gestor</option>
+                          <option value="Colaborador">Colaborador</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">Departamento</label>
+                        <select
+                          value={newInvite.department}
+                          onChange={(e) => setNewInvite({ ...newInvite, department: e.target.value })}
+                          className={`w-full px-4 py-2.5 bg-input-background border rounded-lg focus:outline-none focus:ring-2 text-sm ${
+                            errors.inviteDepartment ? "border-destructive" : "border-border focus:ring-accent"
+                          }`}
+                        >
+                          <option value="">Selecione</option>
+                          {formData.departments.map((dept) => (
+                            <option key={dept.id} value={dept.name}>
+                              {dept.name}
+                            </option>
+                          ))}
+                        </select>
+                        {errors.inviteDepartment && <p className="mt-1.5 text-sm text-destructive">{errors.inviteDepartment}</p>}
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleAddInvite}
+                      className="w-full px-4 py-2.5 bg-accent text-white rounded-lg hover:bg-accent/90 transition-all font-medium flex items-center justify-center gap-2"
+                    >
+                      <Plus className="w-5 h-5" />
+                      Adicionar convite
+                    </button>
                   </div>
 
                   {/* Invites List */}
                   {formData.invites.length > 0 ? (
                     <div className="space-y-2 mb-6 max-h-64 overflow-y-auto">
+                      <p className="text-sm font-medium text-foreground mb-3">
+                        Convites adicionados ({formData.invites.length})
+                      </p>
                       {formData.invites.map((invite, index) => (
                         <div
                           key={index}
@@ -660,7 +795,11 @@ export function RegisterPage() {
                         >
                           <div className="flex-1">
                             <p className="text-sm font-medium text-foreground">{invite.email}</p>
-                            <p className="text-xs text-muted-foreground">{invite.role}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-xs px-2 py-0.5 bg-accent/10 text-accent rounded">{invite.role}</span>
+                              <span className="text-xs text-muted-foreground">•</span>
+                              <span className="text-xs text-muted-foreground">{invite.department}</span>
+                            </div>
                           </div>
                           <button
                             onClick={() => handleRemoveInvite(index)}
@@ -672,9 +811,10 @@ export function RegisterPage() {
                       ))}
                     </div>
                   ) : (
-                    <div className="py-12 text-center">
+                    <div className="py-12 text-center mb-6">
                       <Users className="w-12 h-12 text-muted-foreground/40 mx-auto mb-3" />
                       <p className="text-sm text-muted-foreground">Nenhum convite adicionado ainda</p>
+                      <p className="text-xs text-muted-foreground mt-1">Adicione usuários aos departamentos criados</p>
                     </div>
                   )}
 
@@ -684,7 +824,7 @@ export function RegisterPage() {
                       <div>
                         <p className="text-sm font-medium text-foreground mb-1">Convites serão enviados por e-mail</p>
                         <p className="text-xs text-muted-foreground">
-                          Cada usuário receberá um link seguro para ativar sua conta com papel e permissões definidos.
+                          Cada usuário receberá um link seguro para ativar sua conta no departamento selecionado.
                         </p>
                       </div>
                     </div>
@@ -730,8 +870,8 @@ export function RegisterPage() {
                         <div className="w-12 h-12 bg-accent/10 rounded-lg flex items-center justify-center mx-auto mb-2">
                           <Target className="w-6 h-6 text-accent" />
                         </div>
-                        <p className="text-xs text-muted-foreground">Estrutura</p>
-                        <p className="text-sm font-medium text-foreground">Criada</p>
+                        <p className="text-xs text-muted-foreground">Departamentos</p>
+                        <p className="text-sm font-medium text-foreground">{formData.departments.length}</p>
                       </div>
                       <div>
                         <div className="w-12 h-12 bg-secondary/10 rounded-lg flex items-center justify-center mx-auto mb-2">
@@ -754,11 +894,6 @@ export function RegisterPage() {
               )}
             </AnimatePresence>
           </div>
-            <div className="mt-6 text-center">
-                <Link to="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                    ← Voltar para página inicial
-                </Link>
-            </div>
         </motion.div>
       </div>
     </div>

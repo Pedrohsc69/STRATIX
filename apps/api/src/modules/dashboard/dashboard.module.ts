@@ -1,36 +1,34 @@
-import { createFeatureModule, createReadModelController } from '../shared/module-factory';
+import { Module } from '@nestjs/common';
+import { MongooseModule } from '@nestjs/mongoose';
+import { GetDashboardUseCase } from './application/use-cases/get-dashboard.usecase';
+import { DASHBOARD_CACHE_REPOSITORY } from './domain/repositories/dashboard-cache.repository';
+import { DashboardDomainService } from './domain/services/dashboard-domain.service';
+import {
+  DashboardCacheDocument,
+  DashboardCacheSchema,
+  MongoDashboardCacheRepository,
+} from './infrastructure/cache/dashboard-cache.repository';
+import { DashboardController } from './interfaces/routes/dashboard.controller';
 
-const DashboardController = createReadModelController('dashboard', 'dashboard');
-
-export class DashboardCard {
-  constructor(
-    public readonly label: string,
-    public readonly value: number,
-  ) {}
-}
-
-export class DashboardFilter {
-  constructor(public readonly companyId: string) {}
-}
-
-export interface DashboardRepository {
-  getSummary(companyId: string): Promise<DashboardCard[]>;
-}
-
-export class DashboardDomainService {
-  sortByPriority(cards: DashboardCard[]) {
-    return cards;
-  }
-}
-
-export interface DashboardQueryDto {
-  companyId: string;
-}
-
-export class GetDashboardUseCase {
-  execute(input: DashboardQueryDto) {
-    return input;
-  }
-}
-
-export const DashboardModule = createFeatureModule(DashboardController);
+@Module({
+  imports: [
+    MongooseModule.forFeature([
+      {
+        name: DashboardCacheDocument.name,
+        schema: DashboardCacheSchema,
+      },
+    ]),
+  ],
+  controllers: [DashboardController],
+  providers: [
+    DashboardDomainService,
+    GetDashboardUseCase,
+    MongoDashboardCacheRepository,
+    {
+      provide: DASHBOARD_CACHE_REPOSITORY,
+      useExisting: MongoDashboardCacheRepository,
+    },
+  ],
+  exports: [DASHBOARD_CACHE_REPOSITORY],
+})
+export class DashboardModule {}
