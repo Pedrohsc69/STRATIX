@@ -1,16 +1,19 @@
 import { useState } from "react";
 import { motion } from "motion/react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router-dom";
 import { Lock, Mail, Eye, EyeOff, Shield } from "lucide-react";
-
+import { login } from "../services/auth-service";
+import { saveSession } from "../../../store/app-store";
 
 export function LoginPage() {
+  const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -19,8 +22,17 @@ export function LoginPage() {
       return;
     }
 
-    // Simulação de validação
-    console.log("Login attempt:", { email, password });
+    setLoading(true);
+
+    try {
+      const session = await login({ email, password });
+      saveSession(session);
+      navigate("/dashboard-general");
+    } catch {
+      setError("Credenciais inválidas");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -187,9 +199,10 @@ export function LoginPage() {
                   type="submit"
                   whileHover={{ scale: 1.01 }}
                   whileTap={{ scale: 0.99 }}
-                  className="w-full py-3.5 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
+                  disabled={loading}
+                  className="w-full py-3.5 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 disabled:opacity-70"
                 >
-                  Entrar
+                  {loading ? "Entrando..." : "Entrar"}
                 </motion.button>
               
             </form>

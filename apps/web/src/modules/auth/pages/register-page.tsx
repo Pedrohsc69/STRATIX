@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom";
 import {
   User,
   Mail,
@@ -24,6 +24,13 @@ import {
   AlertCircle
 } from "lucide-react";
 import { BarChart, Bar, XAxis, ResponsiveContainer } from "recharts";
+import {
+  createCompany,
+  createDepartment,
+  createInvite,
+  registerDirector,
+} from "../services/auth-service";
+import { saveSession } from "../../../store/app-store";
 
 const dashboardData = [
   { name: "Q1", value: 65 },
@@ -36,6 +43,7 @@ interface Department {
   id: string;
   name: string;
   managerName: string;
+  createdId?: string;
 }
 
 interface OnboardingData {
@@ -54,7 +62,7 @@ interface OnboardingData {
   // Step 4 - Convites
   invites: Array<{
     email: string;
-    role: string;
+    role: "MANAGER" | "EMPLOYEE";
     department: string;
   }>;
 }
@@ -85,11 +93,13 @@ export  function RegisterPage() {
 
   const [newInvite, setNewInvite] = useState({
     email: "",
-    role: "Colaborador",
+    role: "EMPLOYEE" as "MANAGER" | "EMPLOYEE",
     department: ""
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitError, setSubmitError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const steps = [
     { number: 1, title: "Conta de Diretor" },
@@ -97,6 +107,11 @@ export  function RegisterPage() {
     { number: 3, title: "Departamentos" },
     { number: 4, title: "Equipe" }
   ];
+
+  const roleLabelMap: Record<"MANAGER" | "EMPLOYEE", string> = {
+    MANAGER: "Gestor",
+    EMPLOYEE: "Colaborador",
+  };
 
   const formatCNPJ = (value: string) => {
     const cleaned = value.replace(/\D/g, "");
@@ -136,11 +151,64 @@ export  function RegisterPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleNext = () => {
-    if (validateStep(currentStep)) {
-      if (currentStep < 4) {
-        setCurrentStep(currentStep + 1);
+  const handleNext = async () => {
+    setSubmitError("");
+
+    if (!validateStep(currentStep)) {
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      if (currentStep === 1) {
+        const session = await registerDirector({
+          name: formData.fullName,
+          email: formData.email,
+          password: formData.password,
+          confirmPassword: formData.confirmPassword,
+        });
+
+        saveSession(session);
+        setCurrentStep(2);
+        return;
       }
+
+      if (currentStep === 2) {
+        await createCompany({
+          name: formData.companyName,
+          cnpj: formData.cnpj.replace(/\D/g, ""),
+          businessArea: formData.businessArea,
+        });
+
+        setCurrentStep(3);
+        return;
+      }
+
+      if (currentStep === 3) {
+        const createdDepartments: Department[] = [];
+
+        for (const department of formData.departments) {
+          const createdDepartment = await createDepartment({
+            name: department.name,
+          });
+
+          createdDepartments.push({
+            ...department,
+            createdId: createdDepartment.id,
+          });
+        }
+
+        setFormData((current) => ({
+          ...current,
+          departments: createdDepartments,
+        }));
+        setCurrentStep(4);
+      }
+    } catch {
+      setSubmitError("Não foi possível concluir esta etapa. Revise os dados e tente novamente.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -196,7 +264,7 @@ export  function RegisterPage() {
       ...formData,
       invites: [...formData.invites, { ...newInvite }]
     });
-    setNewInvite({ email: "", role: "Colaborador", department: "" });
+    setNewInvite({ email: "", role: "EMPLOYEE", department: "" });
 
     // Clear invite errors
     const clearedErrors = { ...errors };
@@ -212,9 +280,31 @@ export  function RegisterPage() {
     });
   };
 
-  const handleFinish = () => {
-    setCurrentStep(5);
-    console.log("Onboarding completed:", formData);
+  const handleFinish = async () => {
+    setSubmitError("");
+    setSubmitting(true);
+
+    try {
+      for (const invite of formData.invites) {
+        const department = formData.departments.find((item) => item.name === invite.department);
+
+        if (!department?.createdId) {
+          throw new Error("Department not synced");
+        }
+
+        await createInvite({
+          email: invite.email,
+          role: invite.role,
+          departmentId: department.createdId,
+        });
+      }
+
+      setCurrentStep(5);
+    } catch {
+      setSubmitError("Não foi possível finalizar a configuração. Tente novamente.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleGoToDashboard = () => {
@@ -363,7 +453,7 @@ export  function RegisterPage() {
               <div className="flex items-center gap-2 mb-6">
                 <Shield className="w-4 h-4 text-accent" />
                 <span className="text-xs text-muted-foreground">
-                  {currentStep === 1 ? "Acesso seguro corporativo" : "Seus dados são protegidos"}
+                  {currentStep === 1 ? "Cadastro seguro" : "Seus dados são protegidos"}
                 </span>
               </div>
             )}
@@ -496,9 +586,11 @@ export  function RegisterPage() {
 
                   <button
                     onClick={handleNext}
-                    className="w-full mt-6 py-3.5 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
+                    type="button"
+                    disabled={submitting}
+                    className="w-full mt-6 py-3.5 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-70"
                   >
-                    Continuar
+                    {submitting ? "Salvando..." : "Continuar"}
                     <ArrowRight className="w-5 h-5" />
                   </button>
                 </motion.div>
@@ -585,9 +677,11 @@ export  function RegisterPage() {
 
                   <button
                     onClick={handleNext}
-                    className="w-full mt-6 py-3.5 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
+                    type="button"
+                    disabled={submitting}
+                    className="w-full mt-6 py-3.5 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-70"
                   >
-                    Continuar
+                    {submitting ? "Salvando..." : "Continuar"}
                     <ArrowRight className="w-5 h-5" />
                   </button>
                 </motion.div>
@@ -604,7 +698,7 @@ export  function RegisterPage() {
                 >
                   <div className="mb-8">
                     <h2 className="text-3xl font-semibold text-primary mb-2">Crie a estrutura inicial da sua empresa</h2>
-                    <p className="text-muted-foreground">Usuários precisam estar vinculados a um departamento</p>
+                    <p className="text-muted-foreground">Gestores e Colaboradores precisam estar vinculados a um departamento</p>
                   </div>
 
                   {/* Organization Hierarchy Info */}
@@ -618,7 +712,7 @@ export  function RegisterPage() {
                           <ArrowRight className="w-3 h-3" />
                           <span className="px-2 py-1 bg-accent/10 rounded text-accent font-medium">Departamento</span>
                           <ArrowRight className="w-3 h-3" />
-                          <span className="px-2 py-1 bg-secondary/10 rounded text-secondary font-medium">Usuário</span>
+                          <span className="px-2 py-1 bg-secondary/10 rounded text-secondary font-medium">Gestor/Colaborador</span>
                         </div>
                       </div>
                     </div>
@@ -646,6 +740,7 @@ export  function RegisterPage() {
 
                     <button
                       onClick={handleAddDepartment}
+                      type="button"
                       className="w-full py-2.5 bg-accent text-white font-medium rounded-lg hover:bg-accent/90 transition-all flex items-center justify-center gap-2"
                     >
                       <Plus className="w-5 h-5" />
@@ -701,10 +796,11 @@ export  function RegisterPage() {
 
                   <button
                     onClick={handleNext}
-                    disabled={formData.departments.length === 0}
+                    type="button"
+                    disabled={submitting || formData.departments.length === 0}
                     className="w-full py-3.5 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary"
                   >
-                    Continuar
+                    {submitting ? "Salvando..." : "Continuar"}
                     <ArrowRight className="w-5 h-5" />
                   </button>
                 </motion.div>
@@ -745,11 +841,11 @@ export  function RegisterPage() {
                         <label className="block text-sm font-medium text-foreground mb-2">Papel</label>
                         <select
                           value={newInvite.role}
-                          onChange={(e) => setNewInvite({ ...newInvite, role: e.target.value })}
+                          onChange={(e) => setNewInvite({ ...newInvite, role: e.target.value as "MANAGER" | "EMPLOYEE" })}
                           className="w-full px-4 py-2.5 bg-input-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-sm"
                         >
-                          <option value="Gestor">Gestor</option>
-                          <option value="Colaborador">Colaborador</option>
+                          <option value="MANAGER">Gestor</option>
+                          <option value="EMPLOYEE">Colaborador</option>
                         </select>
                       </div>
 
@@ -775,6 +871,7 @@ export  function RegisterPage() {
 
                     <button
                       onClick={handleAddInvite}
+                      type="button"
                       className="w-full px-4 py-2.5 bg-accent text-white rounded-lg hover:bg-accent/90 transition-all font-medium flex items-center justify-center gap-2"
                     >
                       <Plus className="w-5 h-5" />
@@ -796,7 +893,7 @@ export  function RegisterPage() {
                           <div className="flex-1">
                             <p className="text-sm font-medium text-foreground">{invite.email}</p>
                             <div className="flex items-center gap-2 mt-1">
-                              <span className="text-xs px-2 py-0.5 bg-accent/10 text-accent rounded">{invite.role}</span>
+                              <span className="text-xs px-2 py-0.5 bg-accent/10 text-accent rounded">{roleLabelMap[invite.role]}</span>
                               <span className="text-xs text-muted-foreground">•</span>
                               <span className="text-xs text-muted-foreground">{invite.department}</span>
                             </div>
@@ -830,11 +927,20 @@ export  function RegisterPage() {
                     </div>
                   </div>
 
+                  {submitError && (
+                    <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg flex items-start gap-3">
+                      <AlertCircle className="w-5 h-5 text-destructive mt-0.5 flex-shrink-0" />
+                      <p className="text-sm text-destructive">{submitError}</p>
+                    </div>
+                  )}
+
                   <button
                     onClick={handleFinish}
-                    className="w-full py-3.5 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
+                    type="button"
+                    disabled={submitting}
+                    className="w-full py-3.5 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-70"
                   >
-                    Finalizar configuração
+                    {submitting ? "Finalizando..." : "Finalizar configuração"}
                     <CheckCircle2 className="w-5 h-5" />
                   </button>
                 </motion.div>
@@ -893,6 +999,13 @@ export  function RegisterPage() {
                 </motion.div>
               )}
             </AnimatePresence>
+
+            {currentStep < 4 && submitError && (
+              <div className="mt-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-destructive mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-destructive">{submitError}</p>
+              </div>
+            )}
           </div>
         </motion.div>
       </div>

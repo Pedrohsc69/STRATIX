@@ -1,14 +1,15 @@
+import type { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
+import { isAuthenticated } from '../../store/app-store';
 
 type AuthGuardProps = {
-  isAuthenticated: boolean;
-  children: JSX.Element;
+  children: ReactNode;
 };
 
-export function AuthGuard({ isAuthenticated, children }: AuthGuardProps) {
-  if (!isAuthenticated) {
-    return <Navigate to="/" replace />;
+export function AuthGuard({ children }: AuthGuardProps) {
+  if (!isAuthenticated()) {
+    return <Navigate to="/login" replace />;
   }
 
-  return children;
+  return <>{children}</>;
 }

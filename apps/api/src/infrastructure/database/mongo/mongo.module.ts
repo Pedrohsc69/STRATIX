@@ -13,6 +13,8 @@ import { AuditSchema } from '../../../modules/audit/infrastructure/database/audi
         return {
           uri: config.uri,
           dbName: config.dbName,
+          lazyConnection: true,
+          serverSelectionTimeoutMS: 3000,
         };
       },
     }),

@@ -34,8 +34,8 @@ model User {
 
   isActive Boolean @default(false)
 
-  companyId String
-  company   Company @relation(fields: [companyId], references: [id])
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id])
 
   departmentId String?
   department   Department? @relation("UserDepartment", fields: [departmentId], references: [id])
@@ -72,9 +72,11 @@ model Company {
   id        String @id @default(uuid())
   name      String
   cnpj      String @unique
+  businessArea String
 
   users       User[]
   departments Department[]
+  invites Invite[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -88,6 +90,8 @@ model Department {
   company   Company @relation(fields: [companyId], references: [id])
 
   users User[] @relation("UserDepartment")
+
+  invites Invite[]
 
   managerId String?
   manager   User? @relation("DepartmentManager", fields: [managerId], references: [id])

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "motion/react";
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom";
 import { Building2, Shield, Lock, Eye, EyeOff, CheckCircle2, UserCheck } from "lucide-react";
 
 export function AcceptInvitePage() {
@@ -38,8 +38,7 @@ export function AcceptInvitePage() {
     e.preventDefault();
 
     if (validatePassword()) {
-      console.log("Conta ativada:", { password });
-      navigate("/dashboard");
+      navigate("/login");
     }
   };
 

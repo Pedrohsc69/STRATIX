@@ -1,8 +1,17 @@
-import { Link } from "react-router";
+import { useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import { Target, TrendingUp, Users } from "lucide-react";
+import { clearSession, getSession } from "../../../store/app-store";
 
 export function DashboardGeneralPage() {
+  const navigate = useNavigate();
+  const session = getSession();
+
+  const handleLogout = () => {
+    clearSession();
+    navigate("/login");
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-6 py-12">
@@ -19,6 +28,13 @@ export function DashboardGeneralPage() {
           <p className="text-lg text-muted-foreground mb-12 max-w-2xl mx-auto">
             Bem-vindo à plataforma de gestão estratégica e OKRs. Esta é uma área de desenvolvimento.
           </p>
+          {session && (
+            <div className="mb-8">
+              <p className="text-sm text-muted-foreground">
+                Sessão ativa: <span className="font-medium text-foreground">{session.user.name}</span>
+              </p>
+            </div>
+          )}
 
           <div className="grid md:grid-cols-3 gap-6 max-w-3xl mx-auto">
             {[
@@ -38,12 +54,14 @@ export function DashboardGeneralPage() {
               </div>
             ))}
           </div>
+          <button
+            onClick={handleLogout}
+            className="mt-8 px-5 py-2.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-all"
+          >
+            Sair
+          </button>
         </motion.div>
-         <div className="mt-6 text-center">
-            <Link to="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              ← Voltar para página inicial
-            </Link>
-          </div>
+         
       </div>
     </div>
   );
