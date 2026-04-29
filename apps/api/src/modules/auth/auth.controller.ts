@@ -1,4 +1,6 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { AcceptInviteDto } from './dto/accept-invite.dto';
+import { GetInviteDetailsDto } from './dto/get-invite-details.dto';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDirectorDto } from './dto/register-director.dto';
@@ -15,5 +17,15 @@ export class AuthController {
   @Post('login')
   login(@Body() body: LoginDto) {
     return this.authService.login(body);
+  }
+
+  @Get('invite-details')
+  getInviteDetails(@Query() query: GetInviteDetailsDto) {
+    return this.authService.getInviteDetails(query.token);
+  }
+
+  @Post('accept-invite')
+  acceptInvite(@Body() body: AcceptInviteDto) {
+    return this.authService.acceptInvite(body);
   }
 }

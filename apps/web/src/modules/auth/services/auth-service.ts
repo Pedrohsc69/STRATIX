@@ -29,6 +29,20 @@ type CreateInviteInput = {
   departmentId: string;
 };
 
+type InviteDetails = {
+  email: string;
+  role: 'MANAGER' | 'EMPLOYEE';
+  companyName: string;
+  departmentName: string | null;
+};
+
+type AcceptInviteInput = {
+  name: string;
+  token: string;
+  password: string;
+  confirmPassword: string;
+};
+
 export async function registerDirector(input: RegisterDirectorInput) {
   const response = await api.post<SessionState>('/auth/register-director', input);
   return response.data;
@@ -67,4 +81,17 @@ export async function createInvite(input: CreateInviteInput) {
     departmentId: string;
     expiresAt: string;
   };
+}
+
+export async function getInviteDetails(token: string) {
+  const response = await api.get<InviteDetails>('/auth/invite-details', {
+    params: { token },
+  });
+
+  return response.data;
+}
+
+export async function acceptInvite(input: AcceptInviteInput) {
+  const response = await api.post<SessionState>('/auth/accept-invite', input);
+  return response.data;
 }

@@ -11,6 +11,7 @@ import { ObjetivoPage } from '../../modules/objective/pages/objetivo-page';
 import { OkrPage } from '../../modules/okr/pages/okr-page';
 import { RelatorioPage } from '../../modules/relatorio/pages/relatorio-page';
 import { RecoverPasswordPage } from '../../modules/recoverPassword/pages/recover-password-page';
+import { ProfilePage } from '../../modules/profile/pages/profile-page'
 
 export function AppRouter() {
   return (
@@ -67,6 +68,14 @@ export function AppRouter() {
           element={
             <AuthGuard>
               <RelatorioPage />
+            </AuthGuard>
+          }
+        />
+        <Route 
+          path='/profile'
+          element={
+            <AuthGuard>
+              <ProfilePage />
             </AuthGuard>
           }
         />

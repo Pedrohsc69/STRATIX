@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { PrismaService } from './core/shared/prisma.service';
+import { validateEnv } from './config/env.validation';
 import { MongoModule } from './infrastructure/database/mongo/mongo.module';
 import { HealthController } from './interfaces/routes/health.controller';
 import { AuditModule } from './modules/audit/audit.module';
@@ -20,6 +22,11 @@ import { SessionModule } from './modules/session/session.module';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      cache: true,
+      validate: validateEnv,
+    }),
     MongoModule,
     AuthModule,
     CompaniesModule,
