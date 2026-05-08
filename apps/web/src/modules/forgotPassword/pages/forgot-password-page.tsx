@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { Link } from "react-router-dom";
 import { Mail, ArrowLeft, CheckCircle2 } from "lucide-react";
 
-export function RecoverPasswordPage() {
+export function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");

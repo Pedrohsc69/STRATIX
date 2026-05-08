@@ -128,15 +128,15 @@ const recentCycles = [
 ];
 
 const menuItems = [
-  { icon: LayoutDashboard, label: "Dashboard", active: true },
-  { icon: Building2, label: "Departamentos", active: false },
-  { icon: Target, label: "Ciclos Estratégicos", active: false },
-  { icon: FileText, label: "Relatórios", active: false },
-  { icon: Users, label: "Funcionários", active: false },
-  { icon: Settings, label: "Configurações", active: false }
+  { icon: LayoutDashboard, label: "Dashboard", active: true, path: "/dashboard-director" },
+  { icon: Building2, label: "Departamentos", active: false, path: "/departaments" },
+  { icon: Target, label: "Ciclos Estratégicos", active: false, path: "#" },
+  { icon: FileText, label: "Relatórios", active: false, path: "#" },
+  { icon: Users, label: "Funcionários", active: false, path: "#" },
+  { icon: Settings, label: "Configurações", active: false, path: "#" }
 ];
 
-export function DashboardGeneralPage() {
+export function DashboardDirectorPage() {
   const [sidebarOpen] = useState(true);
   const navigate = useNavigate();
   const session = getSession();
@@ -208,6 +208,7 @@ export function DashboardGeneralPage() {
             <motion.button
               key={index}
               whileHover={{ x: 4 }}
+              onClick={() => item.path !== "#" && navigate(item.path)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
                 item.active
                   ? "bg-[#1E3A5F] text-white shadow-sm"

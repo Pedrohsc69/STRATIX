@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { motion } from "motion/react";
 import { Target, TrendingUp, Users } from "lucide-react";
 
-export function DashboardDepartamentPage() {
+export function DashboardManagerPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-6 py-12">

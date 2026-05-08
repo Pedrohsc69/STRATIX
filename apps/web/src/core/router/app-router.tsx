@@ -1,41 +1,48 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { AuthGuard } from '../guards/auth-guard';
-import { Home } from '../../modules/home/pages/home-page';
-import { RegisterPage } from '../../modules/auth/pages/register-page';
-import { AcceptInvitePage } from '../../modules/acceptInvite/pages/accept-invite-page';
-import { DashboardGeneralPage } from '../../modules/dashboardGeneral/pages/dashboard-general-page';
-import { DashboardDepartamentPage } from '../../modules/dashboardDepartment/pages/dashboard-departament-page';
-import { DepartamentoPage } from '../../modules/department/pages/departamento-page';
+
+import { LandingPage } from '../../modules/Landingpage/pages/landingpage-page';
 import { LoginPage } from '../../modules/auth/pages/login-page';
+import { RegisterPage } from '../../modules/auth/pages/register-page';
+import { ForgotPasswordPage } from '../../modules/forgotPassword/pages/forgot-password-page';
+import { AcceptInvitePage } from '../../modules/acceptInvite/pages/accept-invite-page';
+import { RecoverPasswordPage } from "../../modules/recoverPassword/pages/recorver-password-page";
+
+import { DashboardDirectorPage } from '../../modules/dashboardDirector/pages/dashboard-director-page';
+import { DashboardManagerPage } from '../../modules/dashboardManager/pages/dashboard-manager-page';
+
+import { ProfilePage } from '../../modules/profile/pages/profile-page'
+
+import { Departments } from '../../modules/department/pages/departamento-page';
 import { ObjetivoPage } from '../../modules/objective/pages/objetivo-page';
 import { OkrPage } from '../../modules/okr/pages/okr-page';
 import { RelatorioPage } from '../../modules/relatorio/pages/relatorio-page';
-import { RecoverPasswordPage } from '../../modules/recoverPassword/pages/recover-password-page';
-import { ProfilePage } from '../../modules/profile/pages/profile-page'
 
 export function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Home />} />
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
-        <Route path="/recover-password" element={<RecoverPasswordPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/accept-invite" element={<AcceptInvitePage />} />
+        <Route path="/recover-password" element={<RecoverPasswordPage />} />
+        
 
         <Route
-          path="/dashboard-general"
+          path="/dashboard-director"
           element={
             <AuthGuard>
-              <DashboardGeneralPage />
+              <DashboardDirectorPage />
             </AuthGuard>
           }
         />
         <Route
-          path="/dashboard-departament"
+          path="/dashboard-manager"
           element={
             <AuthGuard>
-              <DashboardDepartamentPage />
+              <DashboardManagerPage />
             </AuthGuard>
           }
         />
@@ -56,10 +63,10 @@ export function AppRouter() {
           }
         />
         <Route
-          path="/departamentos"
+          path="/departaments"
           element={
             <AuthGuard>
-              <DepartamentoPage />
+              <Departments />
             </AuthGuard>
           }
         />

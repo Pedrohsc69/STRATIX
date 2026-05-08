@@ -27,7 +27,7 @@ export function LoginPage() {
     try {
       const session = await login({ email, password });
       saveSession(session);
-      navigate("/dashboard-general");
+      navigate("/dashboard-director");
     } catch {
       setError("Credenciais inválidas");
     } finally {
@@ -188,7 +188,7 @@ export function LoginPage() {
 
               {/* Forgot Password */}
               <div className="flex items-center justify-between">
-                <Link to="/recover-password" className="text-sm text-accent hover:text-accent/80 transition-colors font-medium">
+                <Link to="/forgot-password" className="text-sm text-accent hover:text-accent/80 transition-colors font-medium">
                   Esqueci minha senha
                 </Link>
               </div>

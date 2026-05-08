@@ -46,7 +46,7 @@ const features = [
   }
 ];
 
-export function Home() {
+export function LandingPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}

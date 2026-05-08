@@ -34,9 +34,9 @@ export function buildInviteTemplate(input: InviteTemplateInput) {
   const roleLabel = getRoleLabel(input.role);
 
   return `
-    <div style="background:#f8fafc;padding:32px 16px;font-family:Arial,sans-serif;">
+    <div style="background:#f8fafc;padding:32px 16px;font-family:Inter,sans-serif;">
       <div style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:20px;overflow:hidden;border:1px solid #dbe4f0;">
-        <div style="background:linear-gradient(135deg,#0b3b73 0%,#1556a6 100%);padding:32px;color:#ffffff;">
+        <div style="background:linear-gradient(135deg,#0F2A44 0%,#1E4E79 100%);padding:32px;color:#ffffff;">
           <div style="font-size:13px;letter-spacing:0.12em;text-transform:uppercase;opacity:0.85;">STRATIX</div>
           <h1 style="margin:12px 0 8px;font-size:28px;line-height:1.2;">Convite para acessar a plataforma</h1>
           <p style="margin:0;font-size:15px;opacity:0.9;">Ative sua conta com segurança e conclua o acesso ao ambiente estratégico da sua empresa.</p>
@@ -64,7 +64,7 @@ export function buildInviteTemplate(input: InviteTemplateInput) {
 
           <a
             href="${input.acceptUrl}"
-            style="display:inline-block;background:#1556a6;color:#ffffff;text-decoration:none;padding:14px 24px;border-radius:12px;font-weight:600;font-size:15px;"
+            style="display:inline-block;background:#0F2A44;color:#ffffff;text-decoration:none;padding:14px 24px;border-radius:12px;font-weight:600;font-size:15px;"
           >
             Aceitar convite
           </a>
