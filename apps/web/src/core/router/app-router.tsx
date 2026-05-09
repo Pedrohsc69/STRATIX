@@ -13,11 +13,11 @@ import { DashboardManagerPage } from '../../modules/dashboardManager/pages/dashb
 
 import { ProfilePage } from '../../modules/profile/pages/profile-page'
 
-import { Departments } from '../../modules/department/pages/departamento-page';
+import { DepartmentsPage } from '../../modules/department/pages/departamento-page';
 import { StrategicCyclesPage } from "../../modules/dashboardStrategicCycles/pages/dashboard-strategic-cycles";
 import { ObjetivoPage } from '../../modules/objective/pages/objetivo-page';
 import { OkrPage } from '../../modules/okr/pages/okr-page';
-import { RelatorioPage } from '../../modules/relatorio/pages/relatorio-page';
+import { ReportsPage } from '../../modules/reports/pages/relatorio-page';
 
 export function AppRouter() {
   return (
@@ -75,15 +75,15 @@ export function AppRouter() {
           path="/departaments"
           element={
             <AuthGuard>
-              <Departments />
+              <DepartmentsPage />
             </AuthGuard>
           }
         />
         <Route
-          path="/relatorios"
+          path="/reports"
           element={
             <AuthGuard>
-              <RelatorioPage />
+              <ReportsPage />
             </AuthGuard>
           }
         />

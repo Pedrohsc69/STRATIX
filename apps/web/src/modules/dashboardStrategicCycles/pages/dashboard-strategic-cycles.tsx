@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import {
   Search,
   Plus,
@@ -16,7 +16,12 @@ import {
   Users,
   LayoutDashboard,
   FileText,
+  Building2,
+  Settings,
 } from "lucide-react";
+import { motion } from "motion/react";
+import { getSession } from "../../../store/app-store";
+
 
 interface StrategicCycle {
   id: string;
@@ -107,8 +112,19 @@ const mockCycles: StrategicCycle[] = [
   },
 ];
 
+const menuItems = [
+  { icon: LayoutDashboard, label: "Dashboard", active: false, path: "/dashboard-director" },
+  { icon: Building2, label: "Departamentos", active: false, path: "/departaments" },
+  { icon: Target, label: "Ciclos Estratégicos", active: true, path: "/dashboard-cycles" },
+  { icon: FileText, label: "Relatórios", active: false, path: "/reports" },
+  { icon: Users, label: "Funcionários", active: false, path: "#" },
+  { icon: Settings, label: "Configurações", active: false, path: "#" }
+];
+
 export  function StrategicCyclesPage() {
   const navigate = useNavigate();
+  const session = getSession();
+  const [sidebarOpen] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [departmentFilter, setDepartmentFilter] = useState("all");
@@ -174,60 +190,61 @@ export  function StrategicCyclesPage() {
   return (
     <div className="min-h-screen bg-[#F5F7FA]">
       {/* Sidebar */}
-      <aside className="fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 flex flex-col">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-[#1E3A5F] flex items-center justify-center">
-              <span className="text-white font-bold text-lg">S</span>
+      <motion.aside
+        initial={{ x: -280 }}
+        animate={{ x: 0 }}
+        className={`${
+          sidebarOpen ? "w-64" : "w-20"
+        } bg-white border-r border-gray-200 fixed left-0 top-0 bottom-0 z-40 transition-all`}
+      >
+        {/* Logo */}
+        <div className="h-16 flex items-center px-6 border-b border-gray-200">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-[#1E3A5F] rounded-lg flex items-center justify-center">
+                <div className="w-5 h-5 border-2 border-[#10B981] rounded" />
+              </div>
+              {sidebarOpen && (
+                <span className="text-lg font-semibold text-[#1E3A5F] tracking-tight">STRATIX</span>
+              )}
             </div>
-            <span className="font-semibold text-xl text-[#1F2937]">STRATIX</span>
-          </div>
         </div>
 
-        <nav className="flex-1 p-4">
-          <ul className="space-y-1">
-            <li>
-              <button
-                onClick={() => navigate("/dashboard-director")}
-                className="w-full flex items-center gap-3 px-4 py-3 text-[#6B7280] hover:bg-[#F5F7FA] rounded-lg transition-colors"
-              >
-                <LayoutDashboard className="w-5 h-5" />
-                <span className="font-medium">Dashboard</span>
-              </button>
-            </li>
-            <li>
-              <button
-                onClick={() => navigate("/departaments")}
-                className="w-full flex items-center gap-3 px-4 py-3 text-[#6B7280] hover:bg-[#F5F7FA] rounded-lg transition-colors"
-              >
-                <Target className="w-5 h-5" />
-                <span className="font-medium">Departamentos</span>
-              </button>
-            </li>
-            <li>
-              <button className="w-full flex items-center gap-3 px-4 py-3 text-[#1E3A5F] bg-[#EFF6FF] rounded-lg">
-                <TrendingUp className="w-5 h-5" />
-                <span className="font-medium">Ciclos Estratégicos</span>
-              </button>
-            </li>
-            <li>
-              <button
-                onClick={() => navigate("/relatorios")}
-                className="w-full flex items-center gap-3 px-4 py-3 text-[#6B7280] hover:bg-[#F5F7FA] rounded-lg transition-colors"
-              >
-                <FileText className="w-5 h-5" />
-                <span className="font-medium">Relatórios</span>
-              </button>
-            </li>
-            <li>
-              <button className="w-full flex items-center gap-3 px-4 py-3 text-[#6B7280] hover:bg-[#F5F7FA] rounded-lg transition-colors">
-                <Users className="w-5 h-5" />
-                <span className="font-medium">Funcionários</span>
-              </button>
-            </li>
-          </ul>
+        {/* Menu */}
+        <nav className="p-4 space-y-1">
+          {menuItems.map((item, index) => (
+            <motion.button
+              key={index}
+              whileHover={{ x: 4 }}
+              onClick={() => item.path !== "#" && navigate(item.path)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+                item.active
+                  ? "bg-[#1E3A5F] text-white shadow-sm"
+                  : "text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              <item.icon className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span className="text-sm font-medium">{item.label}</span>}
+            </motion.button>
+          ))}
         </nav>
-      </aside>
+
+        {/* User Profile */}
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
+          <Link to="/profile">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-[#3B82F6] rounded-full flex items-center justify-center text-white font-semibold">
+                PE
+              </div>
+              {sidebarOpen && (
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-900">{session?.user.name}</p>
+                  <p className="text-xs text-gray-500">{session?.user.email}</p>
+                </div>
+              )}
+            </div>
+          </Link>
+        </div>
+      </motion.aside>
 
       {/* Main Content */}
       <main className="ml-64 p-8">
