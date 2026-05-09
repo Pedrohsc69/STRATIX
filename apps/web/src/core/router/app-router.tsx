@@ -14,6 +14,7 @@ import { DashboardManagerPage } from '../../modules/dashboardManager/pages/dashb
 import { ProfilePage } from '../../modules/profile/pages/profile-page'
 
 import { Departments } from '../../modules/department/pages/departamento-page';
+import { StrategicCyclesPage } from "../../modules/dashboardStrategicCycles/pages/dashboard-strategic-cycles";
 import { ObjetivoPage } from '../../modules/objective/pages/objetivo-page';
 import { OkrPage } from '../../modules/okr/pages/okr-page';
 import { RelatorioPage } from '../../modules/relatorio/pages/relatorio-page';
@@ -43,6 +44,14 @@ export function AppRouter() {
           element={
             <AuthGuard>
               <DashboardManagerPage />
+            </AuthGuard>
+          }
+        />
+        <Route
+          path="/dashboard-cycles"
+          element={
+            <AuthGuard>
+              <StrategicCyclesPage />
             </AuthGuard>
           }
         />

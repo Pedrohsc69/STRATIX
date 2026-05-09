@@ -117,7 +117,9 @@ export function Departments() {
               </button>
             </li>
             <li>
-              <button className="w-full flex items-center gap-3 px-4 py-3 text-[#6B7280] hover:bg-[#F5F7FA] rounded-lg transition-colors">
+              <button
+                onClick={() => navigate("/dashboard-cycles")} 
+                className="w-full flex items-center gap-3 px-4 py-3 text-[#6B7280] hover:bg-[#F5F7FA] rounded-lg transition-colors">
                 <TrendingUp className="w-5 h-5" />
                 <span className="font-medium">Ciclos Estratégicos</span>
               </button>
