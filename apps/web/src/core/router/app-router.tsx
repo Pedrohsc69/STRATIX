@@ -12,6 +12,7 @@ import { DashboardDirectorPage } from '../../modules/dashboardDirector/pages/das
 import { DashboardManagerPage } from '../../modules/dashboardManager/pages/dashboard-manager-page';
 
 import { ProfilePage } from '../../modules/profile/pages/profile-page'
+import { EmployeesPage } from "../../modules/employees/pages/employees-page";
 
 import { DepartmentsPage } from '../../modules/department/pages/departamento-page';
 import { StrategicCyclesPage } from "../../modules/dashboardStrategicCycles/pages/dashboard-strategic-cycles";
@@ -95,6 +96,15 @@ export function AppRouter() {
             </AuthGuard>
           }
         />
+        <Route 
+          path='/employees'
+          element={
+            <AuthGuard>
+              <EmployeesPage />
+            </AuthGuard>
+          }
+        />
+
       </Routes>
     </BrowserRouter>
   );

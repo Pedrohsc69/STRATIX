@@ -71,7 +71,7 @@ const menuItems = [
   { icon: Building2, label: "Departamentos", active: true, path: "/departaments" },
   { icon: Target, label: "Ciclos Estratégicos", active: false, path: "/dashboard-cycles" },
   { icon: FileText, label: "Relatórios", active: false, path: "/reports" },
-  { icon: Users, label: "Funcionários", active: false, path: "#" },
+  { icon: Users, label: "Funcionários", active: false, path: "/employees" },
   { icon: Settings, label: "Configurações", active: false, path: "#" }
 ];
 
