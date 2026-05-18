@@ -2,6 +2,8 @@ import { motion } from "motion/react";
 import { Link } from "react-router-dom";
 import { Target, TrendingUp, BarChart3, Lightbulb, Users, ChevronRight } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
+import stratix_logo_princpial from "../components/Principal_normal.png";
+
 
 const chartData = [
   { month: "Jan", value: 45 },
@@ -59,10 +61,9 @@ export function LandingPage() {
               transition={{ duration: 0.6 }}
               className="flex items-center gap-2"
             >
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <div className="w-5 h-5 border-2 border-accent rounded" />
+              <div className="w-40">
+                <img src={stratix_logo_princpial} alt="stratix_logo_horizontal" />
               </div>
-              <span className="text-xl font-semibold text-primary tracking-tight">STRATIX</span>
             </motion.div>
 
             <motion.nav
@@ -243,11 +244,8 @@ export function LandingPage() {
       <footer className="bg-primary text-white py-12">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center">
-                <div className="w-5 h-5 border-2 border-white rounded" />
-              </div>
-              <span className="text-xl font-semibold tracking-tight">STRATIX</span>
+            <div className="w-60">
+              <img src={stratix_logo_princpial} alt="stratix_logo_horizontal" />
             </div>
 
             <nav className="flex items-center gap-8">

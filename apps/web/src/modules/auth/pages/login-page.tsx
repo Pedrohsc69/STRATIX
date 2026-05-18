@@ -4,6 +4,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { Lock, Mail, Eye, EyeOff, Shield } from "lucide-react";
 import { login } from "../services/auth-service";
 import { saveSession } from "../../../store/app-store";
+import stratix_logo_princpial from "../components/Principal_normal.png";
+
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -53,10 +55,9 @@ export function LoginPage() {
         <div className="relative z-10 flex flex-col justify-center px-16 xl:px-24 w-full">
           {/* Logo */}
           <div className="flex items-center gap-2 mb-12">
-            <div className="w-10 h-10 bg-accent rounded-lg flex items-center justify-center">
-              <div className="w-6 h-6 border-2 border-white rounded" />
+            <div className="w-40">
+                <img src={stratix_logo_princpial} alt="stratix_logo_horizontal" />
             </div>
-            <span className="text-2xl font-semibold text-white tracking-tight">STRATIX</span>
           </div>
 
           {/* Value Proposition */}
