@@ -89,7 +89,7 @@ const mockIntegrations: Integration[] = [
 ];
 
 const menuItems = [
-  { icon: LayoutDashboard, label: "Dashboard", active: false, path: "/dashboard-director" },
+  { icon: LayoutDashboard, label: "Dashboard", active: false, path: "/dashboard" },
   { icon: Building2, label: "Departamentos", active: false, path: "/departaments" },
   { icon: Target, label: "Ciclos Estratégicos", active: false, path: "/dashboard-cycles" },
   { icon: FileText, label: "Relatórios", active: false, path: "/reports" },
@@ -242,7 +242,7 @@ export function SettingsPage() {
         <div className="mb-8">
           <div className="flex items-center gap-2 text-sm text-[#6B7280] mb-3">
             <button
-              onClick={() => navigate("/dashboard-director")}
+              onClick={() => navigate("/dashboard")}
               className="hover:text-[#1E3A5F] transition-colors"
             >
               Dashboard

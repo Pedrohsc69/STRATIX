@@ -115,7 +115,7 @@ export function AcceptInvitePage() {
       });
 
       saveSession(session);
-      navigate("/dashboard-general");
+      navigate("/dashboard");
     } catch (error) {
       setRequestError(getErrorMessage(error));
     } finally {

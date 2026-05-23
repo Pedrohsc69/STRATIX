@@ -30,7 +30,7 @@ export function LoginPage() {
     try {
       const session = await login({ email, password });
       saveSession(session);
-      navigate("/dashboard-director");
+      navigate("/dashboard");
     } catch {
       setError("Credenciais inválidas");
     } finally {

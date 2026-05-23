@@ -69,7 +69,7 @@ import stratix_logo_princpial from "../components/Principal_normal.png";
 
 
 const menuItems = [
-  { icon: LayoutDashboard, label: "Dashboard", active: false, path: "/dashboard-director" },
+  { icon: LayoutDashboard, label: "Dashboard", active: false, path: "/dashboard" },
   { icon: Building2, label: "Departamentos", active: true, path: "/departaments" },
   { icon: Target, label: "Ciclos Estratégicos", active: false, path: "/dashboard-cycles" },
   { icon: FileText, label: "Relatórios", active: false, path: "/reports" },

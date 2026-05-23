@@ -327,7 +327,7 @@ export  function RegisterPage() {
   };
 
   const handleGoToDashboard = () => {
-    navigate("/dashboard-director");
+    navigate("/dashboard");
   };
 
   return (

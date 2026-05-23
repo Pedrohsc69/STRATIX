@@ -1,5 +1,6 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
-import { AuthGuard } from '../guards/auth-guard';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { ProtectedRoute } from '../guards/protected-route';
+import { PublicOnlyRoute } from '../guards/public-only-route';
 
 import { LandingPage } from '../../modules/Landingpage/pages/landingpage-page';
 import { LoginPage } from '../../modules/auth/pages/login-page';
@@ -7,9 +8,6 @@ import { RegisterPage } from '../../modules/auth/pages/register-page';
 import { ForgotPasswordPage } from '../../modules/forgotPassword/pages/forgot-password-page';
 import { AcceptInvitePage } from '../../modules/acceptInvite/pages/accept-invite-page';
 import { RecoverPasswordPage } from "../../modules/recoverPassword/pages/recorver-password-page";
-
-import { DashboardDirectorPage } from '../../modules/dashboardDirector/pages/dashboard-director-page';
-import { DashboardManagerPage } from '../../modules/dashboardManager/pages/dashboard-manager-page';
 
 import { ProfilePage } from '../../modules/profile/pages/profile-page'
 import { EmployeesPage } from "../../modules/employees/pages/employees-page";
@@ -20,99 +18,117 @@ import { ObjetivoPage } from '../../modules/objective/pages/objetivo-page';
 import { OkrPage } from '../../modules/okr/pages/okr-page';
 import { ReportsPage } from '../../modules/reports/pages/relatorio-page';
 import { SettingsPage } from '../../modules/settings/pages/settings-page';
+import { DashboardPage } from '../../features/dashboard/DashboardPage';
+import { AccessDeniedPage } from './access-denied-page';
 
 export function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="/accept-invite" element={<AcceptInvitePage />} />
-        <Route path="/recover-password" element={<RecoverPasswordPage />} />
+        <Route path="/" element={<PublicOnlyRoute><LandingPage /></PublicOnlyRoute>} />
+        <Route path="/login" element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
+        <Route path="/register" element={<PublicOnlyRoute><RegisterPage /></PublicOnlyRoute>} />
+        <Route path="/forgot-password" element={<PublicOnlyRoute><ForgotPasswordPage /></PublicOnlyRoute>} />
+        <Route path="/accept-invite" element={<PublicOnlyRoute><AcceptInvitePage /></PublicOnlyRoute>} />
+        <Route path="/recover-password" element={<PublicOnlyRoute><RecoverPasswordPage /></PublicOnlyRoute>} />
+        <Route
+          path="/access-denied"
+          element={
+            <ProtectedRoute>
+              <AccessDeniedPage />
+            </ProtectedRoute>
+          }
+        />
         
-
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/dashboard-director"
           element={
-            <AuthGuard>
-              <DashboardDirectorPage />
-            </AuthGuard>
+            <ProtectedRoute>
+              <Navigate to="/dashboard" replace />
+            </ProtectedRoute>
           }
         />
         <Route
           path="/dashboard-manager"
           element={
-            <AuthGuard>
-              <DashboardManagerPage />
-            </AuthGuard>
+            <ProtectedRoute>
+              <Navigate to="/dashboard" replace />
+            </ProtectedRoute>
           }
         />
         <Route
           path="/dashboard-cycles"
           element={
-            <AuthGuard>
+            <ProtectedRoute allowedRoles={['DIRECTOR', 'MANAGER']}>
               <StrategicCyclesPage />
-            </AuthGuard>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/objetivos"
           element={
-            <AuthGuard>
+            <ProtectedRoute allowedRoles={['DIRECTOR', 'MANAGER']}>
               <ObjetivoPage />
-            </AuthGuard>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/okrs"
           element={
-            <AuthGuard>
+            <ProtectedRoute allowedRoles={['DIRECTOR', 'MANAGER']}>
               <OkrPage />
-            </AuthGuard>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/departaments"
           element={
-            <AuthGuard>
+            <ProtectedRoute allowedRoles={['DIRECTOR']}>
               <DepartmentsPage />
-            </AuthGuard>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/reports"
           element={
-            <AuthGuard>
+            <ProtectedRoute allowedRoles={['DIRECTOR']}>
               <ReportsPage />
-            </AuthGuard>
+            </ProtectedRoute>
           }
         />
         <Route 
           path='/profile'
           element={
-            <AuthGuard>
+            <ProtectedRoute>
               <ProfilePage />
-            </AuthGuard>
+            </ProtectedRoute>
           }
         />
         <Route 
           path='/employees'
           element={
-            <AuthGuard>
+            <ProtectedRoute allowedRoles={['DIRECTOR']}>
               <EmployeesPage />
-            </AuthGuard>
+            </ProtectedRoute>
           }
         />
         <Route
           path="/settings"
           element={
-            <AuthGuard>
+            <ProtectedRoute allowedRoles={['DIRECTOR']}>
               <SettingsPage />
-            </AuthGuard>
+            </ProtectedRoute>
           }
         />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
 
       </Routes>
     </BrowserRouter>

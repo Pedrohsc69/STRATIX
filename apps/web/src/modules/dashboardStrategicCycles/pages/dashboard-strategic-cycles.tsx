@@ -115,7 +115,7 @@ const mockCycles: StrategicCycle[] = [
 ];
 
 const menuItems = [
-  { icon: LayoutDashboard, label: "Dashboard", active: false, path: "/dashboard-director" },
+  { icon: LayoutDashboard, label: "Dashboard", active: false, path: "/dashboard" },
   { icon: Building2, label: "Departamentos", active: false, path: "/departaments" },
   { icon: Target, label: "Ciclos Estratégicos", active: true, path: "/dashboard-cycles" },
   { icon: FileText, label: "Relatórios", active: false, path: "/reports" },
