@@ -20,6 +20,9 @@ type DashboardLayoutProps = PropsWithChildren<{
   context: DashboardContext;
   permissions: DashboardPermission[];
   role: DashboardRole;
+  pageTitle?: string;
+  pageDescription?: string;
+  pageEyebrow?: string;
 }>;
 
 type MenuItem = {
@@ -88,6 +91,9 @@ export function DashboardLayout({
   context,
   permissions,
   role,
+  pageTitle,
+  pageDescription,
+  pageEyebrow,
   children,
 }: DashboardLayoutProps) {
   const location = useLocation();
@@ -98,12 +104,21 @@ export function DashboardLayout({
       item.requiredPermissions.some((permission) => canAccess(permissions, permission)),
   );
 
-  const pageTitle =
+  const resolvedPageTitle =
+    pageTitle ??
     role === "DIRECTOR"
-      ? "Cockpit Executivo"
+      ? "Dashboard Executivo"
       : role === "MANAGER"
-      ? "Cockpit Departamental"
+      ? "Dashboard Departamental"
       : "Minha Visão Estratégica";
+
+  const resolvedPageDescription =
+    pageDescription ??
+    (role === "DIRECTOR"
+      ? "Visão consolidada da empresa com foco em desempenho e risco."
+      : role === "MANAGER"
+      ? "Visão operacional do seu departamento com gestão de metas."
+      : "Visão do seu departamento e dos OKRs sob sua responsabilidade.");
 
   const handleLogout = () => {
     clearSession();
@@ -167,16 +182,10 @@ export function DashboardLayout({
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div>
               <p className="text-sm uppercase tracking-[0.24em] text-[#6B7280] mb-2">
-                {context.company?.businessArea ?? "STRATIX"}
+                {pageEyebrow ?? context.company?.businessArea ?? "STRATIX"}
               </p>
-              <h1 className="text-3xl font-semibold text-[#1F2937]">{pageTitle}</h1>
-              <p className="text-[#6B7280] mt-2">
-                {role === "DIRECTOR"
-                  ? "Visão consolidada da empresa com foco em desempenho e risco."
-                  : role === "MANAGER"
-                  ? "Visão operacional do seu departamento com gestão de metas."
-                  : "Visão enxuta do seu departamento e dos OKRs sob sua responsabilidade."}
-              </p>
+              <h1 className="text-3xl font-semibold text-[#1F2937]">{resolvedPageTitle}</h1>
+              <p className="text-[#6B7280] mt-2">{resolvedPageDescription}</p>
             </div>
 
             <div className="flex items-center gap-4 rounded-2xl border border-gray-200 bg-[#F8FAFC] px-5 py-4">

@@ -19,6 +19,7 @@ import { ObjetivoModule } from './modules/objetivo/objetivo.module';
 import { OkrModule } from './modules/okr/okr.module';
 import { RelatorioModule } from './modules/relatorio/relatorio.module';
 import { SessionModule } from './modules/session/session.module';
+import { StrategicCyclesModule } from './modules/strategic-cycles/strategic-cycles.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { SessionModule } from './modules/session/session.module';
     AuditModule,
     EventModule,
     SessionModule,
+    StrategicCyclesModule,
   ],
   controllers: [HealthController],
   providers: [PrismaService],
