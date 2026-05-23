@@ -24,7 +24,8 @@ import {
 } from "lucide-react";
 import { getSession } from "../../../store/app-store";
 import { motion } from "motion/react";
-import stratix_logo_princpial from "../components/Principal_normal.png";
+import logoMain from "@/shared/assets/logos/originals/logo-main.png";
+
 
 
 
@@ -276,7 +277,7 @@ export function EmployeesPage() {
         <div className="h-16 flex items-center px-6 border-b border-gray-200">
             <div className="flex items-center gap-2">
               <div className="w-32">
-                <img src={stratix_logo_princpial} alt="stratix_logo_horizontal" />
+                <img src={logoMain} alt="stratix_logo_horizontal" />
               </div>
             </div>
         </div>

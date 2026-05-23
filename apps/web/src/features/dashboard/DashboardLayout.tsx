@@ -13,6 +13,8 @@ import {
 import { clearSession } from "../../store/app-store";
 import { canAccess } from "./dashboard.permissions";
 import type { DashboardContext, DashboardPermission, DashboardRole } from "./dashboard.types";
+import logoMain from '@/shared/assets/logos/originals/logo-main.png';
+
 
 type DashboardLayoutProps = PropsWithChildren<{
   context: DashboardContext;
@@ -111,14 +113,8 @@ export function DashboardLayout({
   return (
     <div className="min-h-screen bg-[#F5F7FA] flex">
       <aside className="w-72 bg-white border-r border-gray-200 p-6 flex flex-col">
-        <Link to="/dashboard" className="flex items-center gap-3 mb-10">
-          <div className="w-11 h-11 rounded-2xl bg-[#0F2A44] text-white flex items-center justify-center font-semibold">
-            ST
-          </div>
-          <div>
-            <p className="text-lg font-semibold text-[#0F2A44]">STRATIX</p>
-            <p className="text-xs text-[#6B7280]">Planejamento estratégico</p>
-          </div>
+        <Link to="/dashboard" className="border-b border-gray-200 pb-6  mb-10">
+          <img className="w-48 pl-8" src={logoMain} alt="STRATIX" />
         </Link>
 
         <nav className="space-y-2">

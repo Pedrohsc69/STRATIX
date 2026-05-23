@@ -31,7 +31,8 @@ import {
   registerDirector,
 } from "../services/auth-service";
 import { getSession, saveSession } from "../../../store/app-store";
-import stratix_logo_princpial_branco from "../components/Principal_Branco.png";
+import logoMainWhite from "@/shared/assets/logos/white-versions/logo-main-white.png";
+
 
 
 const dashboardData = [
@@ -349,7 +350,7 @@ export  function RegisterPage() {
           {/* Logo */}
           <div className="flex items-center gap-2 mb-12">
             <div className="w-40">
-                <img src={stratix_logo_princpial_branco} alt="stratix_logo_horizontal" />
+                <img src={logoMainWhite} alt="stratix_logo_horizontal" />
             </div>
           </div>
 

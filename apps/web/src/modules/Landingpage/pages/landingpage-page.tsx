@@ -2,8 +2,8 @@ import { motion } from "motion/react";
 import { Link } from "react-router-dom";
 import { Target, TrendingUp, BarChart3, Lightbulb, Users, ChevronRight } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
-import stratix_logo_princpial from "../components/Principal_normal.png";
-import stratix_logo_princpial_branca from "../components/Principal_Branco.png";
+import logoMain from "@/shared/assets/logos/originals/logo-main.png";
+import logoMainWhite from "@/shared/assets/logos/white-versions/logo-main-white.png";
 
 
 
@@ -64,7 +64,7 @@ export function LandingPage() {
               className="flex items-center gap-2"
             >
               <div className="w-40">
-                <img src={stratix_logo_princpial} alt="stratix_logo_horizontal" />
+                <img src={logoMain} alt="stratix_logo_horizontal" />
               </div>
             </motion.div>
 
@@ -247,7 +247,7 @@ export function LandingPage() {
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="w-60">
-              <img src={stratix_logo_princpial_branca} alt="stratix_logo_horizontal" />
+              <img src={logoMainWhite} alt="stratix_logo_horizontal" />
             </div>
 
             <nav className="flex items-center gap-8">
