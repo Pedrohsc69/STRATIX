@@ -31,6 +31,7 @@ export function AppRouter() {
         <Route path="/forgot-password" element={<PublicOnlyRoute><ForgotPasswordPage /></PublicOnlyRoute>} />
         <Route path="/accept-invite" element={<PublicOnlyRoute><AcceptInvitePage /></PublicOnlyRoute>} />
         <Route path="/recover-password" element={<PublicOnlyRoute><RecoverPasswordPage /></PublicOnlyRoute>} />
+        
         <Route
           path="/access-denied"
           element={
@@ -39,28 +40,11 @@ export function AppRouter() {
             </ProtectedRoute>
           }
         />
-        
         <Route
           path="/dashboard"
           element={
             <ProtectedRoute>
               <DashboardPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/dashboard-director"
-          element={
-            <ProtectedRoute>
-              <Navigate to="/dashboard" replace />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/dashboard-manager"
-          element={
-            <ProtectedRoute>
-              <Navigate to="/dashboard" replace />
             </ProtectedRoute>
           }
         />
