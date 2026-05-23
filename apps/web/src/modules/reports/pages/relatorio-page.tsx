@@ -97,7 +97,7 @@ const menuItems = [
   { icon: Target, label: "Ciclos Estratégicos", active: false, path: "/dashboard-cycles" },
   { icon: FileText, label: "Relatórios", active: true, path: "/reports" },
   { icon: Users, label: "Funcionários", active: false, path: "/employees" },
-  { icon: Settings, label: "Configurações", active: false, path: "#" }
+  { icon: Settings, label: "Configurações", active: false, path: "/settings" }
 ]
 
 export function ReportsPage() {

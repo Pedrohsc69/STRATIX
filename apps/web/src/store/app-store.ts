@@ -11,9 +11,17 @@ export type SessionUser = {
   departmentId: string | null;
 };
 
+export type SessionCompany = {
+  id: string;
+  name: string;
+  businessArea: string;
+  logoUrl?: string | null;
+};
+
 export type SessionState = {
   accessToken: string;
   user: SessionUser;
+  company: SessionCompany | null;
 };
 
 const SESSION_STORAGE_KEY = 'stratix.session';
@@ -30,7 +38,18 @@ export function getSession(): SessionState | null {
   }
 
   try {
-    return JSON.parse(rawValue) as SessionState;
+    const parsed = JSON.parse(rawValue) as Partial<SessionState> & { user?: SessionUser };
+
+    if (!parsed.accessToken || !parsed.user) {
+      window.localStorage.removeItem(SESSION_STORAGE_KEY);
+      return null;
+    }
+
+    return {
+      accessToken: parsed.accessToken,
+      user: parsed.user,
+      company: parsed.company ?? null,
+    };
   } catch {
     window.localStorage.removeItem(SESSION_STORAGE_KEY);
     return null;

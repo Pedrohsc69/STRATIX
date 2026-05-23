@@ -19,6 +19,7 @@ import { StrategicCyclesPage } from "../../modules/dashboardStrategicCycles/page
 import { ObjetivoPage } from '../../modules/objective/pages/objetivo-page';
 import { OkrPage } from '../../modules/okr/pages/okr-page';
 import { ReportsPage } from '../../modules/reports/pages/relatorio-page';
+import { SettingsPage } from '../../modules/settings/pages/settings-page';
 
 export function AppRouter() {
   return (
@@ -101,6 +102,14 @@ export function AppRouter() {
           element={
             <AuthGuard>
               <EmployeesPage />
+            </AuthGuard>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <AuthGuard>
+              <SettingsPage />
             </AuthGuard>
           }
         />

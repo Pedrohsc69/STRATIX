@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import {
   LayoutDashboard,
@@ -34,7 +34,14 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 // import { motion } from "motion/react";
 // import { Target, TrendingUp, Users } from "lucide-react";
-import { clearSession, getSession } from "../../../store/app-store";
+import {
+  clearSession,
+  getSession,
+  saveSession,
+  type SessionCompany,
+  type SessionUser,
+} from "../../../store/app-store";
+import { fetchCurrentCompany } from "../services/dashboard-service";
 import stratix_logo_princpial from "../components/Principal_normal.png";
 
 
@@ -135,18 +142,89 @@ const menuItems = [
   { icon: Target, label: "Ciclos Estratégicos", active: false, path: "/dashboard-cycles" },
   { icon: FileText, label: "Relatórios", active: false, path: "/reports" },
   { icon: Users, label: "Funcionários", active: false, path: "/employees" },
-  { icon: Settings, label: "Configurações", active: false, path: "#" }
+  { icon: Settings, label: "Configurações", active: false, path: "/settings" }
 ];
 
 export function DashboardDirectorPage() {
   const [sidebarOpen] = useState(true);
   const navigate = useNavigate();
   const session = getSession();
+  const [company, setCompany] = useState<SessionCompany | null>(session?.company ?? null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadCompany() {
+      try {
+        const currentCompany = await fetchCurrentCompany();
+
+        if (!isMounted) {
+          return;
+        }
+
+        setCompany({
+          name: currentCompany.name,
+          businessArea: currentCompany.businessArea,
+          id: currentCompany.id,
+          logoUrl: currentCompany.logoUrl ?? null,
+        });
+
+        const currentSession = getSession();
+
+        if (currentSession) {
+          saveSession({
+            ...currentSession,
+            user: {
+              ...currentSession.user,
+              companyId: currentCompany.id,
+            },
+            company: {
+              id: currentCompany.id,
+              name: currentCompany.name,
+              businessArea: currentCompany.businessArea,
+              logoUrl: currentCompany.logoUrl ?? null,
+            },
+          });
+        }
+      } catch {
+        if (isMounted && session?.company) {
+          setCompany(session.company);
+        }
+      }
+    }
+
+    void loadCompany();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleLogout = () => {
     clearSession();
     navigate("/login");
   };
+
+  const getInitials = (value?: string | null) => {
+    if (!value?.trim()) {
+      return "--";
+    }
+
+    const [firstName] = value.trim().split(/\s+/);
+    return firstName.slice(0, 2).toUpperCase();
+  };
+
+  const sessionUserWithAvatar = session?.user as SessionUser & {
+    avatarUrl?: string | null;
+    photoUrl?: string | null;
+    imageUrl?: string | null;
+  } | undefined;
+
+  const userAvatarUrl =
+    sessionUserWithAvatar?.avatarUrl ??
+    sessionUserWithAvatar?.photoUrl ??
+    sessionUserWithAvatar?.imageUrl ??
+    null;
 
   // Calculate KPIs
   const totalCiclos = departmentData.reduce((acc, dept) =>
@@ -224,9 +302,17 @@ export function DashboardDirectorPage() {
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
           <Link to="/profile">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#3B82F6] rounded-full flex items-center justify-center text-white font-semibold">
-                PE
-              </div>
+              {userAvatarUrl ? (
+                <img
+                  src={userAvatarUrl}
+                  alt={session?.user.name ?? "Usuário"}
+                  className="w-10 h-10 rounded-full object-cover border border-gray-200"
+                />
+              ) : (
+                <div className="w-10 h-10 bg-[#3B82F6] rounded-full flex items-center justify-center text-white font-semibold">
+                  {getInitials(session?.user.name)}
+                </div>
+              )}
               {sidebarOpen && (
                 <div className="flex-1">
                   <p className="text-sm font-medium text-gray-900">{session?.user.name}</p>
@@ -270,13 +356,24 @@ export function DashboardDirectorPage() {
 
               <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
                 <div className="text-right">
-                  {/* Mudar para o nome da empresa */}
-                  <p className="text-sm font-medium text-gray-900">{session?.user.companyId}</p>
-                  <p className="text-xs text-gray-500">Plano Enterprise</p>
+                  <p className="text-sm font-medium text-gray-900">
+                    {company?.name ?? "Empresa não configurada"}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {company?.businessArea ?? "Configure sua empresa"}
+                  </p>
                 </div>
-                <div className="w-10 h-10 bg-[#3B82F6] rounded-full flex items-center justify-center text-white font-semibold">
-                  TS
-                </div>
+                {company?.logoUrl ? (
+                  <img
+                    src={company.logoUrl}
+                    alt={company.name}
+                    className="w-10 h-10 rounded-full object-cover border border-gray-200"
+                  />
+                ) : (
+                  <div className="w-10 h-10 bg-[#3B82F6] rounded-full flex items-center justify-center text-white font-semibold">
+                    {getInitials(company?.name)}
+                  </div>
+                )}
               </div>
             </div>
           </div>

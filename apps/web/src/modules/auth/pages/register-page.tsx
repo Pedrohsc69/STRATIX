@@ -30,8 +30,8 @@ import {
   createInvite,
   registerDirector,
 } from "../services/auth-service";
-import { saveSession } from "../../../store/app-store";
-import stratix_logo_princpial from "../components/Principal_normal.png";
+import { getSession, saveSession } from "../../../store/app-store";
+import stratix_logo_princpial_branco from "../components/Principal_Branco.png";
 
 
 const dashboardData = [
@@ -177,11 +177,28 @@ export  function RegisterPage() {
       }
 
       if (currentStep === 2) {
-        await createCompany({
+        const company = await createCompany({
           name: formData.companyName,
           cnpj: formData.cnpj.replace(/\D/g, ""),
           businessArea: formData.businessArea,
         });
+
+        const currentSession = getSession();
+
+        if (currentSession) {
+          saveSession({
+            ...currentSession,
+            user: {
+              ...currentSession.user,
+              companyId: company.id,
+            },
+            company: {
+              id: company.id,
+              name: company.name,
+              businessArea: company.businessArea,
+            },
+          });
+        }
 
         setCurrentStep(3);
         return;
@@ -310,7 +327,7 @@ export  function RegisterPage() {
   };
 
   const handleGoToDashboard = () => {
-    navigate("/dashboard-general");
+    navigate("/dashboard-director");
   };
 
   return (
@@ -332,7 +349,7 @@ export  function RegisterPage() {
           {/* Logo */}
           <div className="flex items-center gap-2 mb-12">
             <div className="w-40">
-                <img src={stratix_logo_princpial} alt="stratix_logo_horizontal" />
+                <img src={stratix_logo_princpial_branco} alt="stratix_logo_horizontal" />
             </div>
           </div>
 

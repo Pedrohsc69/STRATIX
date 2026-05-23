@@ -14,7 +14,28 @@ void test('AuthService registers a director with hashed password', async () => {
 
   const prisma = {
     user: {
-      findUnique: async () => null,
+      findUnique: async ({ where }: { where: { email?: string; id?: string } }) => {
+        if (where.email) {
+          return null;
+        }
+
+        if (where.id === 'user-1') {
+          return {
+            id: 'user-1',
+            name: 'Diretor',
+            email: 'diretor@empresa.com',
+            password: createdPassword,
+            role: UserRole.DIRECTOR,
+            status: UserStatus.ACTIVE,
+            isActive: true,
+            companyId: null,
+            departmentId: null,
+            company: null,
+          };
+        }
+
+        return null;
+      },
       create: async ({ data }: { data: Record<string, unknown> }) => {
         createdPassword = String(data.password);
 
@@ -82,17 +103,38 @@ void test('AuthService rejects duplicate director e-mail', async () => {
 void test('AuthService rejects invalid login credentials', async () => {
   const prisma = {
     user: {
-      findUnique: async () => ({
-        id: 'user-1',
-        name: 'Diretor',
-        email: 'diretor@empresa.com',
-        password: await bcrypt.hash('senha-correta', 10),
-        role: UserRole.DIRECTOR,
-        status: UserStatus.ACTIVE,
-        isActive: true,
-        companyId: null,
-        departmentId: null,
-      }),
+      findUnique: async ({ where }: { where: { email?: string; id?: string } }) => {
+        if (where.email === 'diretor@empresa.com') {
+          return {
+            id: 'user-1',
+            name: 'Diretor',
+            email: 'diretor@empresa.com',
+            password: await bcrypt.hash('senha-correta', 10),
+            role: UserRole.DIRECTOR,
+            status: UserStatus.ACTIVE,
+            isActive: true,
+            companyId: null,
+            departmentId: null,
+          };
+        }
+
+        if (where.id === 'user-1') {
+          return {
+            id: 'user-1',
+            name: 'Diretor',
+            email: 'diretor@empresa.com',
+            password: await bcrypt.hash('senha-correta', 10),
+            role: UserRole.DIRECTOR,
+            status: UserStatus.ACTIVE,
+            isActive: true,
+            companyId: null,
+            departmentId: null,
+            company: null,
+          };
+        }
+
+        return null;
+      },
     },
   };
 
@@ -128,8 +170,32 @@ void test('AuthService accepts a valid invite and activates the account', async 
       update: async () => undefined,
     },
     user: {
-      findUnique: async ({ where }: { where: { email: string } }) =>
-        where.email === 'gestor@empresa.com' ? null : null,
+      findUnique: async ({ where }: { where: { email?: string; id?: string } }) => {
+        if (where.email === 'gestor@empresa.com') {
+          return null;
+        }
+
+        if (where.id === 'user-2') {
+          return {
+            id: 'user-2',
+            name: 'Gestor Comercial',
+            email: 'gestor@empresa.com',
+            password: createdPassword,
+            role: UserRole.MANAGER,
+            status: UserStatus.ACTIVE,
+            isActive: true,
+            companyId: 'company-1',
+            departmentId: 'department-1',
+            company: {
+              id: 'company-1',
+              name: 'Empresa X',
+              businessArea: 'Tecnologia',
+            },
+          };
+        }
+
+        return null;
+      },
     },
     $transaction: async (callback: (tx: Record<string, unknown>) => Promise<unknown>) =>
       callback({

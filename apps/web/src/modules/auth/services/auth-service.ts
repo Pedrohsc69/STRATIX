@@ -43,6 +43,39 @@ type AcceptInviteInput = {
   confirmPassword: string;
 };
 
+type CurrentCompany = {
+  id: string;
+  name: string;
+  businessArea: string;
+  logoUrl?: string | null;
+};
+
+async function enrichSessionWithCompany(session: SessionState) {
+  if (session.company || !session.user.companyId) {
+    return session;
+  }
+
+  try {
+    const response = await api.get<CurrentCompany>('/companies/current');
+
+    return {
+      ...session,
+      user: {
+        ...session.user,
+        companyId: response.data.id,
+      },
+      company: {
+        id: response.data.id,
+        name: response.data.name,
+        businessArea: response.data.businessArea,
+        logoUrl: response.data.logoUrl ?? null,
+      },
+    } satisfies SessionState;
+  } catch {
+    return session;
+  }
+}
+
 export async function registerDirector(input: RegisterDirectorInput) {
   const response = await api.post<SessionState>('/auth/register-director', input);
   return response.data;
@@ -50,7 +83,7 @@ export async function registerDirector(input: RegisterDirectorInput) {
 
 export async function login(input: LoginInput) {
   const response = await api.post<SessionState>('/auth/login', input);
-  return response.data;
+  return enrichSessionWithCompany(response.data);
 }
 
 export async function createCompany(input: CreateCompanyInput) {
@@ -93,5 +126,5 @@ export async function getInviteDetails(token: string) {
 
 export async function acceptInvite(input: AcceptInviteInput) {
   const response = await api.post<SessionState>('/auth/accept-invite', input);
-  return response.data;
+  return enrichSessionWithCompany(response.data);
 }

@@ -12,6 +12,19 @@ import { CreateCompanyDto } from './dto/create-company.dto';
 export class CompaniesService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async getCurrent(actor: AuthenticatedUser) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: actor.sub },
+      select: { company: true },
+    });
+
+    if (!user?.company) {
+      throw new NotFoundException('Company not found');
+    }
+
+    return user.company;
+  }
+
   async create(actor: AuthenticatedUser, input: CreateCompanyDto) {
     const user = await this.prisma.user.findUnique({
       where: { id: actor.sub },

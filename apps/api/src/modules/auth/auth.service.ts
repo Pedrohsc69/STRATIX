@@ -184,24 +184,48 @@ export class AuthService {
   }
 
   private async buildAuthResponse(user: User): Promise<AuthResponse> {
+    const currentUser = await this.prisma.user.findUnique({
+      where: { id: user.id },
+      include: {
+        company: {
+          select: {
+            id: true,
+            name: true,
+            businessArea: true,
+          },
+        },
+      },
+    });
+
+    if (!currentUser) {
+      throw new NotFoundException('User not found');
+    }
+
     const accessToken = await this.jwtService.signAsync({
-      sub: user.id,
-      email: user.email,
-      role: user.role,
+      sub: currentUser.id,
+      email: currentUser.email,
+      role: currentUser.role,
     });
 
     return {
       accessToken,
       user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        status: user.status,
-        isActive: user.isActive,
-        companyId: user.companyId ?? null,
-        departmentId: user.departmentId ?? null,
+        id: currentUser.id,
+        name: currentUser.name,
+        email: currentUser.email,
+        role: currentUser.role,
+        status: currentUser.status,
+        isActive: currentUser.isActive,
+        companyId: currentUser.companyId ?? null,
+        departmentId: currentUser.departmentId ?? null,
       },
+      company: currentUser.company
+        ? {
+            id: currentUser.company.id,
+            name: currentUser.company.name,
+            businessArea: currentUser.company.businessArea,
+          }
+        : null,
     };
   }
 }

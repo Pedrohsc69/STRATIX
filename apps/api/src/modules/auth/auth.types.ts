@@ -18,4 +18,9 @@ export type AuthResponse = {
     companyId: string | null;
     departmentId: string | null;
   };
+  company: {
+    id: string;
+    name: string;
+    businessArea: string;
+  } | null;
 };

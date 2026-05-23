@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -12,6 +12,11 @@ import { CreateCompanyDto } from './dto/create-company.dto';
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class CompaniesController {
   constructor(private readonly companiesService: CompaniesService) {}
+
+  @Get('current')
+  getCurrent(@CurrentUser() user: AuthenticatedUser) {
+    return this.companiesService.getCurrent(user);
+  }
 
   @Post()
   @Roles(UserRole.DIRECTOR)
