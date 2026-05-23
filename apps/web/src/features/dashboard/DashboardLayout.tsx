@@ -1,14 +1,16 @@
 import type { PropsWithChildren } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Building2,
   CheckCircle2,
   FileText,
   LayoutDashboard,
+  LogOut,
   Settings,
   Target,
   Users,
 } from "lucide-react";
+import { clearSession } from "../../store/app-store";
 import { canAccess } from "./dashboard.permissions";
 import type { DashboardContext, DashboardPermission, DashboardRole } from "./dashboard.types";
 
@@ -87,6 +89,7 @@ export function DashboardLayout({
   children,
 }: DashboardLayoutProps) {
   const location = useLocation();
+  const navigate = useNavigate();
   const availableMenuItems = menuItems.filter(
     (item) =>
       !item.requiredPermissions ||
@@ -99,6 +102,11 @@ export function DashboardLayout({
       : role === "MANAGER"
       ? "Cockpit Departamental"
       : "Minha Visão Estratégica";
+
+  const handleLogout = () => {
+    clearSession();
+    navigate("/login", { replace: true });
+  };
 
   return (
     <div className="min-h-screen bg-[#F5F7FA] flex">
@@ -134,15 +142,27 @@ export function DashboardLayout({
         </nav>
 
         <div className="mt-auto border-t border-gray-200 pt-6">
-          <Link to="/profile" className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-full bg-[#1E4E79] text-white flex items-center justify-center font-semibold">
-              {getInitials(context.user.name)}
-            </div>
-            <div>
-              <p className="text-sm font-medium text-[#1F2937]">{context.user.name}</p>
-              <p className="text-xs text-[#6B7280]">{context.user.role}</p>
-            </div>
-          </Link>
+          <div className="flex items-center justify-between gap-3">
+            <Link to="/profile" className="flex items-center gap-3 min-w-0">
+              <div className="w-11 h-11 rounded-full bg-[#1E4E79] text-white flex items-center justify-center font-semibold">
+                {getInitials(context.user.name)}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-[#1F2937] truncate">{context.user.name}</p>
+                <p className="text-xs text-[#6B7280]">{context.user.role}</p>
+              </div>
+            </Link>
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="inline-flex items-center justify-center w-11 h-11 rounded-xl border border-gray-200 text-[#6B7280] hover:text-[#0F2A44] hover:bg-[#F8FAFC] transition-colors"
+              aria-label="Sair da conta"
+              title="Sair"
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </aside>
 
