@@ -50,13 +50,13 @@ const menuItems: MenuItem[] = [
     label: "Objetivos",
     path: "/objetivos",
     icon: FileText,
-    requiredPermissions: ["objectives:manage", "objectives:manage:department"],
+    requiredPermissions: ["objectives:manage", "objectives:manage:department", "objectives:view:department"],
   },
   {
     label: "OKRs",
     path: "/okrs",
     icon: CheckCircle2,
-    requiredPermissions: ["okrs:manage", "okrs:manage:department"],
+    requiredPermissions: ["okrs:manage", "okrs:manage:department", "okrs:view:own"],
   },
   {
     label: "Relatórios",

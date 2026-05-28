@@ -16,7 +16,9 @@ import { IamModule } from './modules/iam/iam.module';
 import { DepartmentsModule } from './modules/departments/departments.module';
 import { InvitesModule } from './modules/invites/invites.module';
 import { ObjetivoModule } from './modules/objetivo/objetivo.module';
+import { ObjectivesModule } from './modules/objectives/objectives.module';
 import { OkrModule } from './modules/okr/okr.module';
+import { OkrsModule } from './modules/okrs/okrs.module';
 import { RelatorioModule } from './modules/relatorio/relatorio.module';
 import { SessionModule } from './modules/session/session.module';
 import { StrategicCyclesModule } from './modules/strategic-cycles/strategic-cycles.module';
@@ -38,7 +40,9 @@ import { StrategicCyclesModule } from './modules/strategic-cycles/strategic-cycl
     DepartamentoModule,
     CicloModule,
     ObjetivoModule,
+    ObjectivesModule,
     OkrModule,
+    OkrsModule,
     DashboardModule,
     RelatorioModule,
     AuditModule,

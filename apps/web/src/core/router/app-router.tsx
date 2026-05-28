@@ -13,11 +13,11 @@ import { ProfilePage } from '../../modules/profile/pages/profile-page'
 import { EmployeesPage } from "../../modules/employees/pages/employees-page";
 
 import { DepartmentsPage } from '../../modules/department/pages/departamento-page';
-import { ObjetivoPage } from '../../modules/objective/pages/objetivo-page';
-import { OkrPage } from '../../modules/okr/pages/okr-page';
 import { ReportsPage } from '../../modules/reports/pages/relatorio-page';
 import { SettingsPage } from '../../modules/settings/pages/settings-page';
 import { DashboardPage } from '../../features/dashboard/DashboardPage';
+import { OKRsPage } from '../../features/okrs/pages/OKRsPage';
+import { ObjectivesPage } from '../../features/objectives/pages/ObjectivesPage';
 import { StrategicCyclesPage } from '../../features/strategic-cycles/pages/StrategicCyclesPage';
 import { AccessDeniedPage } from './access-denied-page';
 
@@ -59,16 +59,16 @@ export function AppRouter() {
         <Route
           path="/objetivos"
           element={
-            <ProtectedRoute allowedRoles={['DIRECTOR', 'MANAGER']}>
-              <ObjetivoPage />
+            <ProtectedRoute allowedRoles={['DIRECTOR', 'MANAGER', 'EMPLOYEE']}>
+              <ObjectivesPage />
             </ProtectedRoute>
           }
         />
         <Route
           path="/okrs"
           element={
-            <ProtectedRoute allowedRoles={['DIRECTOR', 'MANAGER']}>
-              <OkrPage />
+            <ProtectedRoute allowedRoles={['DIRECTOR', 'MANAGER', 'EMPLOYEE']}>
+              <OKRsPage />
             </ProtectedRoute>
           }
         />
