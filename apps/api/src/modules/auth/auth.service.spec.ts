@@ -152,6 +152,7 @@ void test('AuthService rejects invalid login credentials', async () => {
 
 void test('AuthService accepts a valid invite and activates the account', async () => {
   let createdPassword = '';
+  const updatedDepartmentIds: string[] = [];
 
   const prisma = {
     invite: {
@@ -199,6 +200,16 @@ void test('AuthService accepts a valid invite and activates the account', async 
     },
     $transaction: async (callback: (tx: Record<string, unknown>) => Promise<unknown>) =>
       callback({
+        department: {
+          findUnique: async () => ({
+            id: 'department-1',
+            companyId: 'company-1',
+            managerId: null,
+          }),
+          update: async ({ where }: { where: { id: string } }) => {
+            updatedDepartmentIds.push(where.id);
+          },
+        },
         user: {
           create: async ({ data }: { data: Record<string, unknown> }) => {
             createdPassword = String(data.password);
@@ -237,7 +248,225 @@ void test('AuthService accepts a valid invite and activates the account', async 
   assert.equal(response.accessToken, 'token-accepted');
   assert.equal(response.user.role, UserRole.MANAGER);
   assert.equal(response.user.companyId, 'company-1');
+  assert.equal(response.user.departmentId, 'department-1');
+  assert.deepEqual(updatedDepartmentIds, ['department-1']);
   assert.equal(await bcrypt.compare('12345678', createdPassword), true);
+});
+
+void test('AuthService accepts an employee invite without changing the department manager', async () => {
+  const updatedDepartmentIds: string[] = [];
+
+  const prisma = {
+    invite: {
+      findUnique: async () => ({
+        id: 'invite-employee',
+        email: 'colaborador@empresa.com',
+        role: UserRole.EMPLOYEE,
+        companyId: 'company-1',
+        departmentId: 'department-1',
+        token: 'token-employee',
+        accepted: false,
+        expiresAt: new Date(Date.now() + 1000 * 60),
+        company: { name: 'Empresa X' },
+        department: { name: 'Comercial' },
+      }),
+      update: async () => undefined,
+    },
+    user: {
+      findUnique: async ({ where }: { where: { email?: string; id?: string } }) => {
+        if (where.email === 'colaborador@empresa.com') {
+          return null;
+        }
+
+        if (where.id === 'user-employee') {
+          return {
+            id: 'user-employee',
+            name: 'Colaborador',
+            email: 'colaborador@empresa.com',
+            password: 'hashed',
+            role: UserRole.EMPLOYEE,
+            status: UserStatus.ACTIVE,
+            isActive: true,
+            companyId: 'company-1',
+            departmentId: 'department-1',
+            company: {
+              id: 'company-1',
+              name: 'Empresa X',
+              businessArea: 'Tecnologia',
+            },
+          };
+        }
+
+        return null;
+      },
+    },
+    $transaction: async (callback: (tx: Record<string, unknown>) => Promise<unknown>) =>
+      callback({
+        department: {
+          findUnique: async () => ({
+            id: 'department-1',
+            companyId: 'company-1',
+            managerId: 'manager-1',
+          }),
+          update: async ({ where }: { where: { id: string } }) => {
+            updatedDepartmentIds.push(where.id);
+          },
+        },
+        user: {
+          create: async ({ data }: { data: Record<string, unknown> }) => ({
+            id: 'user-employee',
+            name: data.name,
+            email: data.email,
+            password: data.password,
+            role: data.role,
+            status: UserStatus.ACTIVE,
+            isActive: true,
+            companyId: data.companyId,
+            departmentId: data.departmentId,
+          }),
+        },
+        invite: {
+          update: async () => undefined,
+        },
+      }),
+  };
+
+  const service = new AuthService(
+    prisma as never,
+    { signAsync: async () => 'token-employee' } as never,
+    { execute: async () => undefined } as never,
+  );
+
+  const response = await service.acceptInvite({
+    name: 'Colaborador',
+    token: 'token-employee',
+    password: '12345678',
+    confirmPassword: '12345678',
+  });
+
+  assert.equal(response.user.role, UserRole.EMPLOYEE);
+  assert.equal(response.user.departmentId, 'department-1');
+  assert.deepEqual(updatedDepartmentIds, []);
+});
+
+void test('AuthService rejects manager invites when the department already has a manager', async () => {
+  const prisma = {
+    invite: {
+      findUnique: async () => ({
+        id: 'invite-1',
+        email: 'gestor@empresa.com',
+        role: UserRole.MANAGER,
+        companyId: 'company-1',
+        departmentId: 'department-1',
+        token: 'token-123',
+        accepted: false,
+        expiresAt: new Date(Date.now() + 1000 * 60),
+        company: { name: 'Empresa X' },
+        department: { name: 'Comercial' },
+      }),
+    },
+    user: {
+      findUnique: async ({ where }: { where: { email?: string; id?: string } }) => {
+        if (where.email) {
+          return null;
+        }
+
+        return null;
+      },
+    },
+    $transaction: async (callback: (tx: Record<string, unknown>) => Promise<unknown>) =>
+      callback({
+        department: {
+          findUnique: async () => ({
+            id: 'department-1',
+            companyId: 'company-1',
+            managerId: 'existing-manager',
+          }),
+        },
+        user: {
+          create: async () => {
+            throw new Error('should not create user');
+          },
+        },
+        invite: {
+          update: async () => undefined,
+        },
+      }),
+  };
+
+  const service = new AuthService(
+    prisma as never,
+    { signAsync: async () => 'token-accepted' } as never,
+    { execute: async () => undefined } as never,
+  );
+
+  await assert.rejects(
+    () =>
+      service.acceptInvite({
+        name: 'Gestor Comercial',
+        token: 'token-123',
+        password: '12345678',
+        confirmPassword: '12345678',
+      }),
+    ConflictException,
+  );
+});
+
+void test('AuthService rejects invites when department data is inconsistent with invite company', async () => {
+  const prisma = {
+    invite: {
+      findUnique: async () => ({
+        id: 'invite-1',
+        email: 'gestor@empresa.com',
+        role: UserRole.MANAGER,
+        companyId: 'company-1',
+        departmentId: 'department-1',
+        token: 'token-123',
+        accepted: false,
+        expiresAt: new Date(Date.now() + 1000 * 60),
+        company: { name: 'Empresa X' },
+        department: { name: 'Comercial' },
+      }),
+    },
+    user: {
+      findUnique: async () => null,
+    },
+    $transaction: async (callback: (tx: Record<string, unknown>) => Promise<unknown>) =>
+      callback({
+        department: {
+          findUnique: async () => ({
+            id: 'department-1',
+            companyId: 'company-2',
+            managerId: null,
+          }),
+        },
+        user: {
+          create: async () => {
+            throw new Error('should not create user');
+          },
+        },
+        invite: {
+          update: async () => undefined,
+        },
+      }),
+  };
+
+  const service = new AuthService(
+    prisma as never,
+    { signAsync: async () => 'token-accepted' } as never,
+    { execute: async () => undefined } as never,
+  );
+
+  await assert.rejects(
+    () =>
+      service.acceptInvite({
+        name: 'Gestor Comercial',
+        token: 'token-123',
+        password: '12345678',
+        confirmPassword: '12345678',
+      }),
+    BadRequestException,
+  );
 });
 
 void test('AuthService rejects expired invites, audits the event and removes the token', async () => {

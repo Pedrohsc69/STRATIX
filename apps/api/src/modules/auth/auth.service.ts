@@ -87,6 +87,13 @@ export class AuthService {
     }
 
     const invite = await this.findValidInviteByToken(input.token);
+    if (
+      (invite.role === UserRole.MANAGER || invite.role === UserRole.EMPLOYEE) &&
+      !invite.departmentId
+    ) {
+      throw new BadRequestException('Invite is invalid or expired');
+    }
+
     const existingUser = await this.prisma.user.findUnique({
       where: { email: invite.email },
     });
@@ -97,6 +104,37 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(input.password, 10);
     const user = await this.prisma.$transaction(async (tx) => {
+      let targetDepartment:
+        | {
+            id: string;
+            companyId: string;
+            managerId: string | null;
+          }
+        | null = null;
+
+      if (invite.departmentId) {
+        targetDepartment = await tx.department.findUnique({
+          where: { id: invite.departmentId },
+          select: {
+            id: true,
+            companyId: true,
+            managerId: true,
+          },
+        });
+
+        if (!targetDepartment) {
+          throw new NotFoundException('Department not found');
+        }
+
+        if (targetDepartment.companyId !== invite.companyId) {
+          throw new BadRequestException('Invite is invalid or expired');
+        }
+
+        if (invite.role === UserRole.MANAGER && targetDepartment.managerId) {
+          throw new ConflictException('Department already has a manager');
+        }
+      }
+
       const createdUser = await tx.user.create({
         data: {
           name: input.name.trim(),
@@ -109,6 +147,15 @@ export class AuthService {
           departmentId: invite.departmentId,
         },
       });
+
+      if (invite.role === UserRole.MANAGER && targetDepartment) {
+        await tx.department.update({
+          where: { id: targetDepartment.id },
+          data: {
+            managerId: createdUser.id,
+          },
+        });
+      }
 
       await tx.invite.update({
         where: { id: invite.id },

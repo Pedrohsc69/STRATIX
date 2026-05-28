@@ -12,10 +12,10 @@ import { RecoverPasswordPage } from "../../modules/recoverPassword/pages/recorve
 import { ProfilePage } from '../../modules/profile/pages/profile-page'
 import { EmployeesPage } from "../../modules/employees/pages/employees-page";
 
-import { DepartmentsPage } from '../../modules/department/pages/departamento-page';
 import { ReportsPage } from '../../modules/reports/pages/relatorio-page';
 import { SettingsPage } from '../../modules/settings/pages/settings-page';
 import { DashboardPage } from '../../features/dashboard/DashboardPage';
+import { DepartmentsPage } from '../../features/departments/pages/DepartmentsPage';
 import { OKRsPage } from '../../features/okrs/pages/OKRsPage';
 import { ObjectivesPage } from '../../features/objectives/pages/ObjectivesPage';
 import { StrategicCyclesPage } from '../../features/strategic-cycles/pages/StrategicCyclesPage';
@@ -75,7 +75,7 @@ export function AppRouter() {
         <Route
           path="/departaments"
           element={
-            <ProtectedRoute allowedRoles={['DIRECTOR']}>
+            <ProtectedRoute allowedRoles={['DIRECTOR', 'MANAGER', 'EMPLOYEE']}>
               <DepartmentsPage />
             </ProtectedRoute>
           }

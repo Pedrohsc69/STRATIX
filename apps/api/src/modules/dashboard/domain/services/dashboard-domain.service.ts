@@ -34,6 +34,7 @@ export class DashboardDomainService {
       ],
       MANAGER: [
         'dashboard:view:department',
+        'departments:view:department',
         'users:view:department',
         'cycles:view:department',
         'objectives:manage:department',
@@ -41,6 +42,7 @@ export class DashboardDomainService {
       ],
       EMPLOYEE: [
         'dashboard:view:department:readonly',
+        'departments:view:department:readonly',
         'cycles:view:department',
         'objectives:view:department',
         'okrs:update:own',

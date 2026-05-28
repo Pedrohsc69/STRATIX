@@ -1,13 +1,14 @@
 import { ArrayUnique, IsArray, IsOptional, IsString, IsUUID, Length } from 'class-validator';
 
-export class CreateDepartmentDto {
+export class UpdateDepartmentDto {
+  @IsOptional()
   @IsString()
   @Length(2, 100)
-  name!: string;
+  name?: string;
 
   @IsOptional()
   @IsUUID()
-  managerId?: string;
+  managerId?: string | null;
 
   @IsOptional()
   @IsArray()

@@ -72,9 +72,10 @@ void test('InvitesService rejects duplicate invite e-mail', async () => {
     },
     department: {
       count: async () => 1,
-      findFirst: async () => ({ id: 'department-1' }),
+      findFirst: async () => ({ id: 'department-1', managerId: null }),
     },
     invite: {
+      findFirst: async () => null,
       findUnique: async () => ({
         id: 'invite-1',
         email: 'gestor@empresa.com',
@@ -127,9 +128,10 @@ void test('InvitesService deletes expired invites, audits the replacement and se
     },
     department: {
       count: async () => 1,
-      findFirst: async () => ({ id: 'department-1', name: 'Comercial' }),
+      findFirst: async () => ({ id: 'department-1', name: 'Comercial', managerId: null }),
     },
     invite: {
+      findFirst: async () => null,
       findUnique: async () => ({
         id: 'invite-expired',
         email: 'gestor@empresa.com',
@@ -206,9 +208,10 @@ void test('InvitesService deletes the invite when e-mail delivery fails', async 
     },
     department: {
       count: async () => 1,
-      findFirst: async () => ({ id: 'department-1', name: 'Comercial' }),
+      findFirst: async () => ({ id: 'department-1', name: 'Comercial', managerId: null }),
     },
     invite: {
+      findFirst: async () => null,
       findUnique: async () => null,
       create: async () => ({
         id: 'invite-new',
@@ -257,4 +260,98 @@ void test('InvitesService deletes the invite when e-mail delivery fails', async 
   assert.deepEqual(deletedInviteIds, ['invite-new']);
   assert.equal(auditCommands.length, 1);
   assert.equal(auditCommands[0]?.action, 'invite.email.failed');
+});
+
+void test('InvitesService rejects manager invites when the department already has a manager', async () => {
+  const prisma = {
+    user: {
+      findUnique: async ({ where }: { where?: { id?: string; email?: string } }) => {
+        if (where?.id) {
+          return {
+            companyId: 'company-1',
+            company: { name: 'Empresa X' },
+          };
+        }
+
+        return null;
+      },
+    },
+    department: {
+      count: async () => 1,
+      findFirst: async () => ({
+        id: 'department-1',
+        name: 'Comercial',
+        managerId: 'manager-1',
+      }),
+    },
+  };
+
+  const service = new InvitesService(
+    prisma as never,
+    { sendInviteEmail: async () => undefined } as never,
+    { execute: async () => undefined } as never,
+  );
+
+  await assert.rejects(
+    () =>
+      service.create(
+        { sub: 'user-1', email: 'diretor@empresa.com', role: UserRole.DIRECTOR },
+        {
+          email: 'novo-gestor@empresa.com',
+          role: UserRole.MANAGER,
+          departmentId: 'department-1',
+        },
+      ),
+    ConflictException,
+  );
+});
+
+void test('InvitesService rejects a second active manager invite for the same department', async () => {
+  const prisma = {
+    user: {
+      findUnique: async ({ where }: { where?: { id?: string; email?: string } }) => {
+        if (where?.id) {
+          return {
+            companyId: 'company-1',
+            company: { name: 'Empresa X' },
+          };
+        }
+
+        return null;
+      },
+    },
+    department: {
+      count: async () => 1,
+      findFirst: async () => ({
+        id: 'department-1',
+        name: 'Comercial',
+        managerId: null,
+      }),
+    },
+    invite: {
+      findFirst: async () => ({
+        id: 'invite-1',
+      }),
+      findUnique: async () => null,
+    },
+  };
+
+  const service = new InvitesService(
+    prisma as never,
+    { sendInviteEmail: async () => undefined } as never,
+    { execute: async () => undefined } as never,
+  );
+
+  await assert.rejects(
+    () =>
+      service.create(
+        { sub: 'user-1', email: 'diretor@empresa.com', role: UserRole.DIRECTOR },
+        {
+          email: 'novo-gestor@empresa.com',
+          role: UserRole.MANAGER,
+          departmentId: 'department-1',
+        },
+      ),
+    ConflictException,
+  );
 });

@@ -57,10 +57,37 @@ export class InvitesService {
         id: input.departmentId,
         companyId: user.companyId,
       },
+      select: {
+        id: true,
+        name: true,
+        managerId: true,
+      },
     });
 
     if (!department) {
       throw new BadRequestException('Invalid department');
+    }
+
+    if (input.role === UserRole.MANAGER) {
+      if (department.managerId) {
+        throw new ConflictException('Department already has a manager');
+      }
+
+      const pendingManagerInvite = await this.prisma.invite.findFirst({
+        where: {
+          departmentId: department.id,
+          role: UserRole.MANAGER,
+          accepted: false,
+          expiresAt: {
+            gt: new Date(),
+          },
+        },
+        select: { id: true },
+      });
+
+      if (pendingManagerInvite) {
+        throw new ConflictException('Department already has a pending manager invite');
+      }
     }
 
     const normalizedEmail = input.email.toLowerCase();

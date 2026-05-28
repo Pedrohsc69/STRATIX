@@ -38,7 +38,11 @@ const menuItems: MenuItem[] = [
     label: "Departamentos",
     path: "/departaments",
     icon: Building2,
-    requiredPermissions: ["departments:manage"],
+    requiredPermissions: [
+      "departments:manage",
+      "departments:view:department",
+      "departments:view:department:readonly",
+    ],
   },
   {
     label: "Ciclos",

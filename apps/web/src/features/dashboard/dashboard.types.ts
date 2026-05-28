@@ -7,6 +7,8 @@ export type DashboardPermission =
   | "dashboard:view:department"
   | "dashboard:view:department:readonly"
   | "departments:manage"
+  | "departments:view:department"
+  | "departments:view:department:readonly"
   | "users:manage"
   | "users:view:department"
   | "cycles:manage"
