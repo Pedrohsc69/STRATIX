@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -20,5 +20,29 @@ export class InvitesController {
     @Body() body: CreateInviteDto,
   ) {
     return this.invitesService.create(user, body);
+  }
+
+  @Get()
+  @Roles(UserRole.DIRECTOR)
+  list(@CurrentUser() user: AuthenticatedUser) {
+    return this.invitesService.list(user);
+  }
+
+  @Get(':inviteId')
+  @Roles(UserRole.DIRECTOR)
+  getById(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('inviteId') inviteId: string,
+  ) {
+    return this.invitesService.getById(user, inviteId);
+  }
+
+  @Post(':inviteId/resend')
+  @Roles(UserRole.DIRECTOR)
+  resend(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('inviteId') inviteId: string,
+  ) {
+    return this.invitesService.resend(user, inviteId);
   }
 }

@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { CycleStatus, type Prisma, type UserRole } from '@prisma/client';
+import { CycleStatus, OKRMetricType, type Prisma, type UserRole } from '@prisma/client';
 import { PrismaService } from '../../core/shared/prisma.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { DashboardDomainService } from '../dashboard/domain/services/dashboard-domain.service';
@@ -20,10 +20,12 @@ import type {
   OkrStatus,
   OkrsResponse,
 } from './okrs.types';
+import { normalizeOkrValue, validateOkrValues } from './okr-metric.utils';
 
 type OkrRecord = {
   id: string;
   name: string;
+  metricType: OKRMetricType;
   objectiveId: string;
   currentValue: number;
   targetValue: number;
@@ -168,15 +170,21 @@ export class OkrsService {
       input.responsibleId,
     );
 
-    this.assertTargetValue(input.targetValue);
+    const metricType = input.metricType ?? OKRMetricType.NUMBER;
+    const normalizedValues = validateOkrValues({
+      metricType,
+      currentValue: input.currentValue ?? 0,
+      targetValue: input.targetValue,
+    });
 
     const created = await this.prisma.oKR.create({
       data: {
         name: input.name.trim(),
+        metricType,
         objectiveId: objective.id,
         responsibleId: responsible.id,
-        currentValue: 0,
-        targetValue: input.targetValue,
+        currentValue: normalizedValues.currentValue,
+        targetValue: normalizedValues.targetValue,
       },
       include: this.okrInclude(),
     });
@@ -230,20 +238,22 @@ export class OkrsService {
       targetResponsibleId,
     );
 
-    const targetValue = input.targetValue ?? existing.targetValue;
-    this.assertTargetValue(targetValue);
-
-    if (existing.currentValue > targetValue) {
-      throw new BadRequestException('Target value cannot be lower than the current value');
-    }
+    const metricType = input.metricType ?? existing.metricType ?? OKRMetricType.NUMBER;
+    const normalizedValues = validateOkrValues({
+      metricType,
+      currentValue: input.currentValue ?? existing.currentValue,
+      targetValue: input.targetValue ?? existing.targetValue,
+    });
 
     const updated = await this.prisma.oKR.update({
       where: { id: okrId },
       data: {
         name: input.name?.trim() ?? existing.name,
+        metricType,
         objectiveId: targetObjective.id,
         responsibleId: responsible.id,
-        targetValue,
+        currentValue: normalizedValues.currentValue,
+        targetValue: normalizedValues.targetValue,
       },
       include: this.okrInclude(),
     });
@@ -332,13 +342,19 @@ export class OkrsService {
     }
 
     this.assertCycleWritable(okr.objective.cycle);
-    this.assertProgressValue(input.value, okr.targetValue);
+    const metricType = okr.metricType ?? OKRMetricType.NUMBER;
+    const normalizedValue = normalizeOkrValue(input.value, metricType);
+    validateOkrValues({
+      metricType,
+      currentValue: normalizedValue,
+      targetValue: okr.targetValue,
+    });
 
     const updated = await this.prisma.$transaction(async (tx) => {
       await tx.progressOKR.create({
         data: {
           okrId: okr.id,
-          value: input.value,
+          value: normalizedValue,
           date: new Date(),
           comment: input.comment?.trim() || 'Atualização de progresso',
         },
@@ -347,7 +363,7 @@ export class OkrsService {
       return tx.oKR.update({
         where: { id: okr.id },
         data: {
-          currentValue: input.value,
+          currentValue: normalizedValue,
         },
         include: this.okrInclude(),
       });
@@ -655,22 +671,6 @@ export class OkrsService {
     }
   }
 
-  private assertTargetValue(targetValue: number) {
-    if (!Number.isFinite(targetValue) || targetValue <= 0) {
-      throw new BadRequestException('Target value must be greater than zero');
-    }
-  }
-
-  private assertProgressValue(value: number, targetValue: number) {
-    if (!Number.isFinite(value) || value < 0) {
-      throw new BadRequestException('Progress value must be zero or greater');
-    }
-
-    if (value > targetValue) {
-      throw new BadRequestException('Current value cannot exceed the target value');
-    }
-  }
-
   private matchesStatus(status: OkrStatus, filter?: ListOkrsDto['status']) {
     if (!filter) {
       return true;
@@ -693,9 +693,12 @@ export class OkrsService {
   }
 
   private mapOkr(okr: OkrRecord, actorId: string): OkrItem {
+    const metricType = okr.metricType ?? OKRMetricType.NUMBER;
+    const currentValue = normalizeOkrValue(okr.currentValue, metricType);
+    const targetValue = normalizeOkrValue(okr.targetValue, metricType);
     const progress = this.dashboardDomainService.calculateProgress(
-      okr.currentValue,
-      okr.targetValue,
+      currentValue,
+      targetValue,
     );
     const lastUpdatedAt = okr.progress[0]?.date ?? okr.updatedAt;
 
@@ -710,8 +713,9 @@ export class OkrsService {
       departmentName: okr.objective.cycle.department.name,
       responsibleId: okr.responsibleId,
       responsibleName: okr.responsible.name,
-      currentValue: okr.currentValue,
-      targetValue: okr.targetValue,
+      metricType,
+      currentValue,
+      targetValue,
       progress,
       status: this.resolveStatus({
         progress,
@@ -722,7 +726,7 @@ export class OkrsService {
       isOwnedByCurrentUser: okr.responsibleId === actorId,
       progressHistory: okr.progress.map((progressItem) => ({
         id: progressItem.id,
-        value: progressItem.value,
+        value: normalizeOkrValue(progressItem.value, metricType),
         date: progressItem.date.toISOString(),
         comment: progressItem.comment,
       })),

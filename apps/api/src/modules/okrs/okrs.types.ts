@@ -1,4 +1,4 @@
-import type { UserRole } from '@prisma/client';
+import type { OKRMetricType, UserRole } from '@prisma/client';
 import type {
   DashboardCompanyContext,
   DashboardDepartmentContext,
@@ -48,6 +48,7 @@ export type OkrItem = {
   departmentName: string;
   responsibleId: string;
   responsibleName: string;
+  metricType: OKRMetricType;
   currentValue: number;
   targetValue: number;
   progress: number;

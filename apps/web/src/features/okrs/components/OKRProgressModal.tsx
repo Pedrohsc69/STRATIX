@@ -1,6 +1,14 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { X } from "lucide-react";
 import type { OkrItem, OkrProgressPayload } from "../types/okrs.types";
+import {
+  formatOkrProgress,
+  formatOkrValue,
+  getMetricInputConfig,
+  normalizeMetricValue,
+  parseMetricInputValue,
+  validateMetricValues,
+} from "../utils/okr-formatters";
 
 type OKRProgressModalProps = {
   okr: OkrItem;
@@ -19,23 +27,60 @@ export function OKRProgressModal({
 }: OKRProgressModalProps) {
   const [value, setValue] = useState(String(okr.currentValue));
   const [comment, setComment] = useState("");
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   useEffect(() => {
     setValue(String(okr.currentValue));
     setComment("");
+    setValidationError(null);
   }, [okr]);
+
+  const metricConfig = getMetricInputConfig(okr.metricType);
+
+  const previewProgress = useMemo(() => {
+    const parsedValue = parseMetricInputValue(value, okr.metricType);
+
+    if (parsedValue === null || okr.targetValue <= 0) {
+      return formatOkrProgress(okr.progress);
+    }
+
+    const normalizedValue = normalizeMetricValue(parsedValue, okr.metricType);
+    const percentage = Math.min(100, Math.max(0, (normalizedValue / okr.targetValue) * 100));
+    return formatOkrProgress(percentage);
+  }, [okr.metricType, okr.progress, okr.targetValue, value]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    const parsedValue = parseMetricInputValue(value, okr.metricType);
+
+    if (parsedValue === null) {
+      setValidationError("Informe um valor atual válido.");
+      return;
+    }
+
+    const metricValidationError = validateMetricValues({
+      metricType: okr.metricType,
+      currentValue: parsedValue,
+      targetValue: okr.targetValue,
+    });
+
+    if (metricValidationError) {
+      setValidationError(metricValidationError);
+      return;
+    }
+
+    setValidationError(null);
+
     await onSubmit({
-      value: Number(value),
+      value: normalizeMetricValue(parsedValue, okr.metricType),
       comment: comment.trim(),
     });
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/45 p-4">
-      <div className="w-full max-w-xl rounded-3xl bg-white shadow-2xl">
+      <div className="w-full max-w-2xl rounded-3xl bg-white shadow-2xl">
         <div className="flex items-start justify-between border-b border-gray-200 px-6 py-5">
           <div>
             <p className="text-sm uppercase tracking-[0.2em] text-[#6B7280]">Atualizar progresso</p>
@@ -51,24 +96,63 @@ export function OKRProgressModal({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5 px-6 py-6">
-          <div className="rounded-2xl bg-[#F8FAFC] px-4 py-3">
-            <p className="text-sm text-[#6B7280]">Meta configurada</p>
-            <p className="mt-1 text-lg font-semibold text-[#1F2937]">{okr.targetValue}</p>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="rounded-2xl bg-[#F8FAFC] px-4 py-3">
+              <p className="text-sm text-[#6B7280]">Valor atual</p>
+              <p className="mt-1 text-lg font-semibold text-[#1F2937]">
+                {formatOkrValue(okr.currentValue, okr.metricType)}
+              </p>
+            </div>
+            <div className="rounded-2xl bg-[#F8FAFC] px-4 py-3">
+              <p className="text-sm text-[#6B7280]">Meta</p>
+              <p className="mt-1 text-lg font-semibold text-[#1F2937]">
+                {formatOkrValue(okr.targetValue, okr.metricType)}
+              </p>
+            </div>
+            <div className="rounded-2xl bg-[#F8FAFC] px-4 py-3">
+              <p className="text-sm text-[#6B7280]">Progresso previsto</p>
+              <p className="mt-1 text-lg font-semibold text-[#1F2937]">{previewProgress}</p>
+            </div>
           </div>
 
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-[#4B5563]">Novo valor atual</span>
-            <input
-              required
-              type="number"
-              min={0}
-              max={okr.targetValue}
-              step="0.01"
-              value={value}
-              onChange={(event) => setValue(event.target.value)}
-              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-[#1F2937] outline-none transition-colors focus:border-[#1E4E79]"
-            />
-          </label>
+          {metricConfig.isBoolean ? (
+            <label className="block">
+              <span className="mb-2 block text-sm font-medium text-[#4B5563]">Novo status</span>
+              <select
+                value={value}
+                onChange={(event) => setValue(event.target.value)}
+                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-[#1F2937] outline-none transition-colors focus:border-[#1E4E79]"
+              >
+                <option value="0">Não concluído</option>
+                <option value="1">Concluído</option>
+              </select>
+            </label>
+          ) : (
+            <label className="block">
+              <span className="mb-2 block text-sm font-medium text-[#4B5563]">Novo valor atual</span>
+              <div className="flex items-center rounded-xl border border-gray-200 bg-white focus-within:border-[#1E4E79]">
+                {metricConfig.prefix ? (
+                  <span className="border-r border-gray-200 px-4 text-sm font-medium text-[#6B7280]">
+                    {metricConfig.prefix}
+                  </span>
+                ) : null}
+                <input
+                  required
+                  type="text"
+                  inputMode="decimal"
+                  value={value}
+                  onChange={(event) => setValue(event.target.value)}
+                  placeholder={metricConfig.placeholder}
+                  className="w-full rounded-xl bg-transparent px-4 py-3 text-sm text-[#1F2937] outline-none"
+                />
+                {metricConfig.suffix ? (
+                  <span className="border-l border-gray-200 px-4 text-sm font-medium text-[#6B7280]">
+                    {metricConfig.suffix}
+                  </span>
+                ) : null}
+              </div>
+            </label>
+          )}
 
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-[#4B5563]">Comentário</span>
@@ -81,9 +165,9 @@ export function OKRProgressModal({
             />
           </label>
 
-          {error ? (
+          {validationError || error ? (
             <div className="rounded-xl border border-[#FECACA] bg-[#FEF2F2] px-4 py-3 text-sm text-[#B91C1C]">
-              {error}
+              {validationError ?? error}
             </div>
           ) : null}
 

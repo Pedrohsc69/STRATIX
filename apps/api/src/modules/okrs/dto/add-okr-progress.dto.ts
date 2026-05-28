@@ -1,8 +1,9 @@
-import { IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsNumber, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class AddOkrProgressDto {
-  @IsNumber()
-  @Min(0)
+  @Type(() => Number)
+  @IsNumber({ allowInfinity: false, allowNaN: false })
   value!: number;
 
   @IsOptional()

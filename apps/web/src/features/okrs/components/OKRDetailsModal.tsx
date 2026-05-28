@@ -2,6 +2,11 @@ import { Clock3, X } from "lucide-react";
 import { ProgressIndicator } from "../../dashboard/components/ProgressIndicator";
 import { OKRStatusBadge } from "./OKRStatusBadge";
 import type { OkrItem } from "../types/okrs.types";
+import {
+  formatOkrProgress,
+  formatOkrValue,
+  getMetricTypeLabel,
+} from "../utils/okr-formatters";
 
 type OKRDetailsModalProps = {
   okr: OkrItem;
@@ -55,14 +60,19 @@ export function OKRDetailsModal({ okr, onClose }: OKRDetailsModalProps) {
               <OKRStatusBadge status={okr.status} />
             </div>
             <div>
+              <p className="text-sm text-[#6B7280]">Tipo de métrica</p>
+              <p className="mt-1 font-medium text-[#1F2937]">{getMetricTypeLabel(okr.metricType)}</p>
+            </div>
+            <div>
               <p className="text-sm text-[#6B7280]">Valor atual / meta</p>
               <p className="mt-1 font-medium text-[#1F2937]">
-                {okr.currentValue} / {okr.targetValue}
+                {formatOkrValue(okr.currentValue, okr.metricType)} /{" "}
+                {formatOkrValue(okr.targetValue, okr.metricType)}
               </p>
             </div>
             <div>
               <p className="mb-2 text-sm text-[#6B7280]">Progresso consolidado</p>
-              <ProgressIndicator value={okr.progress} tone="brand" />
+              <ProgressIndicator value={okr.progress} tone="brand" label={formatOkrProgress(okr.progress)} />
             </div>
             <div>
               <p className="text-sm text-[#6B7280]">Última atualização</p>
@@ -86,7 +96,9 @@ export function OKRDetailsModal({ okr, onClose }: OKRDetailsModalProps) {
                 >
                   <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                     <div>
-                      <p className="font-medium text-[#1F2937]">Valor registrado: {historyItem.value}</p>
+                      <p className="font-medium text-[#1F2937]">
+                        Valor registrado: {formatOkrValue(historyItem.value, okr.metricType)}
+                      </p>
                       <p className="mt-1 text-sm text-[#6B7280]">{historyItem.comment}</p>
                     </div>
                     <p className="text-sm text-[#6B7280]">{formatDate(historyItem.date)}</p>

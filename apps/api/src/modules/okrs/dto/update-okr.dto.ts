@@ -1,4 +1,6 @@
-import { IsNumber, IsOptional, IsString, IsUUID, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+import { OKRMetricType } from '@prisma/client';
+import { IsEnum, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class UpdateOkrDto {
   @IsOptional()
@@ -14,7 +16,16 @@ export class UpdateOkrDto {
   responsibleId?: string;
 
   @IsOptional()
-  @IsNumber()
-  @Min(0.000001)
+  @IsEnum(OKRMetricType)
+  metricType?: OKRMetricType;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ allowInfinity: false, allowNaN: false })
+  currentValue?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ allowInfinity: false, allowNaN: false })
   targetValue?: number;
 }

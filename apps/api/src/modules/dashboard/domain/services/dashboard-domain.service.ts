@@ -8,6 +8,11 @@ import type {
 
 @Injectable()
 export class DashboardDomainService {
+  private roundTo(value: number, decimals: number) {
+    const factor = 10 ** decimals;
+    return Math.round((value + Number.EPSILON) * factor) / factor;
+  }
+
   getScope(role: UserRole): DashboardScope {
     if (role === 'DIRECTOR') {
       return 'COMPANY';
@@ -73,20 +78,24 @@ export class DashboardDomainService {
   }
 
   calculateProgress(current: number, target: number) {
-    if (target <= 0) {
+    if (!Number.isFinite(current) || !Number.isFinite(target) || target <= 0) {
       return 0;
     }
 
-    return Math.max(0, Math.min(100, Math.round((current / target) * 100)));
+    return Math.max(0, Math.min(100, this.roundTo((current / target) * 100, 1)));
   }
 
   calculateAverageProgress(progresses: number[]) {
-    if (progresses.length === 0) {
+    const validProgresses = progresses.filter((value) => Number.isFinite(value));
+
+    if (validProgresses.length === 0) {
       return 0;
     }
 
-    return Math.round(
-      progresses.reduce((accumulator, value) => accumulator + value, 0) / progresses.length,
+    return this.roundTo(
+      validProgresses.reduce((accumulator, value) => accumulator + value, 0) /
+        validProgresses.length,
+      1,
     );
   }
 

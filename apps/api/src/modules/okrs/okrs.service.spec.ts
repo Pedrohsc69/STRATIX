@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ForbiddenException, BadRequestException } from '@nestjs/common';
-import { UserRole, UserStatus } from '@prisma/client';
+import { OKRMetricType, UserRole, UserStatus } from '@prisma/client';
 import { ROLES_KEY } from '../auth/decorators/roles.decorator';
 import { DashboardDomainService } from '../dashboard/domain/services/dashboard-domain.service';
 import { OkrsController } from './okrs.controller';
@@ -450,8 +450,9 @@ void test('OkrsService creates a ProgressOKR record when progress is updated', a
       update: async () => ({
         id: 'okr-1',
         name: 'Receita trimestral',
+        metricType: OKRMetricType.CURRENCY,
         objectiveId: 'objective-1',
-        currentValue: 30,
+        currentValue: 30.13,
         targetValue: 100,
         responsibleId: 'employee-1',
         createdAt: new Date(),
@@ -478,7 +479,7 @@ void test('OkrsService creates a ProgressOKR record when progress is updated', a
         progress: [
           {
             id: 'progress-1',
-            value: 30,
+            value: 30.13,
             date: new Date('2026-05-10T00:00:00Z'),
             comment: 'Atualizacao',
           },
@@ -499,6 +500,7 @@ void test('OkrsService creates a ProgressOKR record when progress is updated', a
       findFirst: async () => ({
         id: 'okr-1',
         name: 'Receita trimestral',
+        metricType: OKRMetricType.CURRENCY,
         objectiveId: 'objective-1',
         currentValue: 20,
         targetValue: 100,
@@ -533,11 +535,250 @@ void test('OkrsService creates a ProgressOKR record when progress is updated', a
   await service.addProgress(
     { sub: 'manager-1', email: 'gestora@empresa.com', role: UserRole.MANAGER },
     'okr-1',
-    { value: 30, comment: 'Atualizacao' },
+    { value: 30.129, comment: 'Atualizacao' },
   );
 
   assert.equal(createdProgressOkrId, 'okr-1');
-  assert.equal(createdProgressValue, 30);
+  assert.equal(createdProgressValue, 30.13);
+});
+
+void test('OkrsService normalizes numeric values before creating an OKR', async () => {
+  let createdData: Record<string, unknown> | undefined;
+  const service = createService({
+    user: {
+      findUnique: async () => ({
+        companyId: 'company-1',
+        departmentId: 'department-1',
+        role: UserRole.MANAGER,
+      }),
+      findFirst: async () => ({
+        id: 'employee-1',
+        departmentId: 'department-1',
+      }),
+    },
+    objective: {
+      findFirst: async () => ({
+        id: 'objective-1',
+        cycle: {
+          id: 'cycle-1',
+          status: 'ACTIVE',
+          startDate: new Date('2026-01-01T00:00:00Z'),
+          endDate: new Date('2026-08-01T00:00:00Z'),
+          departmentId: 'department-1',
+        },
+      }),
+    },
+    oKR: {
+      create: async ({ data }: { data: Record<string, unknown> }) => {
+        createdData = data;
+        return {
+          id: 'okr-1',
+          name: 'Receita trimestral',
+          metricType: OKRMetricType.NUMBER,
+          objectiveId: 'objective-1',
+          currentValue: 3,
+          targetValue: 100000,
+          responsibleId: 'employee-1',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          responsible: {
+            id: 'employee-1',
+            name: 'Pessoa A',
+            departmentId: 'department-1',
+          },
+          objective: {
+            id: 'objective-1',
+            name: 'Aumentar receita',
+            cycleId: 'cycle-1',
+            cycle: {
+              id: 'cycle-1',
+              name: 'Ciclo 1',
+              status: 'ACTIVE',
+              startDate: new Date('2026-01-01T00:00:00Z'),
+              endDate: new Date('2026-08-01T00:00:00Z'),
+              departmentId: 'department-1',
+              department: { id: 'department-1', name: 'Marketing' },
+            },
+          },
+          progress: [],
+        };
+      },
+    },
+  });
+
+  await service.create(
+    { sub: 'manager-1', email: 'gestora@empresa.com', role: UserRole.MANAGER },
+    {
+      name: 'Receita trimestral',
+      objectiveId: 'objective-1',
+      responsibleId: 'employee-1',
+      metricType: OKRMetricType.NUMBER,
+      currentValue: 3.000001,
+      targetValue: 100000.000001,
+    },
+  );
+
+  assert.equal(createdData?.currentValue, 3);
+  assert.equal(createdData?.targetValue, 100000);
+});
+
+void test('OkrsService blocks percentage targets above 100', async () => {
+  const service = createService({
+    user: {
+      findUnique: async () => ({
+        companyId: 'company-1',
+        departmentId: 'department-1',
+        role: UserRole.MANAGER,
+      }),
+      findFirst: async () => ({
+        id: 'employee-1',
+        departmentId: 'department-1',
+      }),
+    },
+    objective: {
+      findFirst: async () => ({
+        id: 'objective-1',
+        cycle: {
+          id: 'cycle-1',
+          status: 'ACTIVE',
+          startDate: new Date('2026-01-01T00:00:00Z'),
+          endDate: new Date('2026-08-01T00:00:00Z'),
+          departmentId: 'department-1',
+        },
+      }),
+    },
+  });
+
+  await assert.rejects(
+    () =>
+      service.create(
+        { sub: 'manager-1', email: 'gestora@empresa.com', role: UserRole.MANAGER },
+        {
+          name: 'Conversao',
+          objectiveId: 'objective-1',
+          responsibleId: 'employee-1',
+          metricType: OKRMetricType.PERCENTAGE,
+          currentValue: 50,
+          targetValue: 120,
+        },
+      ),
+    BadRequestException,
+  );
+});
+
+void test('OkrsService blocks boolean values outside 0 and 1', async () => {
+  const service = createService({
+    user: {
+      findUnique: async () => ({
+        companyId: 'company-1',
+        departmentId: 'department-1',
+        role: UserRole.MANAGER,
+      }),
+    },
+    oKR: {
+      findFirst: async () => ({
+        id: 'okr-1',
+        name: 'Lancar funcionalidade',
+        metricType: OKRMetricType.BOOLEAN,
+        objectiveId: 'objective-1',
+        currentValue: 0,
+        targetValue: 1,
+        responsibleId: 'employee-1',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        responsible: {
+          id: 'employee-1',
+          name: 'Pessoa A',
+          departmentId: 'department-1',
+        },
+        objective: {
+          id: 'objective-1',
+          name: 'Entrega',
+          cycleId: 'cycle-1',
+          cycle: {
+            id: 'cycle-1',
+            name: 'Ciclo 1',
+            status: 'ACTIVE',
+            startDate: new Date('2026-01-01T00:00:00Z'),
+            endDate: new Date('2026-08-01T00:00:00Z'),
+            departmentId: 'department-1',
+            department: { id: 'department-1', name: 'Marketing' },
+          },
+        },
+        progress: [],
+      }),
+    },
+  });
+
+  await assert.rejects(
+    () =>
+      service.addProgress(
+        { sub: 'manager-1', email: 'gestora@empresa.com', role: UserRole.MANAGER },
+        'okr-1',
+        { value: 0.4 },
+      ),
+    BadRequestException,
+  );
+});
+
+void test('OkrsService blocks invalid numeric values', async () => {
+  const service = createService({
+    user: {
+      findUnique: async () => ({
+        companyId: 'company-1',
+        departmentId: 'department-1',
+        role: UserRole.MANAGER,
+      }),
+      findFirst: async () => ({
+        id: 'employee-1',
+        departmentId: 'department-1',
+      }),
+    },
+    objective: {
+      findFirst: async () => ({
+        id: 'objective-1',
+        cycle: {
+          id: 'cycle-1',
+          status: 'ACTIVE',
+          startDate: new Date('2026-01-01T00:00:00Z'),
+          endDate: new Date('2026-08-01T00:00:00Z'),
+          departmentId: 'department-1',
+        },
+      }),
+    },
+  });
+
+  await assert.rejects(
+    () =>
+      service.create(
+        { sub: 'manager-1', email: 'gestora@empresa.com', role: UserRole.MANAGER },
+        {
+          name: 'Receita',
+          objectiveId: 'objective-1',
+          responsibleId: 'employee-1',
+          metricType: OKRMetricType.NUMBER,
+          currentValue: -1,
+          targetValue: 10,
+        },
+      ),
+    BadRequestException,
+  );
+
+  await assert.rejects(
+    () =>
+      service.create(
+        { sub: 'manager-1', email: 'gestora@empresa.com', role: UserRole.MANAGER },
+        {
+          name: 'Receita',
+          objectiveId: 'objective-1',
+          responsibleId: 'employee-1',
+          metricType: OKRMetricType.NUMBER,
+          currentValue: 0,
+          targetValue: Number.POSITIVE_INFINITY,
+        },
+      ),
+    BadRequestException,
+  );
 });
 
 void test('OkrsController protects structure mutations from employees', () => {

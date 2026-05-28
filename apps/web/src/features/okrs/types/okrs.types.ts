@@ -6,6 +6,7 @@ import type {
 } from "../../dashboard/dashboard.types";
 
 export type OkrStatus = "IN_PROGRESS" | "COMPLETED" | "AT_RISK";
+export type OkrMetricType = "PERCENTAGE" | "NUMBER" | "CURRENCY" | "BOOLEAN";
 
 export type OkrProgressHistoryItem = {
   id: string;
@@ -25,6 +26,7 @@ export type OkrItem = {
   departmentName: string;
   responsibleId: string;
   responsibleName: string;
+  metricType: OkrMetricType;
   currentValue: number;
   targetValue: number;
   progress: number;
@@ -93,6 +95,8 @@ export type OkrPayload = {
   name: string;
   objectiveId: string;
   responsibleId: string;
+  metricType: OkrMetricType;
+  currentValue: number;
   targetValue: number;
 };
 

@@ -10,14 +10,13 @@ import { AcceptInvitePage } from '../../modules/acceptInvite/pages/accept-invite
 import { RecoverPasswordPage } from "../../modules/recoverPassword/pages/recorver-password-page";
 
 import { ProfilePage } from '../../modules/profile/pages/profile-page'
-import { EmployeesPage } from "../../modules/employees/pages/employees-page";
-
-import { ReportsPage } from '../../modules/reports/pages/relatorio-page';
 import { SettingsPage } from '../../modules/settings/pages/settings-page';
 import { DashboardPage } from '../../features/dashboard/DashboardPage';
 import { DepartmentsPage } from '../../features/departments/pages/DepartmentsPage';
+import { EmployeesPage } from '../../features/employees/pages/EmployeesPage';
 import { OKRsPage } from '../../features/okrs/pages/OKRsPage';
 import { ObjectivesPage } from '../../features/objectives/pages/ObjectivesPage';
+import { ReportsPage } from '../../features/reports/pages/ReportsPage';
 import { StrategicCyclesPage } from '../../features/strategic-cycles/pages/StrategicCyclesPage';
 import { AccessDeniedPage } from './access-denied-page';
 
@@ -99,7 +98,7 @@ export function AppRouter() {
         <Route 
           path='/employees'
           element={
-            <ProtectedRoute allowedRoles={['DIRECTOR']}>
+            <ProtectedRoute allowedRoles={['DIRECTOR', 'MANAGER']}>
               <EmployeesPage />
             </ProtectedRoute>
           }

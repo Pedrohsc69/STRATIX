@@ -12,6 +12,7 @@ import { CreateAuditUseCase } from '../audit/application/use-cases/create-audit.
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { EmailService } from '../email/email.service';
 import { CreateInviteDto } from './dto/create-invite.dto';
+import type { InviteResponseItem, InviteViewStatus } from './invites.types';
 
 @Injectable()
 export class InvitesService {
@@ -22,73 +23,12 @@ export class InvitesService {
   ) {}
 
   async create(actor: AuthenticatedUser, input: CreateInviteDto) {
-    if (input.role !== UserRole.MANAGER && input.role !== UserRole.EMPLOYEE) {
-      throw new BadRequestException('Invalid invite role');
-    }
-
-    const user = await this.prisma.user.findUnique({
-      where: { id: actor.sub },
-      select: {
-        companyId: true,
-        company: {
-          select: { name: true },
-        },
-      },
-    });
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    if (!user.companyId) {
-      throw new BadRequestException('Company must be created first');
-    }
-
-    const departmentCount = await this.prisma.department.count({
-      where: { companyId: user.companyId },
-    });
-
-    if (departmentCount < 1) {
-      throw new BadRequestException('At least one department is required');
-    }
-
-    const department = await this.prisma.department.findFirst({
-      where: {
-        id: input.departmentId,
-        companyId: user.companyId,
-      },
-      select: {
-        id: true,
-        name: true,
-        managerId: true,
-      },
-    });
-
-    if (!department) {
-      throw new BadRequestException('Invalid department');
-    }
-
-    if (input.role === UserRole.MANAGER) {
-      if (department.managerId) {
-        throw new ConflictException('Department already has a manager');
-      }
-
-      const pendingManagerInvite = await this.prisma.invite.findFirst({
-        where: {
-          departmentId: department.id,
-          role: UserRole.MANAGER,
-          accepted: false,
-          expiresAt: {
-            gt: new Date(),
-          },
-        },
-        select: { id: true },
-      });
-
-      if (pendingManagerInvite) {
-        throw new ConflictException('Department already has a pending manager invite');
-      }
-    }
+    const companyContext = await this.getActorCompanyContext(actor.sub);
+    const department = await this.assertDepartmentAvailable(
+      companyContext.companyId,
+      input.departmentId,
+      input.role,
+    );
 
     const normalizedEmail = input.email.toLowerCase();
     const existingUser = await this.prisma.user.findUnique({
@@ -115,10 +55,10 @@ export class InvitesService {
       data: {
         email: normalizedEmail,
         role: input.role,
-        companyId: user.companyId,
+        companyId: companyContext.companyId,
         departmentId: department.id,
-        token: randomBytes(32).toString('hex'),
-        expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7),
+        token: this.createInviteToken(),
+        expiresAt: this.createInviteExpirationDate(),
       },
       select: {
         id: true,
@@ -134,10 +74,11 @@ export class InvitesService {
     });
 
     try {
-      await this.emailService.sendInviteEmail({
-        companyName: user.company?.name ?? 'STRATIX',
+      await this.sendInviteMessage({
+        companyName: companyContext.companyName,
         departmentName: department.name ?? null,
         email: invite.email,
+        inviteeName: input.name.trim(),
         role: invite.role,
         token: invite.token,
       });
@@ -161,15 +102,304 @@ export class InvitesService {
       throw new InternalServerErrorException('Unable to complete request');
     }
 
+    return this.mapInviteResponse({
+      ...invite,
+      department: {
+        id: department.id,
+        name: department.name,
+      },
+    });
+  }
+
+  async list(actor: AuthenticatedUser): Promise<InviteResponseItem[]> {
+    const companyContext = await this.getActorCompanyContext(actor.sub);
+    const invites = await this.prisma.invite.findMany({
+      where: {
+        companyId: companyContext.companyId,
+        accepted: false,
+      },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        accepted: true,
+        expiresAt: true,
+        createdAt: true,
+        department: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: [{ createdAt: 'desc' }],
+    });
+
+    return invites.map((invite) => this.mapInviteResponse(invite));
+  }
+
+  async getById(actor: AuthenticatedUser, inviteId: string): Promise<InviteResponseItem> {
+    const companyContext = await this.getActorCompanyContext(actor.sub);
+    const invite = await this.prisma.invite.findFirst({
+      where: {
+        id: inviteId,
+        companyId: companyContext.companyId,
+        accepted: false,
+      },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        accepted: true,
+        expiresAt: true,
+        createdAt: true,
+        department: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (!invite) {
+      throw new NotFoundException('Invite not found');
+    }
+
+    return this.mapInviteResponse(invite);
+  }
+
+  async resend(actor: AuthenticatedUser, inviteId: string): Promise<InviteResponseItem> {
+    const companyContext = await this.getActorCompanyContext(actor.sub);
+    const existingInvite = await this.prisma.invite.findFirst({
+      where: {
+        id: inviteId,
+        companyId: companyContext.companyId,
+      },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        companyId: true,
+        departmentId: true,
+        token: true,
+        accepted: true,
+        expiresAt: true,
+        createdAt: true,
+        department: {
+          select: {
+            id: true,
+            name: true,
+            managerId: true,
+          },
+        },
+      },
+    });
+
+    if (!existingInvite) {
+      throw new NotFoundException('Invite not found');
+    }
+
+    if (existingInvite.accepted) {
+      throw new ConflictException('Invite has already been accepted');
+    }
+
+    if (!existingInvite.departmentId || !existingInvite.department) {
+      throw new BadRequestException('Invite is invalid');
+    }
+
+    await this.assertDepartmentAvailable(
+      companyContext.companyId,
+      existingInvite.departmentId,
+      existingInvite.role,
+      existingInvite.id,
+    );
+
+    const expired = existingInvite.expiresAt.getTime() <= Date.now();
+    const nextToken = expired ? this.createInviteToken() : existingInvite.token;
+    const nextExpiresAt = expired
+      ? this.createInviteExpirationDate()
+      : existingInvite.expiresAt;
+
+    const updatedInvite = await this.prisma.invite.update({
+      where: { id: existingInvite.id },
+      data: {
+        token: nextToken,
+        expiresAt: nextExpiresAt,
+      },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        accepted: true,
+        expiresAt: true,
+        createdAt: true,
+        token: true,
+        department: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    try {
+      await this.sendInviteMessage({
+        companyName: companyContext.companyName,
+        departmentName: updatedInvite.department?.name ?? null,
+        email: updatedInvite.email,
+        role: updatedInvite.role,
+        token: updatedInvite.token,
+      });
+    } catch {
+      throw new InternalServerErrorException('Unable to complete request');
+    }
+
+    await this.createAuditUseCase.execute({
+      userId: actor.sub,
+      action: expired ? 'invite.resent.renewed' : 'invite.resent',
+      entity: 'invite',
+      metadata: {
+        inviteId: updatedInvite.id,
+        email: updatedInvite.email,
+        companyId: companyContext.companyId,
+        departmentId: updatedInvite.department?.id ?? null,
+        expiresAt: updatedInvite.expiresAt.toISOString(),
+        tokenHash: createHash('sha256').update(updatedInvite.token).digest('hex'),
+      },
+    });
+
+    return this.mapInviteResponse(updatedInvite);
+  }
+
+  private async getActorCompanyContext(actorId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: actorId },
+      select: {
+        companyId: true,
+        company: {
+          select: { name: true },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (!user.companyId) {
+      throw new BadRequestException('Company must be created first');
+    }
+
+    const departmentCount = await this.prisma.department.count({
+      where: { companyId: user.companyId },
+    });
+
+    if (departmentCount < 1) {
+      throw new BadRequestException('At least one department is required');
+    }
+
+    return {
+      companyId: user.companyId,
+      companyName: user.company?.name ?? 'STRATIX',
+    };
+  }
+
+  private async assertDepartmentAvailable(
+    companyId: string,
+    departmentId: string,
+    role: UserRole,
+    currentInviteId?: string,
+  ) {
+    if (role !== UserRole.MANAGER && role !== UserRole.EMPLOYEE) {
+      throw new BadRequestException('Invalid invite role');
+    }
+
+    const department = await this.prisma.department.findFirst({
+      where: {
+        id: departmentId,
+        companyId,
+      },
+      select: {
+        id: true,
+        name: true,
+        managerId: true,
+      },
+    });
+
+    if (!department) {
+      throw new BadRequestException('Invalid department');
+    }
+
+    if (role === UserRole.MANAGER) {
+      if (department.managerId) {
+        throw new ConflictException('Department already has a manager');
+      }
+
+      const pendingManagerInvite = await this.prisma.invite.findFirst({
+        where: {
+          departmentId: department.id,
+          role: UserRole.MANAGER,
+          accepted: false,
+          expiresAt: {
+            gt: new Date(),
+          },
+          ...(currentInviteId ? { id: { not: currentInviteId } } : {}),
+        },
+        select: { id: true },
+      });
+
+      if (pendingManagerInvite) {
+        throw new ConflictException('Department already has a pending manager invite');
+      }
+    }
+
+    return department;
+  }
+
+  private async sendInviteMessage(input: {
+    companyName: string;
+    departmentName: string | null;
+    email: string;
+    inviteeName?: string | null;
+    role: UserRole;
+    token: string;
+  }) {
+    await this.emailService.sendInviteEmail(input);
+  }
+
+  private createInviteToken() {
+    return randomBytes(32).toString('hex');
+  }
+
+  private createInviteExpirationDate() {
+    return new Date(Date.now() + 1000 * 60 * 60 * 24 * 7);
+  }
+
+  private getInviteStatus(expiresAt: Date): InviteViewStatus {
+    return expiresAt.getTime() > Date.now() ? 'PENDING' : 'EXPIRED';
+  }
+
+  private mapInviteResponse(invite: {
+    id: string;
+    email: string;
+    role: UserRole;
+    expiresAt: Date;
+    createdAt: Date;
+    department: {
+      id: string;
+      name: string;
+    } | null;
+  }): InviteResponseItem {
     return {
       id: invite.id,
       email: invite.email,
       role: invite.role,
-      departmentId: invite.departmentId,
-      companyId: invite.companyId,
-      accepted: invite.accepted,
-      expiresAt: invite.expiresAt,
-      createdAt: invite.createdAt,
+      department: invite.department,
+      status: this.getInviteStatus(invite.expiresAt),
+      expiresAt: invite.expiresAt.toISOString(),
+      createdAt: invite.createdAt.toISOString(),
     };
   }
 

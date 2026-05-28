@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -6,6 +7,8 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
+import { ROLES_KEY } from '../auth/decorators/roles.decorator';
+import { InvitesController } from './invites.controller';
 import { InvitesService } from './invites.service';
 
 void test('InvitesService requires at least one department before creating invites', async () => {
@@ -29,6 +32,7 @@ void test('InvitesService requires at least one department before creating invit
       service.create(
         { sub: 'user-1', email: 'diretor@empresa.com', role: UserRole.DIRECTOR },
         {
+          name: 'Colaboradora',
           email: 'colaborador@empresa.com',
           role: UserRole.EMPLOYEE,
           departmentId: 'department-1',
@@ -39,8 +43,20 @@ void test('InvitesService requires at least one department before creating invit
 });
 
 void test('InvitesService rejects director invites', async () => {
+  const prisma = {
+    user: {
+      findUnique: async () => ({
+        companyId: 'company-1',
+        company: { name: 'Empresa X' },
+      }),
+    },
+    department: {
+      count: async () => 1,
+    },
+  };
+
   const service = new InvitesService(
-    {} as never,
+    prisma as never,
     { sendInviteEmail: async () => undefined } as never,
     { execute: async () => undefined } as never,
   );
@@ -50,6 +66,7 @@ void test('InvitesService rejects director invites', async () => {
       service.create(
         { sub: 'user-1', email: 'diretor@empresa.com', role: UserRole.DIRECTOR },
         {
+          name: 'Diretor',
           email: 'gestor@empresa.com',
           role: UserRole.DIRECTOR,
           departmentId: 'department-1',
@@ -64,7 +81,7 @@ void test('InvitesService rejects duplicate invite e-mail', async () => {
     user: {
       findUnique: async ({ where }: { where?: { id?: string; email?: string } }) => {
         if (where?.id) {
-          return { companyId: 'company-1' };
+          return { companyId: 'company-1', company: { name: 'Empresa X' } };
         }
 
         return null;
@@ -72,7 +89,7 @@ void test('InvitesService rejects duplicate invite e-mail', async () => {
     },
     department: {
       count: async () => 1,
-      findFirst: async () => ({ id: 'department-1', managerId: null }),
+      findFirst: async () => ({ id: 'department-1', name: 'Comercial', managerId: null }),
     },
     invite: {
       findFirst: async () => null,
@@ -99,6 +116,7 @@ void test('InvitesService rejects duplicate invite e-mail', async () => {
       service.create(
         { sub: 'user-1', email: 'diretor@empresa.com', role: UserRole.DIRECTOR },
         {
+          name: 'Gestor Comercial',
           email: 'gestor@empresa.com',
           role: UserRole.MANAGER,
           departmentId: 'department-1',
@@ -175,6 +193,7 @@ void test('InvitesService deletes expired invites, audits the replacement and se
   const invite = await service.create(
     { sub: 'user-1', email: 'diretor@empresa.com', role: UserRole.DIRECTOR },
     {
+      name: 'Gestor Comercial',
       email: 'gestor@empresa.com',
       role: UserRole.MANAGER,
       departmentId: 'department-1',
@@ -187,6 +206,7 @@ void test('InvitesService deletes expired invites, audits the replacement and se
   assert.equal(auditCommands[0]?.action, 'invite.expired.replaced');
   assert.equal(sentMessages.length, 1);
   assert.equal(sentMessages[0]?.token, 'new-token');
+  assert.equal(sentMessages[0]?.inviteeName, 'Gestor Comercial');
 });
 
 void test('InvitesService deletes the invite when e-mail delivery fails', async () => {
@@ -249,6 +269,7 @@ void test('InvitesService deletes the invite when e-mail delivery fails', async 
       service.create(
         { sub: 'user-1', email: 'diretor@empresa.com', role: UserRole.DIRECTOR },
         {
+          name: 'Colaborador',
           email: 'colaborador@empresa.com',
           role: UserRole.EMPLOYEE,
           departmentId: 'department-1',
@@ -297,6 +318,7 @@ void test('InvitesService rejects manager invites when the department already ha
       service.create(
         { sub: 'user-1', email: 'diretor@empresa.com', role: UserRole.DIRECTOR },
         {
+          name: 'Novo Gestor',
           email: 'novo-gestor@empresa.com',
           role: UserRole.MANAGER,
           departmentId: 'department-1',
@@ -347,6 +369,7 @@ void test('InvitesService rejects a second active manager invite for the same de
       service.create(
         { sub: 'user-1', email: 'diretor@empresa.com', role: UserRole.DIRECTOR },
         {
+          name: 'Novo Gestor',
           email: 'novo-gestor@empresa.com',
           role: UserRole.MANAGER,
           departmentId: 'department-1',
@@ -354,4 +377,215 @@ void test('InvitesService rejects a second active manager invite for the same de
       ),
     ConflictException,
   );
+});
+
+void test('InvitesService resends an active invite without changing the token', async () => {
+  const sentMessages: Array<Record<string, unknown>> = [];
+  const auditCommands: Array<Record<string, unknown>> = [];
+
+  const expiresAt = new Date(Date.now() + 1000 * 60 * 60);
+  const prisma = {
+    user: {
+      findUnique: async () => ({
+        companyId: 'company-1',
+        company: { name: 'Empresa X' },
+      }),
+    },
+    department: {
+      count: async () => 1,
+      findFirst: async () => ({
+        id: 'department-1',
+        name: 'Comercial',
+        managerId: null,
+      }),
+    },
+    invite: {
+      findFirst: async ({ where }: { where: Record<string, unknown> }) => {
+        if (typeof where.id === 'string') {
+          return {
+            id: 'invite-1',
+            email: 'gestor@empresa.com',
+            role: UserRole.MANAGER,
+            companyId: 'company-1',
+            departmentId: 'department-1',
+            token: 'active-token',
+            accepted: false,
+            expiresAt,
+            createdAt: new Date('2026-05-01T10:00:00.000Z'),
+            department: {
+              id: 'department-1',
+              name: 'Comercial',
+              managerId: null,
+            },
+          };
+        }
+
+        return null;
+      },
+      update: async ({ data }: { data: { token: string; expiresAt: Date } }) => ({
+        id: 'invite-1',
+        email: 'gestor@empresa.com',
+        role: UserRole.MANAGER,
+        accepted: false,
+        token: data.token,
+        expiresAt: data.expiresAt,
+        createdAt: new Date('2026-05-01T10:00:00.000Z'),
+        department: {
+          id: 'department-1',
+          name: 'Comercial',
+        },
+      }),
+    },
+  };
+
+  const service = new InvitesService(
+    prisma as never,
+    {
+      sendInviteEmail: async (message: Record<string, unknown>) => {
+        sentMessages.push(message);
+      },
+    } as never,
+    {
+      execute: async (command: Record<string, unknown>) => {
+        auditCommands.push(command);
+      },
+    } as never,
+  );
+
+  const invite = await service.resend(
+    { sub: 'user-1', email: 'diretor@empresa.com', role: UserRole.DIRECTOR },
+    'invite-1',
+  );
+
+  assert.equal(invite.status, 'PENDING');
+  assert.equal(sentMessages[0]?.token, 'active-token');
+  assert.equal(auditCommands[0]?.action, 'invite.resent');
+});
+
+void test('InvitesService renews the token when resending an expired invite', async () => {
+  const sentMessages: Array<Record<string, unknown>> = [];
+
+  const prisma = {
+    user: {
+      findUnique: async () => ({
+        companyId: 'company-1',
+        company: { name: 'Empresa X' },
+      }),
+    },
+    department: {
+      count: async () => 1,
+      findFirst: async () => ({
+        id: 'department-1',
+        name: 'Comercial',
+        managerId: null,
+      }),
+    },
+    invite: {
+      findFirst: async () => ({
+        id: 'invite-1',
+        email: 'colaborador@empresa.com',
+        role: UserRole.EMPLOYEE,
+        companyId: 'company-1',
+        departmentId: 'department-1',
+        token: 'expired-token',
+        accepted: false,
+        expiresAt: new Date(Date.now() - 1000),
+        createdAt: new Date('2026-05-01T10:00:00.000Z'),
+        department: {
+          id: 'department-1',
+          name: 'Comercial',
+          managerId: null,
+        },
+      }),
+      update: async ({ data }: { data: { token: string; expiresAt: Date } }) => ({
+        id: 'invite-1',
+        email: 'colaborador@empresa.com',
+        role: UserRole.EMPLOYEE,
+        accepted: false,
+        token: data.token,
+        expiresAt: data.expiresAt,
+        createdAt: new Date('2026-05-01T10:00:00.000Z'),
+        department: {
+          id: 'department-1',
+          name: 'Comercial',
+        },
+      }),
+    },
+  };
+
+  const service = new InvitesService(
+    prisma as never,
+    {
+      sendInviteEmail: async (message: Record<string, unknown>) => {
+        sentMessages.push(message);
+      },
+    } as never,
+    { execute: async () => undefined } as never,
+  );
+
+  await service.resend(
+    { sub: 'user-1', email: 'diretor@empresa.com', role: UserRole.DIRECTOR },
+    'invite-1',
+  );
+
+  assert.notEqual(sentMessages[0]?.token, 'expired-token');
+});
+
+void test('InvitesService does not resend an accepted invite', async () => {
+  const prisma = {
+    user: {
+      findUnique: async () => ({
+        companyId: 'company-1',
+        company: { name: 'Empresa X' },
+      }),
+    },
+    department: {
+      count: async () => 1,
+    },
+    invite: {
+      findFirst: async () => ({
+        id: 'invite-1',
+        email: 'colaborador@empresa.com',
+        role: UserRole.EMPLOYEE,
+        companyId: 'company-1',
+        departmentId: 'department-1',
+        token: 'token-1',
+        accepted: true,
+        expiresAt: new Date(Date.now() + 1000),
+        createdAt: new Date(),
+        department: {
+          id: 'department-1',
+          name: 'Comercial',
+          managerId: null,
+        },
+      }),
+    },
+  };
+
+  const service = new InvitesService(
+    prisma as never,
+    { sendInviteEmail: async () => undefined } as never,
+    { execute: async () => undefined } as never,
+  );
+
+  await assert.rejects(
+    () =>
+      service.resend(
+        { sub: 'user-1', email: 'diretor@empresa.com', role: UserRole.DIRECTOR },
+        'invite-1',
+      ),
+    ConflictException,
+  );
+});
+
+void test('InvitesController protects create, list, details and resend for directors only', () => {
+  const createRoles = Reflect.getMetadata(ROLES_KEY, InvitesController.prototype.create) as UserRole[];
+  const listRoles = Reflect.getMetadata(ROLES_KEY, InvitesController.prototype.list) as UserRole[];
+  const getRoles = Reflect.getMetadata(ROLES_KEY, InvitesController.prototype.getById) as UserRole[];
+  const resendRoles = Reflect.getMetadata(ROLES_KEY, InvitesController.prototype.resend) as UserRole[];
+
+  assert.deepEqual(createRoles, [UserRole.DIRECTOR]);
+  assert.deepEqual(listRoles, [UserRole.DIRECTOR]);
+  assert.deepEqual(getRoles, [UserRole.DIRECTOR]);
+  assert.deepEqual(resendRoles, [UserRole.DIRECTOR]);
 });

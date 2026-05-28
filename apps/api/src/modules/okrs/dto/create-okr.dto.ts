@@ -1,4 +1,6 @@
-import { IsNotEmpty, IsNumber, IsString, IsUUID, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+import { OKRMetricType } from '@prisma/client';
+import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateOkrDto {
   @IsString()
@@ -11,7 +13,15 @@ export class CreateOkrDto {
   @IsUUID()
   responsibleId!: string;
 
-  @IsNumber()
-  @Min(0.000001)
+  @IsEnum(OKRMetricType)
+  metricType!: OKRMetricType;
+
+  @Type(() => Number)
+  @IsNumber({ allowInfinity: false, allowNaN: false })
+  @IsOptional()
+  currentValue?: number;
+
+  @Type(() => Number)
+  @IsNumber({ allowInfinity: false, allowNaN: false })
   targetValue!: number;
 }

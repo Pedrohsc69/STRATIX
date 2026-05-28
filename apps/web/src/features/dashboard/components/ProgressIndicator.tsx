@@ -1,11 +1,13 @@
 type ProgressIndicatorProps = {
   value: number;
   tone?: "brand" | "success" | "warning" | "danger";
+  label?: string;
 };
 
 export function ProgressIndicator({
   value,
   tone = "brand",
+  label,
 }: ProgressIndicatorProps) {
   const clampedValue = Math.max(0, Math.min(100, value));
 
@@ -24,7 +26,7 @@ export function ProgressIndicator({
           style={{ width: `${clampedValue}%` }}
         />
       </div>
-      <p className="text-xs font-medium text-[#6B7280] mt-2">{clampedValue}%</p>
+      <p className="text-xs font-medium text-[#6B7280] mt-2">{label ?? `${clampedValue}%`}</p>
     </div>
   );
 }

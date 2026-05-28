@@ -72,7 +72,7 @@ const menuItems: MenuItem[] = [
     label: "Funcionários",
     path: "/employees",
     icon: Users,
-    requiredPermissions: ["users:manage"],
+    requiredPermissions: ["users:manage", "users:view:department"],
   },
   {
     label: "Configurações",

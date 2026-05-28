@@ -4,6 +4,11 @@ import { ProgressIndicator } from "../../dashboard/components/ProgressIndicator"
 import { OKRActions } from "./OKRActions";
 import { OKRStatusBadge } from "./OKRStatusBadge";
 import type { OkrItem } from "../types/okrs.types";
+import {
+  formatOkrProgress,
+  formatOkrValue,
+  getMetricTypeLabel,
+} from "../utils/okr-formatters";
 
 type OKRsTableProps = {
   okrs: OkrItem[];
@@ -80,16 +85,24 @@ export function OKRsTable({
                     <p className="mt-1 text-sm text-[#6B7280]">
                       {okr.isOwnedByCurrentUser ? "Sob sua responsabilidade" : "OKR compartilhado"}
                     </p>
+                    <p className="mt-2 text-xs font-medium uppercase tracking-[0.18em] text-[#1E4E79]">
+                      {getMetricTypeLabel(okr.metricType)}
+                    </p>
                   </td>
                   <td className="py-5 pr-4 text-sm text-[#1F2937]">{okr.objectiveName}</td>
                   <td className="py-5 pr-4 text-sm text-[#1F2937]">{okr.cycleName}</td>
                   <td className="py-5 pr-4 text-sm text-[#1F2937]">{okr.departmentName}</td>
                   <td className="py-5 pr-4 text-sm text-[#1F2937]">{okr.responsibleName}</td>
                   <td className="py-5 pr-4 text-sm font-medium text-[#1F2937]">
-                    {okr.currentValue} / {okr.targetValue}
+                    {formatOkrValue(okr.currentValue, okr.metricType)} /{" "}
+                    {formatOkrValue(okr.targetValue, okr.metricType)}
                   </td>
                   <td className="min-w-40 py-5 pr-4">
-                    <ProgressIndicator value={okr.progress} tone={getProgressTone(okr.progress)} />
+                    <ProgressIndicator
+                      value={okr.progress}
+                      tone={getProgressTone(okr.progress)}
+                      label={formatOkrProgress(okr.progress)}
+                    />
                   </td>
                   <td className="py-5 pr-4">
                     <OKRStatusBadge status={okr.status} />

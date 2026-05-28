@@ -19,9 +19,10 @@ import { ObjetivoModule } from './modules/objetivo/objetivo.module';
 import { ObjectivesModule } from './modules/objectives/objectives.module';
 import { OkrModule } from './modules/okr/okr.module';
 import { OkrsModule } from './modules/okrs/okrs.module';
-import { RelatorioModule } from './modules/relatorio/relatorio.module';
+import { ReportsModule } from './modules/reports/reports.module';
 import { SessionModule } from './modules/session/session.module';
 import { StrategicCyclesModule } from './modules/strategic-cycles/strategic-cycles.module';
+import { UsersModule } from './modules/users/users.module';
 
 @Module({
   imports: [
@@ -44,11 +45,12 @@ import { StrategicCyclesModule } from './modules/strategic-cycles/strategic-cycl
     OkrModule,
     OkrsModule,
     DashboardModule,
-    RelatorioModule,
+    ReportsModule,
     AuditModule,
     EventModule,
     SessionModule,
     StrategicCyclesModule,
+    UsersModule,
   ],
   controllers: [HealthController],
   providers: [PrismaService],
