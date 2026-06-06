@@ -1,11 +1,11 @@
-import { Filter, Plus, Search, X } from "lucide-react";
+import { Filter, Plus, Search, X } from 'lucide-react';
 import type {
   OkrCycleOption,
   OkrDepartmentOption,
   OkrObjectiveOption,
   OkrResponsibleOption,
   OkrsFilters as OkrsFiltersState,
-} from "../types/okrs.types";
+} from '../types/okrs.types';
 
 type OKRsFiltersProps = {
   filters: OkrsFiltersState;
@@ -104,6 +104,7 @@ export function OKRsFilters({
             {cycles.map((cycle) => (
               <option key={cycle.id} value={cycle.id}>
                 {cycle.name}
+                {!cycle.isCycleEditable ? ' • somente leitura' : ''}
               </option>
             ))}
           </select>
@@ -120,6 +121,7 @@ export function OKRsFilters({
             {objectives.map((objective) => (
               <option key={objective.id} value={objective.id}>
                 {objective.name}
+                {!objective.isCycleEditable ? ' • somente leitura' : ''}
               </option>
             ))}
           </select>
@@ -146,7 +148,7 @@ export function OKRsFilters({
           <select
             value={filters.status}
             onChange={(event) =>
-              onChange({ status: event.target.value as OkrsFiltersState["status"] })
+              onChange({ status: event.target.value as OkrsFiltersState['status'] })
             }
             className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-[#1F2937] outline-none transition-colors focus:border-[#1E4E79]"
           >

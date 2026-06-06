@@ -3,10 +3,11 @@ import type {
   DashboardPermission,
   DashboardRole,
   DashboardScope,
-} from "../../dashboard/dashboard.types";
+} from '../../dashboard/dashboard.types';
 
-export type ObjectiveStatus = "IN_PROGRESS" | "COMPLETED" | "AT_RISK";
-export type ObjectivePriority = "UNSPECIFIED";
+export type ObjectiveStatus = 'IN_PROGRESS' | 'COMPLETED' | 'AT_RISK';
+export type ObjectivePriority = 'UNSPECIFIED';
+export type ObjectiveCycleStatus = 'ACTIVE' | 'CLOSED';
 
 export type ObjectiveItem = {
   id: string;
@@ -14,6 +15,9 @@ export type ObjectiveItem = {
   description: string;
   cycleId: string;
   cycleName: string;
+  cycleStatus: ObjectiveCycleStatus;
+  cycleEndDate: string;
+  isCycleEditable: boolean;
   departmentId: string;
   departmentName: string;
   status: ObjectiveStatus;
@@ -43,6 +47,9 @@ export type ObjectiveDepartmentOption = {
 export type ObjectiveCycleOption = {
   id: string;
   name: string;
+  cycleStatus: ObjectiveCycleStatus;
+  cycleEndDate: string;
+  isCycleEditable: boolean;
 };
 
 export type ObjectivesResponse = {
@@ -63,8 +70,8 @@ export type ObjectivesFilters = {
   search: string;
   departmentId: string;
   cycleId: string;
-  status: "" | ObjectiveStatus;
-  priority: "" | ObjectivePriority;
+  status: '' | ObjectiveStatus;
+  priority: '' | ObjectivePriority;
 };
 
 export type ObjectivePayload = {

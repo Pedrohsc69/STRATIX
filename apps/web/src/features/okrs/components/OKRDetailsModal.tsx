@@ -1,12 +1,8 @@
-import { Clock3, X } from "lucide-react";
-import { ProgressIndicator } from "../../dashboard/components/ProgressIndicator";
-import { OKRStatusBadge } from "./OKRStatusBadge";
-import type { OkrItem } from "../types/okrs.types";
-import {
-  formatOkrProgress,
-  formatOkrValue,
-  getMetricTypeLabel,
-} from "../utils/okr-formatters";
+import { Clock3, X } from 'lucide-react';
+import { ProgressIndicator } from '../../dashboard/components/ProgressIndicator';
+import { OKRStatusBadge } from './OKRStatusBadge';
+import type { OkrItem } from '../types/okrs.types';
+import { formatOkrProgress, formatOkrValue, getMetricTypeLabel } from '../utils/okr-formatters';
 
 type OKRDetailsModalProps = {
   okr: OkrItem;
@@ -14,7 +10,7 @@ type OKRDetailsModalProps = {
 };
 
 function formatDate(value: string) {
-  return new Date(value).toLocaleDateString("pt-BR");
+  return new Date(value).toLocaleDateString('pt-BR');
 }
 
 export function OKRDetailsModal({ okr, onClose }: OKRDetailsModalProps) {
@@ -33,6 +29,14 @@ export function OKRDetailsModal({ okr, onClose }: OKRDetailsModalProps) {
           >
             <X className="h-5 w-5" />
           </button>
+        </div>
+
+        <div className="px-6 pt-6">
+          {!okr.isCycleEditable ? (
+            <div className="rounded-2xl border border-[#BFDBFE] bg-[#EFF6FF] px-4 py-3 text-sm text-[#1E3A8A]">
+              Este OKR pertence a um ciclo disponível apenas para consulta.
+            </div>
+          ) : null}
         </div>
 
         <div className="grid gap-6 px-6 py-6 md:grid-cols-2">
@@ -61,18 +65,24 @@ export function OKRDetailsModal({ okr, onClose }: OKRDetailsModalProps) {
             </div>
             <div>
               <p className="text-sm text-[#6B7280]">Tipo de métrica</p>
-              <p className="mt-1 font-medium text-[#1F2937]">{getMetricTypeLabel(okr.metricType)}</p>
+              <p className="mt-1 font-medium text-[#1F2937]">
+                {getMetricTypeLabel(okr.metricType)}
+              </p>
             </div>
             <div>
               <p className="text-sm text-[#6B7280]">Valor atual / meta</p>
               <p className="mt-1 font-medium text-[#1F2937]">
-                {formatOkrValue(okr.currentValue, okr.metricType)} /{" "}
+                {formatOkrValue(okr.currentValue, okr.metricType)} /{' '}
                 {formatOkrValue(okr.targetValue, okr.metricType)}
               </p>
             </div>
             <div>
               <p className="mb-2 text-sm text-[#6B7280]">Progresso consolidado</p>
-              <ProgressIndicator value={okr.progress} tone="brand" label={formatOkrProgress(okr.progress)} />
+              <ProgressIndicator
+                value={okr.progress}
+                tone="brand"
+                label={formatOkrProgress(okr.progress)}
+              />
             </div>
             <div>
               <p className="text-sm text-[#6B7280]">Última atualização</p>

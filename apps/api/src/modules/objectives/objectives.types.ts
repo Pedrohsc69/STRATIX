@@ -1,4 +1,4 @@
-import type { UserRole } from '@prisma/client';
+import type { CycleStatus, UserRole } from '@prisma/client';
 import type {
   DashboardCompanyContext,
   DashboardDepartmentContext,
@@ -18,6 +18,9 @@ export type ObjectiveDepartmentOption = {
 export type ObjectiveCycleOption = {
   id: string;
   name: string;
+  cycleStatus: CycleStatus;
+  cycleEndDate: string;
+  isCycleEditable: boolean;
 };
 
 export type ObjectiveItem = {
@@ -26,6 +29,9 @@ export type ObjectiveItem = {
   description: string;
   cycleId: string;
   cycleName: string;
+  cycleStatus: CycleStatus;
+  cycleEndDate: string;
+  isCycleEditable: boolean;
   departmentId: string;
   departmentName: string;
   status: ObjectiveStatus;

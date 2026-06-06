@@ -1,19 +1,15 @@
-import { useMemo, useState } from "react";
-import { DashboardLayout } from "../../dashboard/DashboardLayout";
-import { EmptyDashboardState } from "../../dashboard/components/EmptyDashboardState";
-import { useDashboardScope } from "../../dashboard/hooks/useDashboardScope";
-import {
-  createObjective,
-  deleteObjective,
-  updateObjective,
-} from "../services/objectives.service";
-import { ObjectiveDetailsDialog } from "../components/ObjectiveDetailsDialog";
-import { ObjectiveFormDialog } from "../components/ObjectiveFormDialog";
-import { ObjectivesFilters } from "../components/ObjectivesFilters";
-import { ObjectivesKpiCards } from "../components/ObjectivesKpiCards";
-import { ObjectivesTable } from "../components/ObjectivesTable";
-import { useObjectives } from "../hooks/useObjectives";
-import type { ObjectiveItem, ObjectivePayload } from "../types/objectives.types";
+import { useMemo, useState } from 'react';
+import { DashboardLayout } from '../../dashboard/DashboardLayout';
+import { EmptyDashboardState } from '../../dashboard/components/EmptyDashboardState';
+import { useDashboardScope } from '../../dashboard/hooks/useDashboardScope';
+import { createObjective, deleteObjective, updateObjective } from '../services/objectives.service';
+import { ObjectiveDetailsDialog } from '../components/ObjectiveDetailsDialog';
+import { ObjectiveFormDialog } from '../components/ObjectiveFormDialog';
+import { ObjectivesFilters } from '../components/ObjectivesFilters';
+import { ObjectivesKpiCards } from '../components/ObjectivesKpiCards';
+import { ObjectivesTable } from '../components/ObjectivesTable';
+import { useObjectives } from '../hooks/useObjectives';
+import type { ObjectiveItem, ObjectivePayload } from '../types/objectives.types';
 
 function LoadingState() {
   return (
@@ -31,16 +27,16 @@ function LoadingState() {
   );
 }
 
-function getPageDescription(role: "DIRECTOR" | "MANAGER" | "EMPLOYEE") {
-  if (role === "DIRECTOR") {
-    return "Visão corporativa dos objetivos estratégicos, com leitura executiva e capacidade de gestão em toda a empresa.";
+function getPageDescription(role: 'DIRECTOR' | 'MANAGER' | 'EMPLOYEE') {
+  if (role === 'DIRECTOR') {
+    return 'Visão corporativa dos objetivos estratégicos, com leitura executiva e capacidade de gestão em toda a empresa.';
   }
 
-  if (role === "MANAGER") {
-    return "Acompanhe e gerencie os objetivos do seu departamento, com foco operacional e vínculo direto aos ciclos.";
+  if (role === 'MANAGER') {
+    return 'Acompanhe e gerencie os objetivos do seu departamento, com foco operacional e vínculo direto aos ciclos.';
   }
 
-  return "Consulte os objetivos estratégicos do seu departamento em modo leitura, sem ações administrativas.";
+  return 'Consulte os objetivos estratégicos do seu departamento em modo leitura, sem ações administrativas.';
 }
 
 function getRequestErrorMessage(error: unknown) {
@@ -52,15 +48,15 @@ function getRequestErrorMessage(error: unknown) {
     };
   };
 
-  if (typeof maybeError.response?.data?.message === "string") {
+  if (typeof maybeError.response?.data?.message === 'string') {
     return maybeError.response.data.message;
   }
 
   if (Array.isArray(maybeError.response?.data?.message)) {
-    return maybeError.response.data.message.join(", ");
+    return maybeError.response.data.message.join(', ');
   }
 
-  return "Não foi possível concluir a operação com o objetivo estratégico.";
+  return 'Não foi possível concluir a operação com o objetivo estratégico.';
 }
 
 export function ObjectivesPage() {
@@ -75,13 +71,21 @@ export function ObjectivesPage() {
   const [formError, setFormError] = useState<string | null>(null);
 
   const canCreateObjectives =
-    canAccess("objectives:manage") || canAccess("objectives:manage:department");
+    canAccess('objectives:manage') || canAccess('objectives:manage:department');
   const canEditObjectives = canCreateObjectives;
-  const canDeleteObjectives = canAccess("objectives:manage");
-  const showDepartmentFilter = data?.role === "DIRECTOR";
+  const canDeleteObjectives = canAccess('objectives:manage');
+  const showDepartmentFilter = data?.role === 'DIRECTOR';
   const pageDescription = data ? getPageDescription(data.role) : undefined;
 
-  const defaultCycleId = useMemo(() => data?.filters.cycles[0]?.id ?? "", [data]);
+  const editableCycles = useMemo(
+    () => data?.filters.cycles.filter((cycle) => cycle.isCycleEditable) ?? [],
+    [data],
+  );
+  const selectedCycle = useMemo(
+    () => data?.filters.cycles.find((cycle) => cycle.id === filters.cycleId) ?? null,
+    [data, filters.cycleId],
+  );
+  const defaultCycleId = useMemo(() => editableCycles[0]?.id ?? '', [editableCycles]);
 
   const handleCreate = async (payload: ObjectivePayload) => {
     try {
@@ -116,6 +120,11 @@ export function ObjectivesPage() {
   };
 
   const handleDelete = async (objective: ObjectiveItem) => {
+    if (!objective.isCycleEditable) {
+      window.alert('Objetivos de ciclos somente leitura não podem ser alterados.');
+      return;
+    }
+
     const confirmed = window.confirm(`Deseja excluir o objetivo "${objective.name}"?`);
 
     if (!confirmed) {
@@ -146,13 +155,19 @@ export function ObjectivesPage() {
       <div className="min-h-screen bg-[#F5F7FA] p-8">
         <EmptyDashboardState
           title="Objetivos estratégicos indisponíveis"
-          description={error ?? "Não foi possível carregar o portfólio de objetivos."}
+          description={error ?? 'Não foi possível carregar o portfólio de objetivos.'}
         />
       </div>
     );
   }
 
-  const canCreateWithCycles = canCreateObjectives && data.filters.cycles.length > 0;
+  const selectedCycleIsReadOnly = selectedCycle ? !selectedCycle.isCycleEditable : false;
+  const canCreateWithCycles =
+    canCreateObjectives && editableCycles.length > 0 && !selectedCycleIsReadOnly;
+  const canEditObjective = (objective: ObjectiveItem) =>
+    canEditObjectives && objective.isCycleEditable;
+  const canDeleteObjective = (objective: ObjectiveItem) =>
+    canDeleteObjectives && objective.isCycleEditable;
 
   return (
     <DashboardLayout
@@ -165,6 +180,13 @@ export function ObjectivesPage() {
     >
       <div className="space-y-6">
         <ObjectivesKpiCards kpis={data.kpis} />
+
+        {selectedCycleIsReadOnly ? (
+          <div className="rounded-2xl border border-[#BFDBFE] bg-[#EFF6FF] px-4 py-3 text-sm text-[#1E3A8A]">
+            O ciclo selecionado está disponível apenas para consulta. Criação e manutenção de
+            objetivos foram ocultadas.
+          </div>
+        ) : null}
 
         <ObjectivesFilters
           filters={filters}
@@ -183,11 +205,15 @@ export function ObjectivesPage() {
 
         <ObjectivesTable
           objectives={data.objectives}
-          canEdit={canEditObjectives}
-          canDelete={canDeleteObjectives}
+          canEdit={canEditObjective}
+          canDelete={canDeleteObjective}
           busyObjectiveId={busyObjectiveId}
           onView={setSelectedObjective}
           onEdit={(objective) => {
+            if (!objective.isCycleEditable) {
+              window.alert('Objetivos de ciclos somente leitura não podem ser alterados.');
+              return;
+            }
             setFormError(null);
             setEditingObjective(objective);
           }}
@@ -205,19 +231,22 @@ export function ObjectivesPage() {
       {isCreateOpen ? (
         <ObjectiveFormDialog
           title="Novo objetivo estratégico"
-          cycles={data.filters.cycles}
+          cycles={editableCycles}
           initialObjective={
             defaultCycleId
               ? ({
-                  id: "",
-                  name: "",
-                  description: "",
+                  id: '',
+                  name: '',
+                  description: '',
                   cycleId: defaultCycleId,
-                  cycleName: "",
-                  departmentId: "",
-                  departmentName: "",
-                  status: "IN_PROGRESS",
-                  priority: "UNSPECIFIED",
+                  cycleName: '',
+                  cycleStatus: 'ACTIVE',
+                  cycleEndDate: new Date().toISOString(),
+                  isCycleEditable: true,
+                  departmentId: '',
+                  departmentName: '',
+                  status: 'IN_PROGRESS',
+                  priority: 'UNSPECIFIED',
                   progress: 0,
                   okrsCount: 0,
                   ownerNames: [],
@@ -241,7 +270,7 @@ export function ObjectivesPage() {
       {editingObjective ? (
         <ObjectiveFormDialog
           title="Editar objetivo estratégico"
-          cycles={data.filters.cycles}
+          cycles={editableCycles}
           initialObjective={editingObjective}
           loading={submitting}
           error={formError}

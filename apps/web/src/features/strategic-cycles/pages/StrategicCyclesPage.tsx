@@ -1,22 +1,19 @@
-import { useMemo, useState } from "react";
-import { DashboardLayout } from "../../dashboard/DashboardLayout";
-import { EmptyDashboardState } from "../../dashboard/components/EmptyDashboardState";
-import { useDashboardScope } from "../../dashboard/hooks/useDashboardScope";
+import { useMemo, useState } from 'react';
+import { DashboardLayout } from '../../dashboard/DashboardLayout';
+import { EmptyDashboardState } from '../../dashboard/components/EmptyDashboardState';
+import { useDashboardScope } from '../../dashboard/hooks/useDashboardScope';
 import {
   closeStrategicCycle,
   createStrategicCycle,
   updateStrategicCycle,
-} from "../services/strategic-cycles.service";
-import { StrategicCycleDetailsDialog } from "../components/StrategicCycleDetailsDialog";
-import { StrategicCycleFormDialog } from "../components/StrategicCycleFormDialog";
-import { StrategicCyclesFilters } from "../components/StrategicCyclesFilters";
-import { StrategicCyclesKpiCards } from "../components/StrategicCyclesKpiCards";
-import { StrategicCyclesTable } from "../components/StrategicCyclesTable";
-import { useStrategicCycles } from "../hooks/useStrategicCycles";
-import type {
-  StrategicCycleItem,
-  StrategicCyclePayload,
-} from "../types/strategic-cycles.types";
+} from '../services/strategic-cycles.service';
+import { StrategicCycleDetailsDialog } from '../components/StrategicCycleDetailsDialog';
+import { StrategicCycleFormDialog } from '../components/StrategicCycleFormDialog';
+import { StrategicCyclesFilters } from '../components/StrategicCyclesFilters';
+import { StrategicCyclesKpiCards } from '../components/StrategicCyclesKpiCards';
+import { StrategicCyclesTable } from '../components/StrategicCyclesTable';
+import { useStrategicCycles } from '../hooks/useStrategicCycles';
+import type { StrategicCycleItem, StrategicCyclePayload } from '../types/strategic-cycles.types';
 
 function LoadingState() {
   return (
@@ -34,16 +31,16 @@ function LoadingState() {
   );
 }
 
-function getPageDescription(role: "DIRECTOR" | "MANAGER" | "EMPLOYEE") {
-  if (role === "DIRECTOR") {
-    return "Visão corporativa dos ciclos estratégicos, com filtros por departamento, andamento e período.";
+function getPageDescription(role: 'DIRECTOR' | 'MANAGER' | 'EMPLOYEE') {
+  if (role === 'DIRECTOR') {
+    return 'Visão corporativa dos ciclos estratégicos, com filtros por departamento, andamento e período.';
   }
 
-  if (role === "MANAGER") {
-    return "Acompanhe exclusivamente os ciclos vinculados ao seu departamento, com foco operacional e leitura rápida.";
+  if (role === 'MANAGER') {
+    return 'Acompanhe exclusivamente os ciclos vinculados ao seu departamento, com foco operacional e leitura rápida.';
   }
 
-  return "Consulte os ciclos estratégicos do seu departamento em modo leitura.";
+  return 'Consulte os ciclos estratégicos do seu departamento em modo leitura.';
 }
 
 function getRequestErrorMessage(error: unknown) {
@@ -55,20 +52,19 @@ function getRequestErrorMessage(error: unknown) {
     };
   };
 
-  if (typeof maybeError.response?.data?.message === "string") {
+  if (typeof maybeError.response?.data?.message === 'string') {
     return maybeError.response.data.message;
   }
 
   if (Array.isArray(maybeError.response?.data?.message)) {
-    return maybeError.response.data.message.join(", ");
+    return maybeError.response.data.message.join(', ');
   }
 
-  return "Não foi possível concluir a operação com o ciclo estratégico.";
+  return 'Não foi possível concluir a operação com o ciclo estratégico.';
 }
 
 export function StrategicCyclesPage() {
-  const { data, filters, loading, error, setFilters, resetFilters, reload } =
-    useStrategicCycles();
+  const { data, filters, loading, error, setFilters, resetFilters, reload } = useStrategicCycles();
   const { permissions, canAccess } = useDashboardScope(data?.permissions);
 
   const [selectedCycle, setSelectedCycle] = useState<StrategicCycleItem | null>(null);
@@ -78,20 +74,20 @@ export function StrategicCyclesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const canManageCycles = canAccess("cycles:manage");
-  const showDepartmentFilter = data?.role === "DIRECTOR";
+  const canManageCycles = canAccess('cycles:manage');
+  const showDepartmentFilter = data?.role === 'DIRECTOR';
   const pageDescription = data ? getPageDescription(data.role) : undefined;
 
   const defaultDepartmentId = useMemo(() => {
     if (!data) {
-      return "";
+      return '';
     }
 
-    if (data.role === "DIRECTOR") {
-      return data.filters.departments[0]?.id ?? "";
+    if (data.role === 'DIRECTOR') {
+      return data.filters.departments[0]?.id ?? '';
     }
 
-    return data.context.department?.id ?? data.filters.departments[0]?.id ?? "";
+    return data.context.department?.id ?? data.filters.departments[0]?.id ?? '';
   }, [data]);
 
   const handleCreate = async (payload: StrategicCyclePayload) => {
@@ -157,7 +153,7 @@ export function StrategicCyclesPage() {
       <div className="min-h-screen bg-[#F5F7FA] p-8">
         <EmptyDashboardState
           title="Ciclos estratégicos indisponíveis"
-          description={error ?? "Não foi possível carregar o portfólio estratégico."}
+          description={error ?? 'Não foi possível carregar o portfólio estratégico.'}
         />
       </div>
     );
@@ -196,6 +192,10 @@ export function StrategicCyclesPage() {
           busyCycleId={busyCycleId}
           onView={setSelectedCycle}
           onEdit={(cycle) => {
+            if (cycle.status === 'CLOSED') {
+              window.alert('Ciclos encerrados estão disponíveis apenas para consulta.');
+              return;
+            }
             setFormError(null);
             setEditingCycle(cycle);
           }}
@@ -204,10 +204,7 @@ export function StrategicCyclesPage() {
       </div>
 
       {selectedCycle ? (
-        <StrategicCycleDetailsDialog
-          cycle={selectedCycle}
-          onClose={() => setSelectedCycle(null)}
-        />
+        <StrategicCycleDetailsDialog cycle={selectedCycle} onClose={() => setSelectedCycle(null)} />
       ) : null}
 
       {isCreateOpen ? (
@@ -217,13 +214,13 @@ export function StrategicCyclesPage() {
           initialCycle={
             defaultDepartmentId
               ? ({
-                  id: "",
-                  name: "",
+                  id: '',
+                  name: '',
                   departmentId: defaultDepartmentId,
-                  departmentName: "",
-                  status: "ACTIVE",
-                  startDate: "",
-                  endDate: "",
+                  departmentName: '',
+                  status: 'ACTIVE',
+                  startDate: '',
+                  endDate: '',
                   progress: 0,
                   objectivesCount: 0,
                   okrsCount: 0,

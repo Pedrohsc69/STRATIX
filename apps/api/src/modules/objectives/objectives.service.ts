@@ -1,9 +1,4 @@
-import {
-  BadRequestException,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { CycleStatus, type Prisma, type UserRole } from '@prisma/client';
 import { PrismaService } from '../../core/shared/prisma.service';
 import { AUDIT_ACTIONS, AUDIT_ENTITIES } from '../audit/audit.constants';
@@ -11,6 +6,10 @@ import { AuditService } from '../audit/audit.service';
 import type { AuditRequestContext } from '../audit/audit.types';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { DashboardDomainService } from '../dashboard/domain/services/dashboard-domain.service';
+import {
+  assertCycleIsEditable,
+  isCycleEditable,
+} from '../strategic-cycles/utils/cycle-editability';
 import { CreateObjectiveDto } from './dto/create-objective.dto';
 import { ListObjectivesDto } from './dto/list-objectives.dto';
 import { UpdateObjectiveDto } from './dto/update-objective.dto';
@@ -61,10 +60,7 @@ export class ObjectivesService {
     private readonly auditService: AuditService,
   ) {}
 
-  async list(
-    actor: AuthenticatedUser,
-    filters: ListObjectivesDto,
-  ): Promise<ObjectivesResponse> {
+  async list(actor: AuthenticatedUser, filters: ListObjectivesDto): Promise<ObjectivesResponse> {
     const user = await this.prisma.user.findUnique({
       where: { id: actor.sub },
       include: {
@@ -181,8 +177,13 @@ export class ObjectivesService {
       throw new NotFoundException('User company not found');
     }
 
-    const cycle = await this.findCycleInScope(user.role, user.companyId, user.departmentId, input.cycleId);
-    this.assertCycleWritable(cycle);
+    const cycle = await this.findCycleInScope(
+      user.role,
+      user.companyId,
+      user.departmentId,
+      input.cycleId,
+    );
+    assertCycleIsEditable(cycle, 'Objective can only be linked to an active strategic cycle');
 
     const created = await this.prisma.objective.create({
       data: {
@@ -231,7 +232,12 @@ export class ObjectivesService {
     }
 
     const existing = await this.prisma.objective.findFirst({
-      where: this.buildObjectiveScopeWhere(user.role, user.companyId, user.departmentId, objectiveId),
+      where: this.buildObjectiveScopeWhere(
+        user.role,
+        user.companyId,
+        user.departmentId,
+        objectiveId,
+      ),
       include: this.objectiveInclude(),
     });
 
@@ -240,13 +246,17 @@ export class ObjectivesService {
     }
 
     const oldObjective = this.toObjectiveAuditPayload(existing);
+    assertCycleIsEditable(
+      existing.cycle,
+      'Objective can only be changed while the strategic cycle is active',
+    );
 
     const targetCycle =
       input.cycleId && input.cycleId !== existing.cycleId
         ? await this.findCycleInScope(user.role, user.companyId, user.departmentId, input.cycleId)
         : existing.cycle;
 
-    this.assertCycleWritable(targetCycle);
+    assertCycleIsEditable(targetCycle, 'Objective can only be linked to an active strategic cycle');
 
     const updated = await this.prisma.objective.update({
       where: { id: objectiveId },
@@ -296,13 +306,23 @@ export class ObjectivesService {
     }
 
     const objective = await this.prisma.objective.findFirst({
-      where: this.buildObjectiveScopeWhere(user.role, user.companyId, user.departmentId, objectiveId),
+      where: this.buildObjectiveScopeWhere(
+        user.role,
+        user.companyId,
+        user.departmentId,
+        objectiveId,
+      ),
       include: this.objectiveInclude(),
     });
 
     if (!objective) {
       throw new NotFoundException('Objective not found');
     }
+
+    assertCycleIsEditable(
+      objective.cycle,
+      'Objective can only be changed while the strategic cycle is active',
+    );
 
     if (objective.okrs.length > 0) {
       throw new BadRequestException('Objective has linked OKRs and cannot be deleted');
@@ -437,23 +457,35 @@ export class ObjectivesService {
       return [];
     }
 
-    return this.prisma.strategicCycle.findMany({
-      where: {
-        department: {
-          companyId,
+    return this.prisma.strategicCycle
+      .findMany({
+        where: {
+          department: {
+            companyId,
+          },
+          ...(role === 'DIRECTOR'
+            ? {}
+            : departmentId
+              ? { departmentId }
+              : { id: '__no-department__' }),
         },
-        ...(role === 'DIRECTOR'
-          ? {}
-          : departmentId
-          ? { departmentId }
-          : { id: '__no-department__' }),
-      },
-      orderBy: [{ endDate: 'desc' }, { name: 'asc' }],
-      select: {
-        id: true,
-        name: true,
-      },
-    });
+        orderBy: [{ endDate: 'desc' }, { name: 'asc' }],
+        select: {
+          id: true,
+          name: true,
+          status: true,
+          endDate: true,
+        },
+      })
+      .then((cycles) =>
+        cycles.map((cycle) => ({
+          id: cycle.id,
+          name: cycle.name,
+          cycleStatus: cycle.status,
+          cycleEndDate: cycle.endDate.toISOString(),
+          isCycleEditable: isCycleEditable(cycle),
+        })),
+      );
   }
 
   private async findCycleInScope(
@@ -471,8 +503,8 @@ export class ObjectivesService {
         ...(role === 'DIRECTOR'
           ? {}
           : departmentId
-          ? { departmentId }
-          : { id: '__no-department__' }),
+            ? { departmentId }
+            : { id: '__no-department__' }),
       },
       include: {
         department: {
@@ -497,15 +529,6 @@ export class ObjectivesService {
     return cycle;
   }
 
-  private assertCycleWritable(cycle: {
-    status: CycleStatus;
-    endDate: Date;
-  }) {
-    if (cycle.status !== CycleStatus.ACTIVE || cycle.endDate.getTime() < Date.now()) {
-      throw new ForbiddenException('Objective can only be linked to an active strategic cycle');
-    }
-  }
-
   private matchesStatus(status: ObjectiveStatus, filter?: ListObjectivesDto['status']) {
     if (!filter) {
       return true;
@@ -516,9 +539,15 @@ export class ObjectivesService {
 
   private buildKpis(objectives: ObjectiveItem[]) {
     const totalObjectives = objectives.length;
-    const activeObjectives = objectives.filter((objective) => objective.status === 'IN_PROGRESS').length;
-    const completedObjectives = objectives.filter((objective) => objective.status === 'COMPLETED').length;
-    const atRiskObjectives = objectives.filter((objective) => objective.status === 'AT_RISK').length;
+    const activeObjectives = objectives.filter(
+      (objective) => objective.status === 'IN_PROGRESS',
+    ).length;
+    const completedObjectives = objectives.filter(
+      (objective) => objective.status === 'COMPLETED',
+    ).length;
+    const atRiskObjectives = objectives.filter(
+      (objective) => objective.status === 'AT_RISK',
+    ).length;
     const completionRate = this.dashboardDomainService.calculateAverageProgress(
       objectives.map((objective) => objective.progress),
     );
@@ -552,6 +581,9 @@ export class ObjectivesService {
       description: objective.description,
       cycleId: objective.cycleId,
       cycleName: objective.cycle.name,
+      cycleStatus: objective.cycle.status,
+      cycleEndDate: objective.cycle.endDate.toISOString(),
+      isCycleEditable: isCycleEditable(objective.cycle),
       departmentId: objective.cycle.department.id,
       departmentName: objective.cycle.department.name,
       status: this.resolveStatus({
@@ -579,7 +611,11 @@ export class ObjectivesService {
       return 'COMPLETED';
     }
 
-    if (input.cycleEndDate.getTime() < Date.now() || input.progress < 40 || input.cycleStatus === CycleStatus.CLOSED) {
+    if (
+      input.cycleEndDate.getTime() < Date.now() ||
+      input.progress < 40 ||
+      input.cycleStatus === CycleStatus.CLOSED
+    ) {
       return 'AT_RISK';
     }
 

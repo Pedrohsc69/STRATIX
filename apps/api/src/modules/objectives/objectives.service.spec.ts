@@ -9,11 +9,18 @@ import { ObjectivesController } from './objectives.controller';
 import { ObjectivesService } from './objectives.service';
 
 function createService(prisma: Record<string, unknown>) {
-  return new ObjectivesService(
-    prisma as never,
-    new DashboardDomainService(),
-    { log: async () => undefined } as never,
-  );
+  return new ObjectivesService(prisma as never, new DashboardDomainService(), {
+    log: async () => undefined,
+  } as never);
+}
+
+function buildCycleOption(id: string, name: string, status: 'ACTIVE' | 'CLOSED' = 'ACTIVE') {
+  return {
+    id,
+    name,
+    status,
+    endDate: new Date('2026-07-01T00:00:00Z'),
+  };
 }
 
 void test('ObjectivesService lists company objectives only for the director company', async () => {
@@ -35,7 +42,7 @@ void test('ObjectivesService lists company objectives only for the director comp
       findMany: async () => [{ id: 'department-1', name: 'Marketing' }],
     },
     strategicCycle: {
-      findMany: async () => [{ id: 'cycle-1', name: 'Ciclo 1' }],
+      findMany: async () => [buildCycleOption('cycle-1', 'Ciclo 1')],
     },
     objective: {
       findMany: async () => [
@@ -100,7 +107,7 @@ void test('ObjectivesService restricts managers to their own department', async 
       findFirst: async () => ({ id: 'department-1', name: 'Marketing' }),
     },
     strategicCycle: {
-      findMany: async () => [{ id: 'cycle-1', name: 'Ciclo 1' }],
+      findMany: async () => [buildCycleOption('cycle-1', 'Ciclo 1')],
     },
     objective: {
       findMany: async ({ where }: { where: unknown }) => {
@@ -137,7 +144,10 @@ void test('ObjectivesService restricts managers to their own department', async 
   );
 
   assert.equal(response.scope, 'DEPARTMENT');
-  assert.equal(response.objectives.every((objective) => objective.departmentId === 'department-1'), true);
+  assert.equal(
+    response.objectives.every((objective) => objective.departmentId === 'department-1'),
+    true,
+  );
   assert.deepEqual(receivedWhere, {
     cycle: {
       is: {
@@ -167,7 +177,7 @@ void test('ObjectivesService restricts employees to their own department', async
       findFirst: async () => ({ id: 'department-2', name: 'Produto' }),
     },
     strategicCycle: {
-      findMany: async () => [{ id: 'cycle-2', name: 'Ciclo Produto' }],
+      findMany: async () => [buildCycleOption('cycle-2', 'Ciclo Produto')],
     },
     objective: {
       findMany: async () => [
@@ -242,10 +252,218 @@ void test('ObjectivesService blocks creating an objective in a closed cycle', as
   );
 });
 
+void test('ObjectivesService allows listing objectives from a closed cycle', async () => {
+  const service = createService({
+    user: {
+      findUnique: async () => ({
+        id: 'director-1',
+        name: 'Diretora',
+        email: 'diretora@empresa.com',
+        role: UserRole.DIRECTOR,
+        status: UserStatus.ACTIVE,
+        companyId: 'company-1',
+        departmentId: null,
+        company: { id: 'company-1', name: 'Empresa 1', businessArea: 'Tecnologia' },
+        department: null,
+      }),
+    },
+    department: {
+      findMany: async () => [],
+    },
+    strategicCycle: {
+      findMany: async () => [buildCycleOption('cycle-closed', 'Ciclo fechado', 'CLOSED')],
+    },
+    objective: {
+      findMany: async () => [
+        {
+          id: 'objective-closed',
+          name: 'Objetivo legado',
+          description: 'Somente leitura',
+          cycleId: 'cycle-closed',
+          cycle: {
+            id: 'cycle-closed',
+            name: 'Ciclo fechado',
+            status: 'CLOSED',
+            startDate: new Date('2026-01-01T00:00:00Z'),
+            endDate: new Date('2026-02-01T00:00:00Z'),
+            departmentId: 'department-1',
+            department: {
+              id: 'department-1',
+              name: 'Marketing',
+              manager: null,
+            },
+          },
+          okrs: [],
+        },
+      ],
+    },
+  });
+
+  const response = await service.list(
+    { sub: 'director-1', email: 'diretora@empresa.com', role: UserRole.DIRECTOR },
+    {},
+  );
+
+  assert.equal(response.objectives.length, 1);
+  assert.equal(response.objectives[0]?.cycleStatus, 'CLOSED');
+});
+
+void test('ObjectivesService blocks updating an objective from a closed cycle', async () => {
+  const service = createService({
+    user: {
+      findUnique: async () => ({
+        companyId: 'company-1',
+        departmentId: 'department-1',
+        role: UserRole.MANAGER,
+      }),
+    },
+    objective: {
+      findFirst: async () => ({
+        id: 'objective-1',
+        name: 'Objetivo fechado',
+        description: 'Descricao',
+        cycleId: 'cycle-closed',
+        cycle: {
+          id: 'cycle-closed',
+          name: 'Ciclo fechado',
+          status: 'CLOSED',
+          startDate: new Date('2026-01-01T00:00:00Z'),
+          endDate: new Date('2026-02-01T00:00:00Z'),
+          departmentId: 'department-1',
+          department: {
+            id: 'department-1',
+            name: 'Marketing',
+            manager: null,
+          },
+        },
+        okrs: [],
+      }),
+    },
+  });
+
+  await assert.rejects(
+    () =>
+      service.update(
+        { sub: 'manager-1', email: 'gestora@empresa.com', role: UserRole.MANAGER },
+        'objective-1',
+        { name: 'Novo nome' },
+      ),
+    ForbiddenException,
+  );
+});
+
+void test('ObjectivesService blocks moving an objective to a closed cycle', async () => {
+  const service = createService({
+    user: {
+      findUnique: async () => ({
+        companyId: 'company-1',
+        departmentId: 'department-1',
+        role: UserRole.MANAGER,
+      }),
+    },
+    objective: {
+      findFirst: async () => ({
+        id: 'objective-1',
+        name: 'Objetivo ativo',
+        description: 'Descricao',
+        cycleId: 'cycle-active',
+        cycle: {
+          id: 'cycle-active',
+          name: 'Ciclo ativo',
+          status: 'ACTIVE',
+          startDate: new Date('2026-01-01T00:00:00Z'),
+          endDate: new Date('2026-07-01T00:00:00Z'),
+          departmentId: 'department-1',
+          department: {
+            id: 'department-1',
+            name: 'Marketing',
+            manager: null,
+          },
+        },
+        okrs: [],
+      }),
+    },
+    strategicCycle: {
+      findFirst: async () => ({
+        id: 'cycle-closed',
+        status: 'CLOSED',
+        endDate: new Date('2026-02-01T00:00:00Z'),
+        department: {
+          id: 'department-1',
+          name: 'Marketing',
+          manager: null,
+        },
+      }),
+    },
+  });
+
+  await assert.rejects(
+    () =>
+      service.update(
+        { sub: 'manager-1', email: 'gestora@empresa.com', role: UserRole.MANAGER },
+        'objective-1',
+        { cycleId: 'cycle-closed' },
+      ),
+    ForbiddenException,
+  );
+});
+
+void test('ObjectivesService blocks deleting an objective from a closed cycle', async () => {
+  const service = createService({
+    user: {
+      findUnique: async () => ({
+        companyId: 'company-1',
+        departmentId: 'department-1',
+        role: UserRole.DIRECTOR,
+      }),
+    },
+    objective: {
+      findFirst: async () => ({
+        id: 'objective-1',
+        name: 'Objetivo fechado',
+        description: 'Descricao',
+        cycleId: 'cycle-closed',
+        cycle: {
+          id: 'cycle-closed',
+          name: 'Ciclo fechado',
+          status: 'CLOSED',
+          startDate: new Date('2026-01-01T00:00:00Z'),
+          endDate: new Date('2026-02-01T00:00:00Z'),
+          departmentId: 'department-1',
+          department: {
+            id: 'department-1',
+            name: 'Marketing',
+            manager: null,
+          },
+        },
+        okrs: [],
+      }),
+    },
+  });
+
+  await assert.rejects(
+    () =>
+      service.remove(
+        { sub: 'director-1', email: 'diretora@empresa.com', role: UserRole.DIRECTOR },
+        'objective-1',
+      ),
+    ForbiddenException,
+  );
+});
+
 void test('ObjectivesController protects mutations from employees', () => {
-  const createRoles = Reflect.getMetadata(ROLES_KEY, ObjectivesController.prototype.create) as UserRole[];
-  const updateRoles = Reflect.getMetadata(ROLES_KEY, ObjectivesController.prototype.update) as UserRole[];
-  const removeRoles = Reflect.getMetadata(ROLES_KEY, ObjectivesController.prototype.remove) as UserRole[];
+  const createRoles = Reflect.getMetadata(
+    ROLES_KEY,
+    ObjectivesController.prototype.create,
+  ) as UserRole[];
+  const updateRoles = Reflect.getMetadata(
+    ROLES_KEY,
+    ObjectivesController.prototype.update,
+  ) as UserRole[];
+  const removeRoles = Reflect.getMetadata(
+    ROLES_KEY,
+    ObjectivesController.prototype.remove,
+  ) as UserRole[];
 
   assert.deepEqual(createRoles, [UserRole.DIRECTOR, UserRole.MANAGER]);
   assert.deepEqual(updateRoles, [UserRole.DIRECTOR, UserRole.MANAGER]);

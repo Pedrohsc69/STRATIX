@@ -1,4 +1,4 @@
-import type { OKRMetricType, UserRole } from '@prisma/client';
+import type { CycleStatus, OKRMetricType, UserRole } from '@prisma/client';
 import type {
   DashboardCompanyContext,
   DashboardDepartmentContext,
@@ -17,11 +17,18 @@ export type OkrDepartmentOption = {
 export type OkrCycleOption = {
   id: string;
   name: string;
+  cycleStatus: CycleStatus;
+  cycleEndDate: string;
+  isCycleEditable: boolean;
 };
 
 export type OkrObjectiveOption = {
   id: string;
   name: string;
+  cycleId: string;
+  cycleStatus: CycleStatus;
+  cycleEndDate: string;
+  isCycleEditable: boolean;
 };
 
 export type OkrResponsibleOption = {
@@ -44,6 +51,9 @@ export type OkrItem = {
   objectiveName: string;
   cycleId: string;
   cycleName: string;
+  cycleStatus: CycleStatus;
+  cycleEndDate: string;
+  isCycleEditable: boolean;
   departmentId: string;
   departmentName: string;
   responsibleId: string;

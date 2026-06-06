@@ -20,10 +20,10 @@ export class AuditLogDocument {
   @Prop({ required: true })
   actorRole!: string;
 
-  @Prop({ default: null })
+  @Prop({ type: String, default: null })
   companyId!: string | null;
 
-  @Prop({ default: null })
+  @Prop({ type: String, default: null })
   departmentId!: string | null;
 
   @Prop({ required: true })
@@ -32,7 +32,7 @@ export class AuditLogDocument {
   @Prop({ required: true })
   entity!: string;
 
-  @Prop({ default: null })
+  @Prop({ type: String, default: null })
   entityId!: string | null;
 
   @Prop({ type: MongooseSchema.Types.Mixed, default: null })
@@ -44,10 +44,10 @@ export class AuditLogDocument {
   @Prop({ type: MongooseSchema.Types.Mixed, default: null })
   metadata!: Record<string, unknown> | null;
 
-  @Prop({ default: null })
+  @Prop({ type: String, default: null })
   ipAddress!: string | null;
 
-  @Prop({ default: null })
+  @Prop({ type: String, default: null })
   userAgent!: string | null;
 
   @Prop({ required: true, default: () => new Date() })

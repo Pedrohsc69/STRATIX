@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -13,6 +14,7 @@ import { DashboardDomainService } from '../dashboard/domain/services/dashboard-d
 import { CreateStrategicCycleDto } from './dto/create-strategic-cycle.dto';
 import { ListStrategicCyclesDto } from './dto/list-strategic-cycles.dto';
 import { UpdateStrategicCycleDto } from './dto/update-strategic-cycle.dto';
+import { isCycleClosed } from './utils/cycle-editability';
 import type {
   StrategicCycleDepartmentOption,
   StrategicCycleListItem,
@@ -70,7 +72,11 @@ export class StrategicCyclesService {
       throw new NotFoundException('User not found');
     }
 
-    const availableDepartments = await this.getVisibleDepartments(user.role, user.companyId, user.departmentId);
+    const availableDepartments = await this.getVisibleDepartments(
+      user.role,
+      user.companyId,
+      user.departmentId,
+    );
     const where = this.buildListWhere(user.role, user.companyId, user.departmentId, filters);
     const cycles = await this.prisma.strategicCycle.findMany({
       where,
@@ -266,6 +272,10 @@ export class StrategicCyclesService {
       throw new NotFoundException('Strategic cycle not found');
     }
 
+    if (isCycleClosed(existing)) {
+      throw new ForbiddenException('Closed strategic cycles cannot be edited');
+    }
+
     const oldCycle = this.toCycleAuditPayload(existing);
 
     const targetDepartmentId = input.departmentId ?? existing.departmentId;
@@ -318,11 +328,7 @@ export class StrategicCyclesService {
     return this.mapCycle(updated);
   }
 
-  async close(
-    actor: AuthenticatedUser,
-    cycleId: string,
-    requestContext?: AuditRequestContext,
-  ) {
+  async close(actor: AuthenticatedUser, cycleId: string, requestContext?: AuditRequestContext) {
     const actorUser = await this.prisma.user.findUnique({
       where: { id: actor.sub },
       select: {
@@ -346,6 +352,10 @@ export class StrategicCyclesService {
 
     if (!existing) {
       throw new NotFoundException('Strategic cycle not found');
+    }
+
+    if (isCycleClosed(existing)) {
+      throw new ForbiddenException('Strategic cycle is already closed');
     }
 
     const updated = await this.prisma.strategicCycle.update({

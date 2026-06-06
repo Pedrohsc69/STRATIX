@@ -1,10 +1,10 @@
-import { useEffect, useState, type FormEvent } from "react";
-import { X } from "lucide-react";
+import { useEffect, useState, type FormEvent } from 'react';
+import { X } from 'lucide-react';
 import type {
   ObjectiveCycleOption,
   ObjectiveItem,
   ObjectivePayload,
-} from "../types/objectives.types";
+} from '../types/objectives.types';
 
 type ObjectiveFormDialogProps = {
   title: string;
@@ -23,9 +23,9 @@ function getInitialState(
   objective?: ObjectiveItem | null,
 ): FormState {
   return {
-    name: objective?.name ?? "",
-    description: objective?.description ?? "",
-    cycleId: objective?.cycleId ?? cycles[0]?.id ?? "",
+    name: objective?.name ?? '',
+    description: objective?.description ?? '',
+    cycleId: objective?.cycleId ?? cycles[0]?.id ?? '',
   };
 }
 
@@ -101,12 +101,15 @@ export function ObjectiveFormDialog({
             <select
               required
               value={form.cycleId}
-              onChange={(event) => setForm((current) => ({ ...current, cycleId: event.target.value }))}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, cycleId: event.target.value }))
+              }
               className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-[#1F2937] outline-none transition-colors focus:border-[#1E4E79]"
             >
               {cycles.map((cycle) => (
-                <option key={cycle.id} value={cycle.id}>
+                <option key={cycle.id} value={cycle.id} disabled={!cycle.isCycleEditable}>
                   {cycle.name}
+                  {!cycle.isCycleEditable ? ' • somente leitura' : ''}
                 </option>
               ))}
             </select>
@@ -131,7 +134,7 @@ export function ObjectiveFormDialog({
               disabled={loading}
               className="rounded-xl bg-[#0F2A44] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#143757] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {loading ? "Salvando..." : "Salvar objetivo"}
+              {loading ? 'Salvando...' : 'Salvar objetivo'}
             </button>
           </div>
         </form>

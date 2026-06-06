@@ -1,7 +1,7 @@
-import { X } from "lucide-react";
-import { ProgressIndicator } from "../../dashboard/components/ProgressIndicator";
-import { StrategicCycleStatusBadge } from "./StrategicCycleStatusBadge";
-import type { StrategicCycleItem } from "../types/strategic-cycles.types";
+import { X } from 'lucide-react';
+import { ProgressIndicator } from '../../dashboard/components/ProgressIndicator';
+import { StrategicCycleStatusBadge } from './StrategicCycleStatusBadge';
+import type { StrategicCycleItem } from '../types/strategic-cycles.types';
 
 type StrategicCycleDetailsDialogProps = {
   cycle: StrategicCycleItem;
@@ -9,21 +9,16 @@ type StrategicCycleDetailsDialogProps = {
 };
 
 function formatDate(value: string) {
-  return new Date(value).toLocaleDateString("pt-BR");
+  return new Date(value).toLocaleDateString('pt-BR');
 }
 
-export function StrategicCycleDetailsDialog({
-  cycle,
-  onClose,
-}: StrategicCycleDetailsDialogProps) {
+export function StrategicCycleDetailsDialog({ cycle, onClose }: StrategicCycleDetailsDialogProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/45 p-4">
       <div className="w-full max-w-3xl rounded-3xl bg-white shadow-2xl">
         <div className="flex items-start justify-between border-b border-gray-200 px-6 py-5">
           <div>
-            <p className="text-sm uppercase tracking-[0.2em] text-[#6B7280]">
-              Detalhes do ciclo
-            </p>
+            <p className="text-sm uppercase tracking-[0.2em] text-[#6B7280]">Detalhes do ciclo</p>
             <h2 className="mt-2 text-2xl font-semibold text-[#1F2937]">{cycle.name}</h2>
           </div>
           <button
@@ -33,6 +28,14 @@ export function StrategicCycleDetailsDialog({
           >
             <X className="h-5 w-5" />
           </button>
+        </div>
+
+        <div className="px-6 pt-6">
+          {cycle.status === 'CLOSED' ? (
+            <div className="rounded-2xl border border-[#BFDBFE] bg-[#EFF6FF] px-4 py-3 text-sm text-[#1E3A8A]">
+              Ciclo encerrado — dados disponíveis apenas para consulta.
+            </div>
+          ) : null}
         </div>
 
         <div className="grid gap-6 px-6 py-6 md:grid-cols-2">

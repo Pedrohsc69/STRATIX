@@ -1,10 +1,10 @@
-import { Filter, Plus, Search, X } from "lucide-react";
+import { Filter, Plus, Search, X } from 'lucide-react';
 import type {
   ObjectiveCycleOption,
   ObjectiveDepartmentOption,
   ObjectivePriority,
   ObjectivesFilters as ObjectivesFiltersState,
-} from "../types/objectives.types";
+} from '../types/objectives.types';
 
 type ObjectivesFiltersProps = {
   filters: ObjectivesFiltersState;
@@ -99,6 +99,7 @@ export function ObjectivesFilters({
             {cycles.map((cycle) => (
               <option key={cycle.id} value={cycle.id}>
                 {cycle.name}
+                {!cycle.isCycleEditable ? ' • somente leitura' : ''}
               </option>
             ))}
           </select>
@@ -109,7 +110,7 @@ export function ObjectivesFilters({
           <select
             value={filters.status}
             onChange={(event) =>
-              onChange({ status: event.target.value as ObjectivesFiltersState["status"] })
+              onChange({ status: event.target.value as ObjectivesFiltersState['status'] })
             }
             className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-[#1F2937] outline-none transition-colors focus:border-[#1E4E79]"
           >
@@ -125,7 +126,7 @@ export function ObjectivesFilters({
           <select
             value={filters.priority}
             onChange={(event) =>
-              onChange({ priority: event.target.value as ObjectivesFiltersState["priority"] })
+              onChange({ priority: event.target.value as ObjectivesFiltersState['priority'] })
             }
             className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-[#1F2937] outline-none transition-colors focus:border-[#1E4E79]"
           >

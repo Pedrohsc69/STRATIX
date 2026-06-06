@@ -1,15 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { ForbiddenException } from '@nestjs/common';
 import { UserRole, UserStatus } from '@prisma/client';
 import { DashboardDomainService } from '../dashboard/domain/services/dashboard-domain.service';
 import { StrategicCyclesService } from './strategic-cycles.service';
 
 function createService(prisma: Record<string, unknown>) {
-  return new StrategicCyclesService(
-    prisma as never,
-    new DashboardDomainService(),
-    { log: async () => undefined } as never,
-  );
+  return new StrategicCyclesService(prisma as never, new DashboardDomainService(), {
+    log: async () => undefined,
+  } as never);
 }
 
 void test('StrategicCyclesService lists company cycles only for the director company', async () => {
@@ -140,7 +139,10 @@ void test('StrategicCyclesService restricts managers to their own department', a
 
   assert.equal(response.scope, 'DEPARTMENT');
   assert.equal(response.context.department?.id, 'department-1');
-  assert.equal(response.cycles.every((cycle) => cycle.departmentId === 'department-1'), true);
+  assert.equal(
+    response.cycles.every((cycle) => cycle.departmentId === 'department-1'),
+    true,
+  );
   assert.deepEqual(receivedWhere, {
     department: { companyId: 'company-1' },
     departmentId: 'department-1',
@@ -262,4 +264,67 @@ void test('StrategicCyclesService computes delayed status without leaking closed
 
   assert.equal(delayedOnly.cycles.length, 1);
   assert.equal(delayedOnly.cycles[0]?.status, 'DELAYED');
+});
+
+void test('StrategicCyclesService blocks updating a closed cycle', async () => {
+  const service = createService({
+    user: {
+      findUnique: async () => ({
+        companyId: 'company-1',
+      }),
+    },
+    strategicCycle: {
+      findFirst: async () => ({
+        id: 'cycle-closed',
+        name: 'Ciclo fechado',
+        status: 'CLOSED',
+        startDate: new Date('2026-01-01T00:00:00Z'),
+        endDate: new Date('2026-02-01T00:00:00Z'),
+        departmentId: 'department-1',
+        department: { id: 'department-1', name: 'Marketing' },
+        objectives: [],
+      }),
+    },
+  });
+
+  await assert.rejects(
+    () =>
+      service.update(
+        { sub: 'director-1', email: 'diretora@empresa.com', role: UserRole.DIRECTOR },
+        'cycle-closed',
+        { name: 'Novo nome' },
+      ),
+    ForbiddenException,
+  );
+});
+
+void test('StrategicCyclesService blocks closing an already closed cycle', async () => {
+  const service = createService({
+    user: {
+      findUnique: async () => ({
+        companyId: 'company-1',
+      }),
+    },
+    strategicCycle: {
+      findFirst: async () => ({
+        id: 'cycle-closed',
+        name: 'Ciclo fechado',
+        status: 'CLOSED',
+        startDate: new Date('2026-01-01T00:00:00Z'),
+        endDate: new Date('2026-02-01T00:00:00Z'),
+        departmentId: 'department-1',
+        department: { id: 'department-1', name: 'Marketing' },
+        objectives: [],
+      }),
+    },
+  });
+
+  await assert.rejects(
+    () =>
+      service.close(
+        { sub: 'director-1', email: 'diretora@empresa.com', role: UserRole.DIRECTOR },
+        'cycle-closed',
+      ),
+    ForbiddenException,
+  );
 });

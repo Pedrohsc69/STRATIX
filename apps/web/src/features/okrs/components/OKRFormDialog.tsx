@@ -1,19 +1,19 @@
-import { useEffect, useState, type FormEvent } from "react";
-import { X } from "lucide-react";
+import { useEffect, useState, type FormEvent } from 'react';
+import { X } from 'lucide-react';
 import type {
   OkrItem,
   OkrMetricType,
   OkrObjectiveOption,
   OkrPayload,
   OkrResponsibleOption,
-} from "../types/okrs.types";
+} from '../types/okrs.types';
 import {
   getMetricInputConfig,
   getMetricTypeLabel,
   normalizeMetricValue,
   parseMetricInputValue,
   validateMetricValues,
-} from "../utils/okr-formatters";
+} from '../utils/okr-formatters';
 
 type OKRFormDialogProps = {
   title: string;
@@ -41,32 +41,27 @@ function getInitialState(
   okr?: OkrItem | null,
 ): FormState {
   return {
-    name: okr?.name ?? "",
-    objectiveId: okr?.objectiveId ?? objectives[0]?.id ?? "",
-    responsibleId: okr?.responsibleId ?? responsibles[0]?.id ?? "",
-    metricType: okr?.metricType ?? "NUMBER",
-    currentValue: okr ? String(okr.currentValue) : "0",
-    targetValue:
-      okr?.metricType === "BOOLEAN"
-        ? "1"
-        : okr
-          ? String(okr.targetValue)
-          : "",
+    name: okr?.name ?? '',
+    objectiveId: okr?.objectiveId ?? objectives[0]?.id ?? '',
+    responsibleId: okr?.responsibleId ?? responsibles[0]?.id ?? '',
+    metricType: okr?.metricType ?? 'NUMBER',
+    currentValue: okr ? String(okr.currentValue) : '0',
+    targetValue: okr?.metricType === 'BOOLEAN' ? '1' : okr ? String(okr.targetValue) : '',
   };
 }
 
 function getMetricDefaults(metricType: OkrMetricType, currentValue: string, targetValue: string) {
-  if (metricType === "PERCENTAGE") {
+  if (metricType === 'PERCENTAGE') {
     return {
       currentValue,
-      targetValue: targetValue || "100",
+      targetValue: targetValue || '100',
     };
   }
 
-  if (metricType === "BOOLEAN") {
+  if (metricType === 'BOOLEAN') {
     return {
-      currentValue: currentValue === "1" ? "1" : "0",
-      targetValue: "1",
+      currentValue: currentValue === '1' ? '1' : '0',
+      targetValue: '1',
     };
   }
 
@@ -98,18 +93,18 @@ function MetricValueField(props: {
           disabled={props.disabled}
           className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-[#1F2937] outline-none transition-colors focus:border-[#1E4E79]"
         >
-          {(props.booleanOptions ?? [
-            { value: "0", label: "Não concluído" },
-            { value: "1", label: "Concluído" },
-          ]).map((option) => (
+          {(
+            props.booleanOptions ?? [
+              { value: '0', label: 'Não concluído' },
+              { value: '1', label: 'Concluído' },
+            ]
+          ).map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
             </option>
           ))}
         </select>
-        {props.helper ? (
-          <p className="mt-2 text-xs text-[#6B7280]">{props.helper}</p>
-        ) : null}
+        {props.helper ? <p className="mt-2 text-xs text-[#6B7280]">{props.helper}</p> : null}
       </label>
     );
   }
@@ -186,12 +181,12 @@ export function OKRFormDialog({
     const parsedTargetValue = parseMetricInputValue(form.targetValue, form.metricType);
 
     if (parsedCurrentValue === null) {
-      setValidationError("Informe um valor inicial válido.");
+      setValidationError('Informe um valor inicial válido.');
       return;
     }
 
     if (parsedTargetValue === null) {
-      setValidationError("Informe um valor meta válido.");
+      setValidationError('Informe um valor meta válido.');
       return;
     }
 
@@ -259,8 +254,13 @@ export function OKRFormDialog({
                 className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-[#1F2937] outline-none transition-colors focus:border-[#1E4E79]"
               >
                 {objectives.map((objective) => (
-                  <option key={objective.id} value={objective.id}>
+                  <option
+                    key={objective.id}
+                    value={objective.id}
+                    disabled={!objective.isCycleEditable}
+                  >
                     {objective.name}
+                    {!objective.isCycleEditable ? ' • somente leitura' : ''}
                   </option>
                 ))}
               </select>
@@ -279,7 +279,7 @@ export function OKRFormDialog({
                 {responsibles.map((responsible) => (
                   <option key={responsible.id} value={responsible.id}>
                     {responsible.name}
-                    {responsible.departmentName ? ` • ${responsible.departmentName}` : ""}
+                    {responsible.departmentName ? ` • ${responsible.departmentName}` : ''}
                   </option>
                 ))}
               </select>
@@ -294,7 +294,7 @@ export function OKRFormDialog({
                 onChange={(event) => handleMetricTypeChange(event.target.value as OkrMetricType)}
                 className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-[#1F2937] outline-none transition-colors focus:border-[#1E4E79]"
               >
-                {(["NUMBER", "PERCENTAGE", "CURRENCY", "BOOLEAN"] as OkrMetricType[]).map(
+                {(['NUMBER', 'PERCENTAGE', 'CURRENCY', 'BOOLEAN'] as OkrMetricType[]).map(
                   (metricType) => (
                     <option key={metricType} value={metricType}>
                       {getMetricTypeLabel(metricType)}
@@ -311,8 +311,8 @@ export function OKRFormDialog({
               placeholder={metricConfig.placeholder}
               helper={metricConfig.helper}
               booleanOptions={[
-                { value: "0", label: "Não concluído" },
-                { value: "1", label: "Concluído" },
+                { value: '0', label: 'Não concluído' },
+                { value: '1', label: 'Concluído' },
               ]}
               onChange={(value) =>
                 setForm((current) => ({
@@ -328,13 +328,13 @@ export function OKRFormDialog({
               value={form.targetValue}
               placeholder={metricConfig.placeholder}
               helper={
-                form.metricType === "PERCENTAGE"
-                  ? "Para percentuais, a meta recomendada é 100."
-                  : form.metricType === "BOOLEAN"
-                    ? "Para métricas binárias, a meta é sempre concluído."
+                form.metricType === 'PERCENTAGE'
+                  ? 'Para percentuais, a meta recomendada é 100.'
+                  : form.metricType === 'BOOLEAN'
+                    ? 'Para métricas binárias, a meta é sempre concluído.'
                     : metricConfig.helper
               }
-              booleanOptions={[{ value: "1", label: "Concluído" }]}
+              booleanOptions={[{ value: '1', label: 'Concluído' }]}
               onChange={(value) =>
                 setForm((current) => ({
                   ...current,
@@ -363,7 +363,7 @@ export function OKRFormDialog({
               disabled={loading}
               className="rounded-xl bg-[#0F2A44] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#143757] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {loading ? "Salvando..." : "Salvar OKR"}
+              {loading ? 'Salvando...' : 'Salvar OKR'}
             </button>
           </div>
         </form>

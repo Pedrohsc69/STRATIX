@@ -1,5 +1,5 @@
-import { CircleStop, Eye, PencilLine } from "lucide-react";
-import type { StrategicCycleItem } from "../types/strategic-cycles.types";
+import { CircleStop, Eye, PencilLine } from 'lucide-react';
+import type { StrategicCycleItem } from '../types/strategic-cycles.types';
 
 type StrategicCycleActionsProps = {
   cycle: StrategicCycleItem;
@@ -31,17 +31,19 @@ export function StrategicCycleActions({
 
       {canManage ? (
         <>
-          <button
-            type="button"
-            onClick={() => onEdit(cycle)}
-            disabled={busy}
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-[#1E4E79] transition-colors hover:bg-[#EFF6FF] disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <PencilLine className="h-4 w-4" />
-            Editar
-          </button>
+          {cycle.status !== 'CLOSED' ? (
+            <button
+              type="button"
+              onClick={() => onEdit(cycle)}
+              disabled={busy}
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-[#1E4E79] transition-colors hover:bg-[#EFF6FF] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <PencilLine className="h-4 w-4" />
+              Editar
+            </button>
+          ) : null}
 
-          {cycle.status !== "CLOSED" ? (
+          {cycle.status !== 'CLOSED' ? (
             <button
               type="button"
               onClick={() => onClose(cycle)}

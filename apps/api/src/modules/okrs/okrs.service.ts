@@ -11,6 +11,10 @@ import { AuditService } from '../audit/audit.service';
 import type { AuditRequestContext } from '../audit/audit.types';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { DashboardDomainService } from '../dashboard/domain/services/dashboard-domain.service';
+import {
+  assertCycleIsEditable,
+  isCycleEditable,
+} from '../strategic-cycles/utils/cycle-editability';
 import { AddOkrProgressDto } from './dto/add-okr-progress.dto';
 import { CreateOkrDto } from './dto/create-okr.dto';
 import { ListOkrsDto } from './dto/list-okrs.dto';
@@ -168,7 +172,10 @@ export class OkrsService {
       user.departmentId,
       input.objectiveId,
     );
-    this.assertCycleWritable(objective.cycle);
+    assertCycleIsEditable(
+      objective.cycle,
+      'OKRs can only be changed while the strategic cycle is active',
+    );
 
     const responsible = await this.findResponsibleInScope(
       user.role,
@@ -245,7 +252,10 @@ export class OkrsService {
 
     const oldOkr = this.toOkrAuditPayload(existing);
 
-    this.assertCycleWritable(existing.objective.cycle);
+    assertCycleIsEditable(
+      existing.objective.cycle,
+      'OKRs can only be changed while the strategic cycle is active',
+    );
 
     const targetObjective =
       input.objectiveId && input.objectiveId !== existing.objectiveId
@@ -257,7 +267,10 @@ export class OkrsService {
           )
         : existing.objective;
 
-    this.assertCycleWritable(targetObjective.cycle);
+    assertCycleIsEditable(
+      targetObjective.cycle,
+      'OKRs can only be changed while the strategic cycle is active',
+    );
 
     const targetResponsibleId = input.responsibleId ?? existing.responsibleId;
     const responsible = await this.findResponsibleInScope(
@@ -307,11 +320,7 @@ export class OkrsService {
     return this.mapOkr(updated, actor.sub);
   }
 
-  async remove(
-    actor: AuthenticatedUser,
-    okrId: string,
-    requestContext?: AuditRequestContext,
-  ) {
+  async remove(actor: AuthenticatedUser, okrId: string, requestContext?: AuditRequestContext) {
     const user = await this.prisma.user.findUnique({
       where: { id: actor.sub },
       select: {
@@ -334,7 +343,10 @@ export class OkrsService {
       throw new NotFoundException('OKR not found');
     }
 
-    this.assertCycleWritable(okr.objective.cycle);
+    assertCycleIsEditable(
+      okr.objective.cycle,
+      'OKRs can only be changed while the strategic cycle is active',
+    );
 
     if (okr.progress.length > 0) {
       throw new BadRequestException('OKR has progress history and cannot be deleted');
@@ -400,7 +412,10 @@ export class OkrsService {
       throw new ForbiddenException('You can only update progress on OKRs assigned to you');
     }
 
-    this.assertCycleWritable(okr.objective.cycle);
+    assertCycleIsEditable(
+      okr.objective.cycle,
+      'OKRs can only be changed while the strategic cycle is active',
+    );
     const metricType = okr.metricType ?? OKRMetricType.NUMBER;
     const normalizedValue = normalizeOkrValue(input.value, metricType);
     validateOkrValues({
@@ -586,23 +601,35 @@ export class OkrsService {
       return [];
     }
 
-    return this.prisma.strategicCycle.findMany({
-      where: {
-        department: {
-          companyId,
+    return this.prisma.strategicCycle
+      .findMany({
+        where: {
+          department: {
+            companyId,
+          },
+          ...(role === 'DIRECTOR'
+            ? {}
+            : departmentId
+              ? { departmentId }
+              : { id: '__no-department__' }),
         },
-        ...(role === 'DIRECTOR'
-          ? {}
-          : departmentId
-          ? { departmentId }
-          : { id: '__no-department__' }),
-      },
-      orderBy: [{ endDate: 'desc' }, { name: 'asc' }],
-      select: {
-        id: true,
-        name: true,
-      },
-    });
+        orderBy: [{ endDate: 'desc' }, { name: 'asc' }],
+        select: {
+          id: true,
+          name: true,
+          status: true,
+          endDate: true,
+        },
+      })
+      .then((cycles) =>
+        cycles.map((cycle) => ({
+          id: cycle.id,
+          name: cycle.name,
+          cycleStatus: cycle.status,
+          cycleEndDate: cycle.endDate.toISOString(),
+          isCycleEditable: isCycleEditable(cycle),
+        })),
+      );
   }
 
   private async getVisibleObjectives(
@@ -628,18 +655,36 @@ export class OkrsService {
       cycleScope.departmentId = departmentId;
     }
 
-    return this.prisma.objective.findMany({
-      where: {
-        cycle: {
-          is: cycleScope,
+    return this.prisma.objective
+      .findMany({
+        where: {
+          cycle: {
+            is: cycleScope,
+          },
         },
-      },
-      orderBy: { name: 'asc' },
-      select: {
-        id: true,
-        name: true,
-      },
-    });
+        orderBy: { name: 'asc' },
+        select: {
+          id: true,
+          name: true,
+          cycleId: true,
+          cycle: {
+            select: {
+              status: true,
+              endDate: true,
+            },
+          },
+        },
+      })
+      .then((objectives) =>
+        objectives.map((objective) => ({
+          id: objective.id,
+          name: objective.name,
+          cycleId: objective.cycleId,
+          cycleStatus: objective.cycle.status,
+          cycleEndDate: objective.cycle.endDate.toISOString(),
+          isCycleEditable: isCycleEditable(objective.cycle),
+        })),
+      );
   }
 
   private async getVisibleResponsibles(
@@ -651,28 +696,30 @@ export class OkrsService {
       return [];
     }
 
-    return this.prisma.user.findMany({
-      where: {
-        companyId,
-        departmentId: role === 'DIRECTOR' ? undefined : departmentId ?? '__no-department__',
-      },
-      orderBy: { name: 'asc' },
-      select: {
-        id: true,
-        name: true,
-        department: {
-          select: {
-            name: true,
+    return this.prisma.user
+      .findMany({
+        where: {
+          companyId,
+          departmentId: role === 'DIRECTOR' ? undefined : (departmentId ?? '__no-department__'),
+        },
+        orderBy: { name: 'asc' },
+        select: {
+          id: true,
+          name: true,
+          department: {
+            select: {
+              name: true,
+            },
           },
         },
-      },
-    }).then((users) =>
-      users.map((user) => ({
-        id: user.id,
-        name: user.name,
-        departmentName: user.department?.name ?? null,
-      })),
-    );
+      })
+      .then((users) =>
+        users.map((user) => ({
+          id: user.id,
+          name: user.name,
+          departmentName: user.department?.name ?? null,
+        })),
+      );
   }
 
   private async findObjectiveInScope(
@@ -736,8 +783,8 @@ export class OkrsService {
         ...(role === 'DIRECTOR'
           ? {}
           : departmentId
-          ? { departmentId }
-          : { id: '__no-department__' }),
+            ? { departmentId }
+            : { id: '__no-department__' }),
       },
       select: {
         id: true,
@@ -754,12 +801,6 @@ export class OkrsService {
     }
 
     return responsible;
-  }
-
-  private assertCycleWritable(cycle: { status: CycleStatus; endDate: Date }) {
-    if (cycle.status !== CycleStatus.ACTIVE || cycle.endDate.getTime() < Date.now()) {
-      throw new ForbiddenException('OKRs can only be changed while the strategic cycle is active');
-    }
   }
 
   private matchesStatus(status: OkrStatus, filter?: ListOkrsDto['status']) {
@@ -787,10 +828,7 @@ export class OkrsService {
     const metricType = okr.metricType ?? OKRMetricType.NUMBER;
     const currentValue = normalizeOkrValue(okr.currentValue, metricType);
     const targetValue = normalizeOkrValue(okr.targetValue, metricType);
-    const progress = this.dashboardDomainService.calculateProgress(
-      currentValue,
-      targetValue,
-    );
+    const progress = this.dashboardDomainService.calculateProgress(currentValue, targetValue);
     const lastUpdatedAt = okr.progress[0]?.date ?? okr.updatedAt;
 
     return {
@@ -800,6 +838,9 @@ export class OkrsService {
       objectiveName: okr.objective.name,
       cycleId: okr.objective.cycleId,
       cycleName: okr.objective.cycle.name,
+      cycleStatus: okr.objective.cycle.status,
+      cycleEndDate: okr.objective.cycle.endDate.toISOString(),
+      isCycleEditable: isCycleEditable(okr.objective.cycle),
       departmentId: okr.objective.cycle.department.id,
       departmentName: okr.objective.cycle.department.name,
       responsibleId: okr.responsibleId,
@@ -898,7 +939,10 @@ export class OkrsService {
       currentValue: okr.currentValue,
       targetValue: okr.targetValue,
       departmentId: okr.objective.cycle.departmentId,
-      deletedAt: 'deletedAt' in okr ? (okr as { deletedAt?: Date | null }).deletedAt?.toISOString() ?? null : null,
+      deletedAt:
+        'deletedAt' in okr
+          ? ((okr as { deletedAt?: Date | null }).deletedAt?.toISOString() ?? null)
+          : null,
     };
   }
 }

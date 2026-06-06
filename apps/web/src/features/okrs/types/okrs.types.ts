@@ -3,10 +3,11 @@ import type {
   DashboardPermission,
   DashboardRole,
   DashboardScope,
-} from "../../dashboard/dashboard.types";
+} from '../../dashboard/dashboard.types';
 
-export type OkrStatus = "IN_PROGRESS" | "COMPLETED" | "AT_RISK";
-export type OkrMetricType = "PERCENTAGE" | "NUMBER" | "CURRENCY" | "BOOLEAN";
+export type OkrStatus = 'IN_PROGRESS' | 'COMPLETED' | 'AT_RISK';
+export type OkrMetricType = 'PERCENTAGE' | 'NUMBER' | 'CURRENCY' | 'BOOLEAN';
+export type OkrCycleStatus = 'ACTIVE' | 'CLOSED';
 
 export type OkrProgressHistoryItem = {
   id: string;
@@ -22,6 +23,9 @@ export type OkrItem = {
   objectiveName: string;
   cycleId: string;
   cycleName: string;
+  cycleStatus: OkrCycleStatus;
+  cycleEndDate: string;
+  isCycleEditable: boolean;
   departmentId: string;
   departmentName: string;
   responsibleId: string;
@@ -53,11 +57,18 @@ export type OkrDepartmentOption = {
 export type OkrCycleOption = {
   id: string;
   name: string;
+  cycleStatus: OkrCycleStatus;
+  cycleEndDate: string;
+  isCycleEditable: boolean;
 };
 
 export type OkrObjectiveOption = {
   id: string;
   name: string;
+  cycleId: string;
+  cycleStatus: OkrCycleStatus;
+  cycleEndDate: string;
+  isCycleEditable: boolean;
 };
 
 export type OkrResponsibleOption = {
@@ -87,7 +98,7 @@ export type OkrsFilters = {
   cycleId: string;
   objectiveId: string;
   responsibleId: string;
-  status: "" | OkrStatus;
+  status: '' | OkrStatus;
   ownOnly: boolean;
 };
 

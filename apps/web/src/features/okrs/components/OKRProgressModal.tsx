@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { X } from "lucide-react";
-import type { OkrItem, OkrProgressPayload } from "../types/okrs.types";
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { X } from 'lucide-react';
+import type { OkrItem, OkrProgressPayload } from '../types/okrs.types';
 import {
   formatOkrProgress,
   formatOkrValue,
@@ -8,7 +8,7 @@ import {
   normalizeMetricValue,
   parseMetricInputValue,
   validateMetricValues,
-} from "../utils/okr-formatters";
+} from '../utils/okr-formatters';
 
 type OKRProgressModalProps = {
   okr: OkrItem;
@@ -26,16 +26,17 @@ export function OKRProgressModal({
   onSubmit,
 }: OKRProgressModalProps) {
   const [value, setValue] = useState(String(okr.currentValue));
-  const [comment, setComment] = useState("");
+  const [comment, setComment] = useState('');
   const [validationError, setValidationError] = useState<string | null>(null);
 
   useEffect(() => {
     setValue(String(okr.currentValue));
-    setComment("");
+    setComment('');
     setValidationError(null);
   }, [okr]);
 
   const metricConfig = getMetricInputConfig(okr.metricType);
+  const isReadOnly = !okr.isCycleEditable;
 
   const previewProgress = useMemo(() => {
     const parsedValue = parseMetricInputValue(value, okr.metricType);
@@ -55,7 +56,7 @@ export function OKRProgressModal({
     const parsedValue = parseMetricInputValue(value, okr.metricType);
 
     if (parsedValue === null) {
-      setValidationError("Informe um valor atual válido.");
+      setValidationError('Informe um valor atual válido.');
       return;
     }
 
@@ -71,6 +72,11 @@ export function OKRProgressModal({
     }
 
     setValidationError(null);
+
+    if (isReadOnly) {
+      setValidationError('Este OKR está vinculado a um ciclo somente leitura.');
+      return;
+    }
 
     await onSubmit({
       value: normalizeMetricValue(parsedValue, okr.metricType),
@@ -96,6 +102,13 @@ export function OKRProgressModal({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5 px-6 py-6">
+          {isReadOnly ? (
+            <div className="rounded-2xl border border-[#BFDBFE] bg-[#EFF6FF] px-4 py-3 text-sm text-[#1E3A8A]">
+              Este ciclo está disponível apenas para consulta. Atualizações de progresso foram
+              bloqueadas.
+            </div>
+          ) : null}
+
           <div className="grid gap-4 md:grid-cols-3">
             <div className="rounded-2xl bg-[#F8FAFC] px-4 py-3">
               <p className="text-sm text-[#6B7280]">Valor atual</p>
@@ -121,6 +134,7 @@ export function OKRProgressModal({
               <select
                 value={value}
                 onChange={(event) => setValue(event.target.value)}
+                disabled={isReadOnly}
                 className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-[#1F2937] outline-none transition-colors focus:border-[#1E4E79]"
               >
                 <option value="0">Não concluído</option>
@@ -129,7 +143,9 @@ export function OKRProgressModal({
             </label>
           ) : (
             <label className="block">
-              <span className="mb-2 block text-sm font-medium text-[#4B5563]">Novo valor atual</span>
+              <span className="mb-2 block text-sm font-medium text-[#4B5563]">
+                Novo valor atual
+              </span>
               <div className="flex items-center rounded-xl border border-gray-200 bg-white focus-within:border-[#1E4E79]">
                 {metricConfig.prefix ? (
                   <span className="border-r border-gray-200 px-4 text-sm font-medium text-[#6B7280]">
@@ -143,6 +159,7 @@ export function OKRProgressModal({
                   value={value}
                   onChange={(event) => setValue(event.target.value)}
                   placeholder={metricConfig.placeholder}
+                  disabled={isReadOnly}
                   className="w-full rounded-xl bg-transparent px-4 py-3 text-sm text-[#1F2937] outline-none"
                 />
                 {metricConfig.suffix ? (
@@ -160,6 +177,7 @@ export function OKRProgressModal({
               value={comment}
               onChange={(event) => setComment(event.target.value)}
               rows={4}
+              disabled={isReadOnly}
               className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-[#1F2937] outline-none transition-colors focus:border-[#1E4E79]"
               placeholder="Explique o que mudou nesta atualização."
             />
@@ -181,10 +199,10 @@ export function OKRProgressModal({
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || isReadOnly}
               className="rounded-xl bg-[#0F2A44] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#143757] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {loading ? "Salvando..." : "Registrar progresso"}
+              {loading ? 'Salvando...' : 'Registrar progresso'}
             </button>
           </div>
         </form>
