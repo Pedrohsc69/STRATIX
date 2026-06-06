@@ -10,7 +10,8 @@ export const rolePermissions: Record<DashboardRole, DashboardPermission[]> = {
     "objectives:manage",
     "okrs:manage",
     "reports:export",
-    "settings:manage",
+    "settings:view:self",
+    "settings:manage:company",
   ],
   MANAGER: [
     "dashboard:view:department",
@@ -19,6 +20,7 @@ export const rolePermissions: Record<DashboardRole, DashboardPermission[]> = {
     "cycles:view:department",
     "objectives:manage:department",
     "okrs:manage:department",
+    "settings:view:self",
   ],
   EMPLOYEE: [
     "dashboard:view:department:readonly",
@@ -27,6 +29,7 @@ export const rolePermissions: Record<DashboardRole, DashboardPermission[]> = {
     "objectives:view:department",
     "okrs:update:own",
     "okrs:view:own",
+    "settings:view:self",
   ],
 };
 

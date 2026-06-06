@@ -78,7 +78,7 @@ const menuItems: MenuItem[] = [
     label: "Configurações",
     path: "/settings",
     icon: Settings,
-    requiredPermissions: ["settings:manage"],
+    requiredPermissions: ["settings:view:self", "settings:manage:company"],
   },
 ];
 

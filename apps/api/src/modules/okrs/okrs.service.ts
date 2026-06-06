@@ -6,6 +6,9 @@ import {
 } from '@nestjs/common';
 import { CycleStatus, OKRMetricType, type Prisma, type UserRole } from '@prisma/client';
 import { PrismaService } from '../../core/shared/prisma.service';
+import { AUDIT_ACTIONS, AUDIT_ENTITIES } from '../audit/audit.constants';
+import { AuditService } from '../audit/audit.service';
+import type { AuditRequestContext } from '../audit/audit.types';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { DashboardDomainService } from '../dashboard/domain/services/dashboard-domain.service';
 import { AddOkrProgressDto } from './dto/add-okr-progress.dto';
@@ -67,6 +70,7 @@ export class OkrsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly dashboardDomainService: DashboardDomainService,
+    private readonly auditService: AuditService,
   ) {}
 
   async list(actor: AuthenticatedUser, filters: ListOkrsDto): Promise<OkrsResponse> {
@@ -140,7 +144,11 @@ export class OkrsService {
     };
   }
 
-  async create(actor: AuthenticatedUser, input: CreateOkrDto) {
+  async create(
+    actor: AuthenticatedUser,
+    input: CreateOkrDto,
+    requestContext?: AuditRequestContext,
+  ) {
     const user = await this.prisma.user.findUnique({
       where: { id: actor.sub },
       select: {
@@ -189,10 +197,30 @@ export class OkrsService {
       include: this.okrInclude(),
     });
 
+    await this.auditService.log({
+      actor: {
+        id: actor.sub,
+        email: actor.email,
+        role: actor.role,
+      },
+      action: AUDIT_ACTIONS.OKR_CREATED,
+      entity: AUDIT_ENTITIES.OKR,
+      entityId: created.id,
+      companyId: user.companyId,
+      departmentId: created.objective.cycle.departmentId,
+      newValue: this.toOkrAuditPayload(created),
+      requestContext,
+    });
+
     return this.mapOkr(created, actor.sub);
   }
 
-  async update(actor: AuthenticatedUser, okrId: string, input: UpdateOkrDto) {
+  async update(
+    actor: AuthenticatedUser,
+    okrId: string,
+    input: UpdateOkrDto,
+    requestContext?: AuditRequestContext,
+  ) {
     const user = await this.prisma.user.findUnique({
       where: { id: actor.sub },
       select: {
@@ -214,6 +242,8 @@ export class OkrsService {
     if (!existing) {
       throw new NotFoundException('OKR not found');
     }
+
+    const oldOkr = this.toOkrAuditPayload(existing);
 
     this.assertCycleWritable(existing.objective.cycle);
 
@@ -258,63 +288,30 @@ export class OkrsService {
       include: this.okrInclude(),
     });
 
+    await this.auditService.log({
+      actor: {
+        id: actor.sub,
+        email: actor.email,
+        role: actor.role,
+      },
+      action: AUDIT_ACTIONS.OKR_UPDATED,
+      entity: AUDIT_ENTITIES.OKR,
+      entityId: updated.id,
+      companyId: user.companyId,
+      departmentId: updated.objective.cycle.departmentId,
+      oldValue: oldOkr,
+      newValue: this.toOkrAuditPayload(updated),
+      requestContext,
+    });
+
     return this.mapOkr(updated, actor.sub);
   }
 
-  async remove(actor: AuthenticatedUser, okrId: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: actor.sub },
-      select: {
-        companyId: true,
-        departmentId: true,
-        role: true,
-      },
-    });
-
-    if (!user?.companyId) {
-      throw new NotFoundException('User company not found');
-    }
-
-    const okr = await this.prisma.oKR.findFirst({
-      where: this.buildOkrScopeWhere(user.role, user.companyId, user.departmentId, okrId),
-      include: {
-        objective: {
-          select: {
-            cycle: {
-              select: {
-                status: true,
-                endDate: true,
-              },
-            },
-          },
-        },
-        progress: {
-          select: { id: true },
-        },
-      },
-    });
-
-    if (!okr) {
-      throw new NotFoundException('OKR not found');
-    }
-
-    this.assertCycleWritable(okr.objective.cycle);
-
-    if (okr.progress.length > 0) {
-      throw new BadRequestException('OKR has progress history and cannot be deleted');
-    }
-
-    await this.prisma.oKR.update({
-      where: { id: okrId },
-      data: {
-        deletedAt: new Date(),
-      },
-    });
-
-    return { success: true };
-  }
-
-  async addProgress(actor: AuthenticatedUser, okrId: string, input: AddOkrProgressDto) {
+  async remove(
+    actor: AuthenticatedUser,
+    okrId: string,
+    requestContext?: AuditRequestContext,
+  ) {
     const user = await this.prisma.user.findUnique({
       where: { id: actor.sub },
       select: {
@@ -336,6 +333,68 @@ export class OkrsService {
     if (!okr) {
       throw new NotFoundException('OKR not found');
     }
+
+    this.assertCycleWritable(okr.objective.cycle);
+
+    if (okr.progress.length > 0) {
+      throw new BadRequestException('OKR has progress history and cannot be deleted');
+    }
+
+    await this.prisma.oKR.update({
+      where: { id: okrId },
+      data: {
+        deletedAt: new Date(),
+      },
+    });
+
+    await this.auditService.log({
+      actor: {
+        id: actor.sub,
+        email: actor.email,
+        role: actor.role,
+      },
+      action: AUDIT_ACTIONS.OKR_DELETED,
+      entity: AUDIT_ENTITIES.OKR,
+      entityId: okr.id,
+      companyId: user.companyId,
+      departmentId: okr.objective.cycle.departmentId,
+      oldValue: this.toOkrAuditPayload(okr),
+      newValue: null,
+      requestContext,
+    });
+
+    return { success: true };
+  }
+
+  async addProgress(
+    actor: AuthenticatedUser,
+    okrId: string,
+    input: AddOkrProgressDto,
+    requestContext?: AuditRequestContext,
+  ) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: actor.sub },
+      select: {
+        companyId: true,
+        departmentId: true,
+        role: true,
+      },
+    });
+
+    if (!user?.companyId) {
+      throw new NotFoundException('User company not found');
+    }
+
+    const okr = await this.prisma.oKR.findFirst({
+      where: this.buildOkrScopeWhere(user.role, user.companyId, user.departmentId, okrId),
+      include: this.okrInclude(),
+    });
+
+    if (!okr) {
+      throw new NotFoundException('OKR not found');
+    }
+
+    const oldCurrentValue = okr.currentValue;
 
     if (user.role === 'EMPLOYEE' && okr.responsibleId !== actor.sub) {
       throw new ForbiddenException('You can only update progress on OKRs assigned to you');
@@ -367,6 +426,38 @@ export class OkrsService {
         },
         include: this.okrInclude(),
       });
+    });
+
+    await this.auditService.log({
+      actor: {
+        id: actor.sub,
+        email: actor.email,
+        role: actor.role,
+      },
+      action: AUDIT_ACTIONS.OKR_PROGRESS_UPDATED,
+      entity: AUDIT_ENTITIES.PROGRESS_OKR,
+      entityId: okr.id,
+      companyId: user.companyId,
+      departmentId: updated.objective.cycle.departmentId,
+      oldValue: {
+        currentValue: oldCurrentValue,
+      },
+      newValue: {
+        currentValue: updated.currentValue,
+        latestProgress: updated.progress[0]
+          ? {
+              id: updated.progress[0].id,
+              value: updated.progress[0].value,
+              date: updated.progress[0].date.toISOString(),
+              comment: updated.progress[0].comment,
+            }
+          : null,
+      },
+      metadata: {
+        okrId: updated.id,
+        metricType: updated.metricType,
+      },
+      requestContext,
     });
 
     return this.mapOkr(updated, actor.sub);
@@ -795,5 +886,19 @@ export class OkrsService {
         },
       },
     } satisfies Prisma.OKRInclude;
+  }
+
+  private toOkrAuditPayload(okr: OkrRecord) {
+    return {
+      id: okr.id,
+      name: okr.name,
+      metricType: okr.metricType,
+      objectiveId: okr.objectiveId,
+      responsibleId: okr.responsibleId,
+      currentValue: okr.currentValue,
+      targetValue: okr.targetValue,
+      departmentId: okr.objective.cycle.departmentId,
+      deletedAt: 'deletedAt' in okr ? (okr as { deletedAt?: Date | null }).deletedAt?.toISOString() ?? null : null,
+    };
   }
 }

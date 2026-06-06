@@ -1,7 +1,6 @@
 import { Global, Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { getMongoConfig } from './mongo.config';
-import { AuditSchema } from '../../../modules/audit/infrastructure/database/audit.schema';
 
 @Global()
 @Module({
@@ -18,9 +17,6 @@ import { AuditSchema } from '../../../modules/audit/infrastructure/database/audi
         };
       },
     }),
-    MongooseModule.forFeature([
-      { name: 'Audit', schema: AuditSchema },
-    ]),
   ],
   exports: [MongooseModule],
 })

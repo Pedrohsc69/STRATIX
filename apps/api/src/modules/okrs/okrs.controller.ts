@@ -1,4 +1,8 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  type AuditRequestLike,
+  extractAuditRequestContext,
+} from '../audit/audit-request.util';
 import { UserRole } from '@prisma/client';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -29,8 +33,9 @@ export class OkrsController {
   create(
     @CurrentUser() user: AuthenticatedUser,
     @Body() body: CreateOkrDto,
+    @Req() request: AuditRequestLike,
   ) {
-    return this.okrsService.create(user, body);
+    return this.okrsService.create(user, body, extractAuditRequestContext(request));
   }
 
   @Patch(':okrId')
@@ -39,8 +44,9 @@ export class OkrsController {
     @CurrentUser() user: AuthenticatedUser,
     @Param('okrId') okrId: string,
     @Body() body: UpdateOkrDto,
+    @Req() request: AuditRequestLike,
   ) {
-    return this.okrsService.update(user, okrId, body);
+    return this.okrsService.update(user, okrId, body, extractAuditRequestContext(request));
   }
 
   @Delete(':okrId')
@@ -48,8 +54,9 @@ export class OkrsController {
   remove(
     @CurrentUser() user: AuthenticatedUser,
     @Param('okrId') okrId: string,
+    @Req() request: AuditRequestLike,
   ) {
-    return this.okrsService.remove(user, okrId);
+    return this.okrsService.remove(user, okrId, extractAuditRequestContext(request));
   }
 
   @Post(':okrId/progress')
@@ -58,7 +65,13 @@ export class OkrsController {
     @CurrentUser() user: AuthenticatedUser,
     @Param('okrId') okrId: string,
     @Body() body: AddOkrProgressDto,
+    @Req() request: AuditRequestLike,
   ) {
-    return this.okrsService.addProgress(user, okrId, body);
+    return this.okrsService.addProgress(
+      user,
+      okrId,
+      body,
+      extractAuditRequestContext(request),
+    );
   }
 }

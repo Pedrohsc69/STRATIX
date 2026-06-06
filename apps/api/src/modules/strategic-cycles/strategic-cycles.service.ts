@@ -5,6 +5,9 @@ import {
 } from '@nestjs/common';
 import { CycleStatus, type Prisma, type UserRole } from '@prisma/client';
 import { PrismaService } from '../../core/shared/prisma.service';
+import { AUDIT_ACTIONS, AUDIT_ENTITIES } from '../audit/audit.constants';
+import { AuditService } from '../audit/audit.service';
+import type { AuditRequestContext } from '../audit/audit.types';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { DashboardDomainService } from '../dashboard/domain/services/dashboard-domain.service';
 import { CreateStrategicCycleDto } from './dto/create-strategic-cycle.dto';
@@ -48,6 +51,7 @@ export class StrategicCyclesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly dashboardDomainService: DashboardDomainService,
+    private readonly auditService: AuditService,
   ) {}
 
   async list(
@@ -139,7 +143,11 @@ export class StrategicCyclesService {
     };
   }
 
-  async create(actor: AuthenticatedUser, input: CreateStrategicCycleDto) {
+  async create(
+    actor: AuthenticatedUser,
+    input: CreateStrategicCycleDto,
+    requestContext?: AuditRequestContext,
+  ) {
     const user = await this.prisma.user.findUnique({
       where: { id: actor.sub },
       select: {
@@ -181,6 +189,21 @@ export class StrategicCyclesService {
       include: this.cycleInclude(),
     });
 
+    await this.auditService.log({
+      actor: {
+        id: actor.sub,
+        email: actor.email,
+        role: actor.role,
+      },
+      action: AUDIT_ACTIONS.CYCLE_CREATED,
+      entity: AUDIT_ENTITIES.STRATEGIC_CYCLE,
+      entityId: created.id,
+      companyId: user.companyId,
+      departmentId: created.departmentId,
+      newValue: this.toCycleAuditPayload(created),
+      requestContext,
+    });
+
     return this.mapCycle(created);
   }
 
@@ -188,6 +211,7 @@ export class StrategicCyclesService {
     actor: AuthenticatedUser,
     cycleId: string,
     input: UpdateStrategicCycleDto,
+    requestContext?: AuditRequestContext,
   ) {
     const actorUser = await this.prisma.user.findUnique({
       where: { id: actor.sub },
@@ -242,6 +266,8 @@ export class StrategicCyclesService {
       throw new NotFoundException('Strategic cycle not found');
     }
 
+    const oldCycle = this.toCycleAuditPayload(existing);
+
     const targetDepartmentId = input.departmentId ?? existing.departmentId;
 
     if (input.departmentId) {
@@ -273,10 +299,30 @@ export class StrategicCyclesService {
       include: this.cycleInclude(),
     });
 
+    await this.auditService.log({
+      actor: {
+        id: actor.sub,
+        email: actor.email,
+        role: actor.role,
+      },
+      action: AUDIT_ACTIONS.CYCLE_UPDATED,
+      entity: AUDIT_ENTITIES.STRATEGIC_CYCLE,
+      entityId: updated.id,
+      companyId: actorUser.companyId,
+      departmentId: updated.departmentId,
+      oldValue: oldCycle,
+      newValue: this.toCycleAuditPayload(updated),
+      requestContext,
+    });
+
     return this.mapCycle(updated);
   }
 
-  async close(actor: AuthenticatedUser, cycleId: string) {
+  async close(
+    actor: AuthenticatedUser,
+    cycleId: string,
+    requestContext?: AuditRequestContext,
+  ) {
     const actorUser = await this.prisma.user.findUnique({
       where: { id: actor.sub },
       select: {
@@ -295,7 +341,7 @@ export class StrategicCyclesService {
           companyId: actorUser.companyId,
         },
       },
-      select: { id: true },
+      include: this.cycleInclude(),
     });
 
     if (!existing) {
@@ -308,6 +354,22 @@ export class StrategicCyclesService {
         status: CycleStatus.CLOSED,
       },
       include: this.cycleInclude(),
+    });
+
+    await this.auditService.log({
+      actor: {
+        id: actor.sub,
+        email: actor.email,
+        role: actor.role,
+      },
+      action: AUDIT_ACTIONS.CYCLE_CLOSED,
+      entity: AUDIT_ENTITIES.STRATEGIC_CYCLE,
+      entityId: updated.id,
+      companyId: actorUser.companyId,
+      departmentId: updated.departmentId,
+      oldValue: this.toCycleAuditPayload(existing),
+      newValue: this.toCycleAuditPayload(updated),
+      requestContext,
     });
 
     return this.mapCycle(updated);
@@ -510,5 +572,16 @@ export class StrategicCyclesService {
         },
       },
     } satisfies Prisma.StrategicCycleInclude;
+  }
+
+  private toCycleAuditPayload(cycle: StrategicCycleRecord) {
+    return {
+      id: cycle.id,
+      name: cycle.name,
+      departmentId: cycle.departmentId,
+      status: cycle.status,
+      startDate: cycle.startDate.toISOString(),
+      endDate: cycle.endDate.toISOString(),
+    };
   }
 }

@@ -12,7 +12,19 @@ export class AuditLogDocument {
   id!: string;
 
   @Prop({ required: true })
-  userId!: string;
+  actorId!: string;
+
+  @Prop({ required: true })
+  actorEmail!: string;
+
+  @Prop({ required: true })
+  actorRole!: string;
+
+  @Prop({ default: null })
+  companyId!: string | null;
+
+  @Prop({ default: null })
+  departmentId!: string | null;
 
   @Prop({ required: true })
   action!: string;
@@ -20,13 +32,30 @@ export class AuditLogDocument {
   @Prop({ required: true })
   entity!: string;
 
-  @Prop({ required: true })
-  timestamp!: Date;
+  @Prop({ default: null })
+  entityId!: string | null;
 
-  @Prop({ type: MongooseSchema.Types.Mixed, default: {} })
-  metadata!: Record<string, unknown>;
+  @Prop({ type: MongooseSchema.Types.Mixed, default: null })
+  oldValue!: Record<string, unknown> | null;
+
+  @Prop({ type: MongooseSchema.Types.Mixed, default: null })
+  newValue!: Record<string, unknown> | null;
+
+  @Prop({ type: MongooseSchema.Types.Mixed, default: null })
+  metadata!: Record<string, unknown> | null;
+
+  @Prop({ default: null })
+  ipAddress!: string | null;
+
+  @Prop({ default: null })
+  userAgent!: string | null;
+
+  @Prop({ required: true, default: () => new Date() })
+  createdAt!: Date;
 }
 
 export const AuditSchema = SchemaFactory.createForClass(AuditLogDocument);
-AuditSchema.index({ userId: 1, timestamp: -1 });
-AuditSchema.index({ entity: 1, action: 1, timestamp: -1 });
+AuditSchema.index({ companyId: 1, createdAt: -1 });
+AuditSchema.index({ actorId: 1, createdAt: -1 });
+AuditSchema.index({ entity: 1, action: 1, createdAt: -1 });
+AuditSchema.index({ departmentId: 1, createdAt: -1 });

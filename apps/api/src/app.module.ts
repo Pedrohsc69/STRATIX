@@ -21,6 +21,7 @@ import { OkrModule } from './modules/okr/okr.module';
 import { OkrsModule } from './modules/okrs/okrs.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { SessionModule } from './modules/session/session.module';
+import { SettingsModule } from './modules/settings/settings.module';
 import { StrategicCyclesModule } from './modules/strategic-cycles/strategic-cycles.module';
 import { UsersModule } from './modules/users/users.module';
 
@@ -49,6 +50,7 @@ import { UsersModule } from './modules/users/users.module';
     AuditModule,
     EventModule,
     SessionModule,
+    SettingsModule,
     StrategicCyclesModule,
     UsersModule,
   ],

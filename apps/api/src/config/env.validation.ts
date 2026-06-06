@@ -22,11 +22,24 @@ function ensureNumber(env: EnvRecord, key: string, fallback: string) {
 }
 
 export function validateEnv(env: EnvRecord) {
+  const mongoUrl = env.MONGO_URL?.trim() || env.MONGODB_URI?.trim();
+  const mongoDb = env.MONGO_DB?.trim() || env.MONGODB_DATABASE?.trim();
+
+  if (!mongoUrl) {
+    throw new Error('MONGO_URL or MONGODB_URI is not defined');
+  }
+
+  if (!mongoDb) {
+    throw new Error('MONGO_DB or MONGODB_DATABASE is not defined');
+  }
+
   return {
     DATABASE_URL: ensureRequired(env, 'DATABASE_URL'),
     PORT: ensureNumber(env, 'PORT', '3000'),
-    MONGO_URL: ensureRequired(env, 'MONGO_URL'),
-    MONGO_DB: ensureRequired(env, 'MONGO_DB'),
+    MONGO_URL: mongoUrl,
+    MONGO_DB: mongoDb,
+    MONGODB_URI: mongoUrl,
+    MONGODB_DATABASE: mongoDb,
     JWT_SECRET: ensureRequired(env, 'JWT_SECRET'),
     JWT_EXPIRES_IN: ensureRequired(env, 'JWT_EXPIRES_IN'),
     FRONTEND_URL: ensureRequired(env, 'FRONTEND_URL'),

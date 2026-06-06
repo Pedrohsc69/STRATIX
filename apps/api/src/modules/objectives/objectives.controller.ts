@@ -1,4 +1,8 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  type AuditRequestLike,
+  extractAuditRequestContext,
+} from '../audit/audit-request.util';
 import { UserRole } from '@prisma/client';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -28,8 +32,9 @@ export class ObjectivesController {
   create(
     @CurrentUser() user: AuthenticatedUser,
     @Body() body: CreateObjectiveDto,
+    @Req() request: AuditRequestLike,
   ) {
-    return this.objectivesService.create(user, body);
+    return this.objectivesService.create(user, body, extractAuditRequestContext(request));
   }
 
   @Patch(':objectiveId')
@@ -38,8 +43,14 @@ export class ObjectivesController {
     @CurrentUser() user: AuthenticatedUser,
     @Param('objectiveId') objectiveId: string,
     @Body() body: UpdateObjectiveDto,
+    @Req() request: AuditRequestLike,
   ) {
-    return this.objectivesService.update(user, objectiveId, body);
+    return this.objectivesService.update(
+      user,
+      objectiveId,
+      body,
+      extractAuditRequestContext(request),
+    );
   }
 
   @Delete(':objectiveId')
@@ -47,7 +58,8 @@ export class ObjectivesController {
   remove(
     @CurrentUser() user: AuthenticatedUser,
     @Param('objectiveId') objectiveId: string,
+    @Req() request: AuditRequestLike,
   ) {
-    return this.objectivesService.remove(user, objectiveId);
+    return this.objectivesService.remove(user, objectiveId, extractAuditRequestContext(request));
   }
 }

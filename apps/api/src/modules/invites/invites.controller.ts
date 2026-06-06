@@ -1,4 +1,8 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  type AuditRequestLike,
+  extractAuditRequestContext,
+} from '../audit/audit-request.util';
 import { UserRole } from '@prisma/client';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -18,8 +22,9 @@ export class InvitesController {
   create(
     @CurrentUser() user: AuthenticatedUser,
     @Body() body: CreateInviteDto,
+    @Req() request: AuditRequestLike,
   ) {
-    return this.invitesService.create(user, body);
+    return this.invitesService.create(user, body, extractAuditRequestContext(request));
   }
 
   @Get()
@@ -42,7 +47,8 @@ export class InvitesController {
   resend(
     @CurrentUser() user: AuthenticatedUser,
     @Param('inviteId') inviteId: string,
+    @Req() request: AuditRequestLike,
   ) {
-    return this.invitesService.resend(user, inviteId);
+    return this.invitesService.resend(user, inviteId, extractAuditRequestContext(request));
   }
 }

@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { UserRole } from '@prisma/client';
 import { Resend } from 'resend';
 import { buildInviteTemplate } from './templates/invite.template';
+import { buildPasswordResetTemplate } from './templates/password-reset.template';
 
 type SendInviteEmailInput = {
   companyName: string;
@@ -11,6 +12,13 @@ type SendInviteEmailInput = {
   inviteeName?: string | null;
   role: UserRole;
   token: string;
+};
+
+type SendPasswordResetEmailInput = {
+  companyName: string;
+  email: string;
+  token: string;
+  userName?: string | null;
 };
 
 @Injectable()
@@ -42,6 +50,31 @@ export class EmailService {
       });
     } catch (error) {
       this.logger.error('Failed to send invite e-mail', error instanceof Error ? error.stack : undefined);
+      throw new InternalServerErrorException('Unable to complete request');
+    }
+  }
+
+  async sendPasswordResetEmail(input: SendPasswordResetEmailInput) {
+    const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
+    const emailFrom = this.configService.getOrThrow<string>('EMAIL_FROM');
+    const resetUrl = `${frontendUrl}/recover-password?token=${encodeURIComponent(input.token)}`;
+
+    try {
+      await this.resend.emails.send({
+        from: emailFrom,
+        to: input.email,
+        subject: `Redefinição de senha STRATIX - ${input.companyName}`,
+        html: buildPasswordResetTemplate({
+          resetUrl,
+          companyName: input.companyName,
+          userName: input.userName,
+        }),
+      });
+    } catch (error) {
+      this.logger.error(
+        'Failed to send password reset e-mail',
+        error instanceof Error ? error.stack : undefined,
+      );
       throw new InternalServerErrorException('Unable to complete request');
     }
   }

@@ -21,7 +21,8 @@ export type DashboardPermission =
   | 'okrs:update:own'
   | 'okrs:view:own'
   | 'reports:export'
-  | 'settings:manage';
+  | 'settings:view:self'
+  | 'settings:manage:company';
 
 export type DashboardKpis = {
   totalDepartments: number;

@@ -8,6 +8,7 @@ function createService(prisma: Record<string, unknown>) {
   return new StrategicCyclesService(
     prisma as never,
     new DashboardDomainService(),
+    { log: async () => undefined } as never,
   );
 }
 

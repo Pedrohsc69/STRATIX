@@ -76,3 +76,37 @@ void test('EmailService masks provider failures with a generic exception', async
     InternalServerErrorException,
   );
 });
+
+void test('EmailService sends password reset emails with the configured frontend URL', async () => {
+  const sentMessages: Array<Record<string, unknown>> = [];
+  const configService = {
+    getOrThrow: (key: string) => {
+      const values: Record<string, string> = {
+        RESEND_API_KEY: 'resend-key',
+        FRONTEND_URL: 'http://localhost:5173',
+        EMAIL_FROM: 'no-reply@stratix.test',
+      };
+
+      return values[key];
+    },
+  };
+
+  const service = new EmailService(configService as ConfigService);
+  (service as unknown as { resend: { emails: { send: (message: Record<string, unknown>) => Promise<void> } } }).resend = {
+    emails: {
+      send: async (message) => {
+        sentMessages.push(message);
+      },
+    },
+  };
+
+  await service.sendPasswordResetEmail({
+    companyName: 'Empresa X',
+    email: 'usuario@empresa.com',
+    token: 'reset-token-123',
+    userName: 'Pessoa',
+  });
+
+  assert.equal(sentMessages.length, 1);
+  assert.match(String(sentMessages[0]?.html), /recover-password\?token=reset-token-123/);
+});

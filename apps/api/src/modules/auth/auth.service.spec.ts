@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import {
   BadRequestException,
   ConflictException,
@@ -51,6 +52,7 @@ void test('AuthService registers a director with hashed password', async () => {
           departmentId: null,
         };
       },
+      update: async () => undefined,
     },
   };
   const jwtService = {
@@ -60,7 +62,8 @@ void test('AuthService registers a director with hashed password', async () => {
   const service = new AuthService(
     prisma as never,
     jwtService as never,
-    { execute: async () => undefined } as never,
+    { log: async () => undefined } as never,
+    { sendPasswordResetEmail: async () => undefined } as never,
   );
   const response = await service.registerDirector({
     name: 'Diretor',
@@ -85,7 +88,8 @@ void test('AuthService rejects duplicate director e-mail', async () => {
   const service = new AuthService(
     prisma as never,
     { signAsync: async () => 'token' } as never,
-    { execute: async () => undefined } as never,
+    { log: async () => undefined } as never,
+    { sendPasswordResetEmail: async () => undefined } as never,
   );
 
   await assert.rejects(
@@ -141,7 +145,8 @@ void test('AuthService rejects invalid login credentials', async () => {
   const service = new AuthService(
     prisma as never,
     { signAsync: async () => 'token' } as never,
-    { execute: async () => undefined } as never,
+    { log: async () => undefined } as never,
+    { sendPasswordResetEmail: async () => undefined } as never,
   );
 
   await assert.rejects(
@@ -150,9 +155,70 @@ void test('AuthService rejects invalid login credentials', async () => {
   );
 });
 
+void test('AuthService updates lastAccessAt on successful login', async () => {
+  let updatedLastAccessAt: Date | undefined;
+  const hashedPassword = await bcrypt.hash('senha123', 10);
+
+  const prisma = {
+    user: {
+      findUnique: async ({ where }: { where: { email?: string; id?: string } }) => {
+        if (where.email === 'diretor@empresa.com') {
+          return {
+            id: 'user-1',
+            name: 'Diretor',
+            email: 'diretor@empresa.com',
+            password: hashedPassword,
+            role: UserRole.DIRECTOR,
+            status: UserStatus.ACTIVE,
+            isActive: true,
+            companyId: null,
+            departmentId: null,
+          };
+        }
+
+        if (where.id === 'user-1') {
+          return {
+            id: 'user-1',
+            name: 'Diretor',
+            email: 'diretor@empresa.com',
+            password: hashedPassword,
+            role: UserRole.DIRECTOR,
+            status: UserStatus.ACTIVE,
+            isActive: true,
+            companyId: null,
+            departmentId: null,
+            company: null,
+          };
+        }
+
+        return null;
+      },
+      update: async ({ data }: { data: { lastAccessAt: Date } }) => {
+        updatedLastAccessAt = data.lastAccessAt;
+      },
+    },
+  };
+
+  const service = new AuthService(
+    prisma as never,
+    { signAsync: async () => 'token-login' } as never,
+    { log: async () => undefined } as never,
+    { sendPasswordResetEmail: async () => undefined } as never,
+  );
+
+  const response = await service.login({
+    email: 'diretor@empresa.com',
+    password: 'senha123',
+  });
+
+  assert.equal(response.accessToken, 'token-login');
+  assert.equal(updatedLastAccessAt instanceof Date, true);
+});
+
 void test('AuthService accepts a valid invite and activates the account', async () => {
   let createdPassword = '';
   const updatedDepartmentIds: string[] = [];
+  const auditCommands: Array<Record<string, unknown>> = [];
 
   const prisma = {
     invite: {
@@ -197,6 +263,7 @@ void test('AuthService accepts a valid invite and activates the account', async 
 
         return null;
       },
+      update: async () => undefined,
     },
     $transaction: async (callback: (tx: Record<string, unknown>) => Promise<unknown>) =>
       callback({
@@ -235,7 +302,12 @@ void test('AuthService accepts a valid invite and activates the account', async 
   const service = new AuthService(
     prisma as never,
     { signAsync: async () => 'token-accepted' } as never,
-    { execute: async () => undefined } as never,
+    {
+      log: async (command: Record<string, unknown>) => {
+        auditCommands.push(command);
+      },
+    } as never,
+    { sendPasswordResetEmail: async () => undefined } as never,
   );
 
   const response = await service.acceptInvite({
@@ -251,6 +323,7 @@ void test('AuthService accepts a valid invite and activates the account', async 
   assert.equal(response.user.departmentId, 'department-1');
   assert.deepEqual(updatedDepartmentIds, ['department-1']);
   assert.equal(await bcrypt.compare('12345678', createdPassword), true);
+  assert.equal(auditCommands[0]?.action, 'INVITE_ACCEPTED');
 });
 
 void test('AuthService accepts an employee invite without changing the department manager', async () => {
@@ -299,6 +372,7 @@ void test('AuthService accepts an employee invite without changing the departmen
 
         return null;
       },
+      update: async () => undefined,
     },
     $transaction: async (callback: (tx: Record<string, unknown>) => Promise<unknown>) =>
       callback({
@@ -334,7 +408,8 @@ void test('AuthService accepts an employee invite without changing the departmen
   const service = new AuthService(
     prisma as never,
     { signAsync: async () => 'token-employee' } as never,
-    { execute: async () => undefined } as never,
+    { log: async () => undefined } as never,
+    { sendPasswordResetEmail: async () => undefined } as never,
   );
 
   const response = await service.acceptInvite({
@@ -397,7 +472,8 @@ void test('AuthService rejects manager invites when the department already has a
   const service = new AuthService(
     prisma as never,
     { signAsync: async () => 'token-accepted' } as never,
-    { execute: async () => undefined } as never,
+    { log: async () => undefined } as never,
+    { sendPasswordResetEmail: async () => undefined } as never,
   );
 
   await assert.rejects(
@@ -454,7 +530,8 @@ void test('AuthService rejects invites when department data is inconsistent with
   const service = new AuthService(
     prisma as never,
     { signAsync: async () => 'token-accepted' } as never,
-    { execute: async () => undefined } as never,
+    { log: async () => undefined } as never,
+    { sendPasswordResetEmail: async () => undefined } as never,
   );
 
   await assert.rejects(
@@ -469,9 +546,8 @@ void test('AuthService rejects invites when department data is inconsistent with
   );
 });
 
-void test('AuthService rejects expired invites, audits the event and removes the token', async () => {
+void test('AuthService rejects expired invites and removes the token', async () => {
   const deletedInviteIds: string[] = [];
-  const auditCommands: Array<Record<string, unknown>> = [];
 
   const prisma = {
     invite: {
@@ -496,11 +572,8 @@ void test('AuthService rejects expired invites, audits the event and removes the
   const service = new AuthService(
     prisma as never,
     { signAsync: async () => 'token' } as never,
-    {
-      execute: async (command: Record<string, unknown>) => {
-        auditCommands.push(command);
-      },
-    } as never,
+    { log: async () => undefined } as never,
+    { sendPasswordResetEmail: async () => undefined } as never,
   );
 
   await assert.rejects(
@@ -509,6 +582,307 @@ void test('AuthService rejects expired invites, audits the event and removes the
   );
 
   assert.deepEqual(deletedInviteIds, ['invite-expired']);
-  assert.equal(auditCommands.length, 1);
-  assert.equal(auditCommands[0]?.action, 'invite.expired.rejected');
+});
+
+void test('AuthService changes the password when the current password is correct', async () => {
+  let updatedPassword = '';
+  const auditCommands: Array<Record<string, unknown>> = [];
+
+  const prisma = {
+    user: {
+      findUnique: async () => ({
+        id: 'user-1',
+        name: 'Diretor',
+        email: 'diretor@empresa.com',
+        password: await bcrypt.hash('senha123', 10),
+        role: UserRole.DIRECTOR,
+        status: UserStatus.ACTIVE,
+        isActive: true,
+        companyId: null,
+        departmentId: null,
+      }),
+      update: async ({ data }: { data: { password: string } }) => {
+        updatedPassword = data.password;
+      },
+    },
+  };
+
+  const service = new AuthService(
+    prisma as never,
+    { signAsync: async () => 'token' } as never,
+    {
+      log: async (command: Record<string, unknown>) => {
+        auditCommands.push(command);
+      },
+    } as never,
+    { sendPasswordResetEmail: async () => undefined } as never,
+  );
+
+  const response = await service.changePassword(
+    { sub: 'user-1', email: 'diretor@empresa.com', role: UserRole.DIRECTOR },
+    {
+      currentPassword: 'senha123',
+      newPassword: 'novaSenha1',
+      confirmPassword: 'novaSenha1',
+    },
+  );
+
+  assert.equal(response.success, true);
+  assert.equal(await bcrypt.compare('novaSenha1', updatedPassword), true);
+  assert.equal('password' in response, false);
+  assert.equal(auditCommands[0]?.action, 'PASSWORD_CHANGED');
+  assert.equal(JSON.stringify(auditCommands[0]).includes('password'), false);
+  assert.equal(JSON.stringify(auditCommands[0]).includes('hash'), false);
+});
+
+void test('AuthService rejects password change with incorrect current password', async () => {
+  const prisma = {
+    user: {
+      findUnique: async () => ({
+        id: 'user-1',
+        name: 'Diretor',
+        email: 'diretor@empresa.com',
+        password: await bcrypt.hash('senha123', 10),
+        role: UserRole.DIRECTOR,
+        status: UserStatus.ACTIVE,
+        isActive: true,
+        companyId: null,
+        departmentId: null,
+      }),
+    },
+  };
+
+  const service = new AuthService(
+    prisma as never,
+    { signAsync: async () => 'token' } as never,
+    { log: async () => undefined } as never,
+    { sendPasswordResetEmail: async () => undefined } as never,
+  );
+
+  await assert.rejects(
+    () =>
+      service.changePassword(
+        { sub: 'user-1', email: 'diretor@empresa.com', role: UserRole.DIRECTOR },
+        {
+          currentPassword: 'errada',
+          newPassword: 'novaSenha1',
+          confirmPassword: 'novaSenha1',
+        },
+      ),
+    UnauthorizedException,
+  );
+});
+
+void test('AuthService rejects password change when the new password is equal to the current one', async () => {
+  const currentHash = await bcrypt.hash('senha123', 10);
+  const prisma = {
+    user: {
+      findUnique: async () => ({
+        id: 'user-1',
+        name: 'Diretor',
+        email: 'diretor@empresa.com',
+        password: currentHash,
+        role: UserRole.DIRECTOR,
+        status: UserStatus.ACTIVE,
+        isActive: true,
+        companyId: null,
+        departmentId: null,
+      }),
+    },
+  };
+
+  const service = new AuthService(
+    prisma as never,
+    { signAsync: async () => 'token' } as never,
+    { log: async () => undefined } as never,
+    { sendPasswordResetEmail: async () => undefined } as never,
+  );
+
+  await assert.rejects(
+    () =>
+      service.changePassword(
+        { sub: 'user-1', email: 'diretor@empresa.com', role: UserRole.DIRECTOR },
+        {
+          currentPassword: 'senha123',
+          newPassword: 'senha123',
+          confirmPassword: 'senha123',
+        },
+      ),
+    BadRequestException,
+  );
+});
+
+void test('AuthService forgotPassword returns a generic response and sends email when the account exists', async () => {
+  const sentEmails: Array<Record<string, unknown>> = [];
+  let createdTokenHash = '';
+
+  const prisma = {
+    user: {
+      findUnique: async () => ({
+        id: 'user-1',
+        name: 'Diretor',
+        email: 'diretor@empresa.com',
+        password: 'hashed',
+        role: UserRole.DIRECTOR,
+        status: UserStatus.ACTIVE,
+        isActive: true,
+        companyId: 'company-1',
+        departmentId: null,
+        company: {
+          name: 'Empresa X',
+        },
+      }),
+    },
+    passwordResetToken: {
+      deleteMany: async () => undefined,
+      create: async ({ data }: { data: { tokenHash: string } }) => {
+        createdTokenHash = data.tokenHash;
+      },
+    },
+  };
+
+  const service = new AuthService(
+    prisma as never,
+    { signAsync: async () => 'token' } as never,
+    { log: async () => undefined } as never,
+    {
+      sendPasswordResetEmail: async (payload: Record<string, unknown>) => {
+        sentEmails.push(payload);
+      },
+    } as never,
+  );
+
+  const response = await service.forgotPassword({ email: 'diretor@empresa.com' });
+
+  assert.equal(response.success, true);
+  assert.equal(sentEmails.length, 1);
+  assert.equal(createdTokenHash.length > 0, true);
+});
+
+void test('AuthService forgotPassword returns a generic response when the account does not exist', async () => {
+  const service = new AuthService(
+    {
+      user: {
+        findUnique: async () => null,
+      },
+    } as never,
+    { signAsync: async () => 'token' } as never,
+    { log: async () => undefined } as never,
+    { sendPasswordResetEmail: async () => undefined } as never,
+  );
+
+  const response = await service.forgotPassword({ email: 'naoexiste@empresa.com' });
+
+  assert.equal(response.success, true);
+  assert.match(response.message, /recovery link/i);
+});
+
+void test('AuthService resetPassword updates the hash with a valid token and blocks reused tokens', async () => {
+  let updatedPassword = '';
+  let usedResetTokenId = '';
+  const currentHash = await bcrypt.hash('senha123', 10);
+
+  const resetToken = {
+    id: 'reset-1',
+    userId: 'user-1',
+    tokenHash: 'hashed-token',
+    expiresAt: new Date(Date.now() + 1000 * 60),
+    usedAt: null,
+    user: {
+      id: 'user-1',
+      email: 'diretor@empresa.com',
+      password: currentHash,
+    },
+  };
+
+  const prisma = {
+    passwordResetToken: {
+      findUnique: async ({ where }: { where: { tokenHash: string } }) => {
+        if (where.tokenHash === createHash('sha256').update('token-bruto').digest('hex')) {
+          return resetToken;
+        }
+
+        return {
+          ...resetToken,
+          usedAt: new Date(),
+        };
+      },
+    },
+    $transaction: async (callback: (tx: Record<string, unknown>) => Promise<unknown>) =>
+      callback({
+        user: {
+          update: async ({ data }: { data: { password: string } }) => {
+            updatedPassword = data.password;
+          },
+        },
+        passwordResetToken: {
+          update: async ({ where }: { where: { id: string } }) => {
+            usedResetTokenId = where.id;
+          },
+          updateMany: async () => undefined,
+        },
+      }),
+  };
+
+  const service = new AuthService(
+    prisma as never,
+    { signAsync: async () => 'token' } as never,
+    { log: async () => undefined } as never,
+    { sendPasswordResetEmail: async () => undefined } as never,
+  );
+
+  await service.resetPassword({
+    token: 'token-bruto',
+    newPassword: 'novaSenha1',
+    confirmPassword: 'novaSenha1',
+  });
+
+  assert.equal(await bcrypt.compare('novaSenha1', updatedPassword), true);
+  assert.equal(usedResetTokenId, 'reset-1');
+
+  await assert.rejects(
+    () =>
+      service.resetPassword({
+        token: 'token-usado',
+        newPassword: 'novaSenha1',
+        confirmPassword: 'novaSenha1',
+      }),
+    BadRequestException,
+  );
+});
+
+void test('AuthService rejects expired reset tokens', async () => {
+  const prisma = {
+    passwordResetToken: {
+      findUnique: async () => ({
+        id: 'reset-1',
+        userId: 'user-1',
+        tokenHash: 'hashed',
+        expiresAt: new Date(Date.now() - 1000),
+        usedAt: null,
+        user: {
+          id: 'user-1',
+          email: 'diretor@empresa.com',
+          password: await bcrypt.hash('senha123', 10),
+        },
+      }),
+    },
+  };
+
+  const service = new AuthService(
+    prisma as never,
+    { signAsync: async () => 'token' } as never,
+    { log: async () => undefined } as never,
+    { sendPasswordResetEmail: async () => undefined } as never,
+  );
+
+  await assert.rejects(
+    () =>
+      service.resetPassword({
+        token: 'token-expirado',
+        newPassword: 'novaSenha1',
+        confirmPassword: 'novaSenha1',
+      }),
+    BadRequestException,
+  );
 });

@@ -6,6 +6,9 @@ import {
 } from '@nestjs/common';
 import { CycleStatus, type Prisma, type UserRole } from '@prisma/client';
 import { PrismaService } from '../../core/shared/prisma.service';
+import { AUDIT_ACTIONS, AUDIT_ENTITIES } from '../audit/audit.constants';
+import { AuditService } from '../audit/audit.service';
+import type { AuditRequestContext } from '../audit/audit.types';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { DashboardDomainService } from '../dashboard/domain/services/dashboard-domain.service';
 import { CreateObjectiveDto } from './dto/create-objective.dto';
@@ -55,6 +58,7 @@ export class ObjectivesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly dashboardDomainService: DashboardDomainService,
+    private readonly auditService: AuditService,
   ) {}
 
   async list(
@@ -159,7 +163,11 @@ export class ObjectivesService {
     };
   }
 
-  async create(actor: AuthenticatedUser, input: CreateObjectiveDto) {
+  async create(
+    actor: AuthenticatedUser,
+    input: CreateObjectiveDto,
+    requestContext?: AuditRequestContext,
+  ) {
     const user = await this.prisma.user.findUnique({
       where: { id: actor.sub },
       select: {
@@ -185,10 +193,30 @@ export class ObjectivesService {
       include: this.objectiveInclude(),
     });
 
+    await this.auditService.log({
+      actor: {
+        id: actor.sub,
+        email: actor.email,
+        role: actor.role,
+      },
+      action: AUDIT_ACTIONS.OBJECTIVE_CREATED,
+      entity: AUDIT_ENTITIES.OBJECTIVE,
+      entityId: created.id,
+      companyId: user.companyId,
+      departmentId: created.cycle.departmentId,
+      newValue: this.toObjectiveAuditPayload(created),
+      requestContext,
+    });
+
     return this.mapObjective(created);
   }
 
-  async update(actor: AuthenticatedUser, objectiveId: string, input: UpdateObjectiveDto) {
+  async update(
+    actor: AuthenticatedUser,
+    objectiveId: string,
+    input: UpdateObjectiveDto,
+    requestContext?: AuditRequestContext,
+  ) {
     const user = await this.prisma.user.findUnique({
       where: { id: actor.sub },
       select: {
@@ -211,6 +239,8 @@ export class ObjectivesService {
       throw new NotFoundException('Objective not found');
     }
 
+    const oldObjective = this.toObjectiveAuditPayload(existing);
+
     const targetCycle =
       input.cycleId && input.cycleId !== existing.cycleId
         ? await this.findCycleInScope(user.role, user.companyId, user.departmentId, input.cycleId)
@@ -228,10 +258,30 @@ export class ObjectivesService {
       include: this.objectiveInclude(),
     });
 
+    await this.auditService.log({
+      actor: {
+        id: actor.sub,
+        email: actor.email,
+        role: actor.role,
+      },
+      action: AUDIT_ACTIONS.OBJECTIVE_UPDATED,
+      entity: AUDIT_ENTITIES.OBJECTIVE,
+      entityId: updated.id,
+      companyId: user.companyId,
+      departmentId: updated.cycle.departmentId,
+      oldValue: oldObjective,
+      newValue: this.toObjectiveAuditPayload(updated),
+      requestContext,
+    });
+
     return this.mapObjective(updated);
   }
 
-  async remove(actor: AuthenticatedUser, objectiveId: string) {
+  async remove(
+    actor: AuthenticatedUser,
+    objectiveId: string,
+    requestContext?: AuditRequestContext,
+  ) {
     const user = await this.prisma.user.findUnique({
       where: { id: actor.sub },
       select: {
@@ -247,12 +297,7 @@ export class ObjectivesService {
 
     const objective = await this.prisma.objective.findFirst({
       where: this.buildObjectiveScopeWhere(user.role, user.companyId, user.departmentId, objectiveId),
-      include: {
-        okrs: {
-          where: { deletedAt: null },
-          select: { id: true },
-        },
-      },
+      include: this.objectiveInclude(),
     });
 
     if (!objective) {
@@ -265,6 +310,22 @@ export class ObjectivesService {
 
     await this.prisma.objective.delete({
       where: { id: objectiveId },
+    });
+
+    await this.auditService.log({
+      actor: {
+        id: actor.sub,
+        email: actor.email,
+        role: actor.role,
+      },
+      action: AUDIT_ACTIONS.OBJECTIVE_DELETED,
+      entity: AUDIT_ENTITIES.OBJECTIVE,
+      entityId: objective.id,
+      companyId: user.companyId,
+      departmentId: objective.cycle.departmentId,
+      oldValue: this.toObjectiveAuditPayload(objective),
+      newValue: null,
+      requestContext,
     });
 
     return { success: true };
@@ -564,5 +625,15 @@ export class ObjectivesService {
         },
       },
     } satisfies Prisma.ObjectiveInclude;
+  }
+
+  private toObjectiveAuditPayload(objective: ObjectiveRecord) {
+    return {
+      id: objective.id,
+      name: objective.name,
+      description: objective.description,
+      cycleId: objective.cycleId,
+      departmentId: objective.cycle.departmentId,
+    };
   }
 }

@@ -9,7 +9,11 @@ import { ObjectivesController } from './objectives.controller';
 import { ObjectivesService } from './objectives.service';
 
 function createService(prisma: Record<string, unknown>) {
-  return new ObjectivesService(prisma as never, new DashboardDomainService());
+  return new ObjectivesService(
+    prisma as never,
+    new DashboardDomainService(),
+    { log: async () => undefined } as never,
+  );
 }
 
 void test('ObjectivesService lists company objectives only for the director company', async () => {

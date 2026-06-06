@@ -6,9 +6,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
-import { createHash, randomBytes } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import { PrismaService } from '../../core/shared/prisma.service';
-import { CreateAuditUseCase } from '../audit/application/use-cases/create-audit.usecase';
+import { AUDIT_ACTIONS, AUDIT_ENTITIES } from '../audit/audit.constants';
+import { AuditService } from '../audit/audit.service';
+import type { AuditRequestContext } from '../audit/audit.types';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { EmailService } from '../email/email.service';
 import { CreateInviteDto } from './dto/create-invite.dto';
@@ -19,10 +21,14 @@ export class InvitesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
-    private readonly createAuditUseCase: CreateAuditUseCase,
+    private readonly auditService: AuditService,
   ) {}
 
-  async create(actor: AuthenticatedUser, input: CreateInviteDto) {
+  async create(
+    actor: AuthenticatedUser,
+    input: CreateInviteDto,
+    requestContext?: AuditRequestContext,
+  ) {
     const companyContext = await this.getActorCompanyContext(actor.sub);
     const department = await this.assertDepartmentAvailable(
       companyContext.companyId,
@@ -45,7 +51,7 @@ export class InvitesService {
 
     if (existingInvite) {
       if (existingInvite.expiresAt.getTime() < Date.now()) {
-        await this.auditAndDeleteExpiredInvite(existingInvite, actor.sub, 'invite.expired.replaced');
+        await this.deleteExpiredInvite(existingInvite.id);
       } else {
         throw new ConflictException('Unable to create invite');
       }
@@ -87,20 +93,30 @@ export class InvitesService {
         where: { id: invite.id },
       });
 
-      await this.createAuditUseCase.execute({
-        userId: actor.sub,
-        action: 'invite.email.failed',
-        entity: 'invite',
-        metadata: {
-          inviteId: invite.id,
-          email: invite.email,
-          companyId: invite.companyId,
-          departmentId: invite.departmentId,
-        },
-      });
-
       throw new InternalServerErrorException('Unable to complete request');
     }
+
+    await this.auditService.log({
+      actor: {
+        id: actor.sub,
+        email: actor.email,
+        role: actor.role,
+      },
+      action: AUDIT_ACTIONS.INVITE_SENT,
+      entity: AUDIT_ENTITIES.INVITE,
+      entityId: invite.id,
+      companyId: companyContext.companyId,
+      departmentId: invite.departmentId,
+      newValue: {
+        inviteId: invite.id,
+        email: invite.email,
+        role: invite.role,
+        departmentId: invite.departmentId,
+        companyId: invite.companyId,
+        expiresAt: invite.expiresAt.toISOString(),
+      },
+      requestContext,
+    });
 
     return this.mapInviteResponse({
       ...invite,
@@ -169,7 +185,11 @@ export class InvitesService {
     return this.mapInviteResponse(invite);
   }
 
-  async resend(actor: AuthenticatedUser, inviteId: string): Promise<InviteResponseItem> {
+  async resend(
+    actor: AuthenticatedUser,
+    inviteId: string,
+    requestContext?: AuditRequestContext,
+  ): Promise<InviteResponseItem> {
     const companyContext = await this.getActorCompanyContext(actor.sub);
     const existingInvite = await this.prisma.invite.findFirst({
       where: {
@@ -256,18 +276,32 @@ export class InvitesService {
       throw new InternalServerErrorException('Unable to complete request');
     }
 
-    await this.createAuditUseCase.execute({
-      userId: actor.sub,
-      action: expired ? 'invite.resent.renewed' : 'invite.resent',
-      entity: 'invite',
-      metadata: {
+    await this.auditService.log({
+      actor: {
+        id: actor.sub,
+        email: actor.email,
+        role: actor.role,
+      },
+      action: AUDIT_ACTIONS.INVITE_RESENT,
+      entity: AUDIT_ENTITIES.INVITE,
+      entityId: updatedInvite.id,
+      companyId: companyContext.companyId,
+      departmentId: updatedInvite.department?.id ?? null,
+      oldValue: {
+        expiresAt: existingInvite.expiresAt.toISOString(),
+      },
+      newValue: {
         inviteId: updatedInvite.id,
         email: updatedInvite.email,
-        companyId: companyContext.companyId,
+        role: updatedInvite.role,
         departmentId: updatedInvite.department?.id ?? null,
+        companyId: companyContext.companyId,
         expiresAt: updatedInvite.expiresAt.toISOString(),
-        tokenHash: createHash('sha256').update(updatedInvite.token).digest('hex'),
       },
+      metadata: {
+        renewed: expired,
+      },
+      requestContext,
     });
 
     return this.mapInviteResponse(updatedInvite);
@@ -403,36 +437,9 @@ export class InvitesService {
     };
   }
 
-  private async auditAndDeleteExpiredInvite(
-    invite: {
-      id: string;
-      email: string;
-      role: UserRole;
-      companyId: string;
-      departmentId: string | null;
-      token: string;
-      expiresAt: Date;
-    },
-    actorId: string,
-    action: string,
-  ) {
-    await this.createAuditUseCase.execute({
-      userId: actorId,
-      action,
-      entity: 'invite',
-      metadata: {
-        inviteId: invite.id,
-        email: invite.email,
-        role: invite.role,
-        companyId: invite.companyId,
-        departmentId: invite.departmentId,
-        expiresAt: invite.expiresAt.toISOString(),
-        tokenHash: createHash('sha256').update(invite.token).digest('hex'),
-      },
-    });
-
+  private async deleteExpiredInvite(inviteId: string) {
     await this.prisma.invite.delete({
-      where: { id: invite.id },
+      where: { id: inviteId },
     });
   }
 }

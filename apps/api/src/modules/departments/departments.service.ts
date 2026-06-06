@@ -6,6 +6,9 @@ import {
 } from '@nestjs/common';
 import { Prisma, UserRole, UserStatus } from '@prisma/client';
 import { PrismaService } from '../../core/shared/prisma.service';
+import { AUDIT_ACTIONS, AUDIT_ENTITIES } from '../audit/audit.constants';
+import { AuditService } from '../audit/audit.service';
+import type { AuditRequestContext } from '../audit/audit.types';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { DashboardDomainService } from '../dashboard/domain/services/dashboard-domain.service';
 import { CreateDepartmentDto } from './dto/create-department.dto';
@@ -101,6 +104,7 @@ export class DepartmentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly dashboardDomainService: DashboardDomainService,
+    private readonly auditService: AuditService,
   ) {}
 
   async list(
@@ -205,7 +209,11 @@ export class DepartmentsService {
     };
   }
 
-  async create(actor: AuthenticatedUser, input: CreateDepartmentDto) {
+  async create(
+    actor: AuthenticatedUser,
+    input: CreateDepartmentDto,
+    requestContext?: AuditRequestContext,
+  ) {
     const user = await this.prisma.user.findUnique({
       where: { id: actor.sub },
       select: { companyId: true },
@@ -249,6 +257,21 @@ export class DepartmentsService {
       return createdDepartment;
     });
 
+    await this.auditService.log({
+      actor: {
+        id: actor.sub,
+        email: actor.email,
+        role: actor.role,
+      },
+      action: AUDIT_ACTIONS.DEPARTMENT_CREATED,
+      entity: AUDIT_ENTITIES.DEPARTMENT,
+      entityId: created.id,
+      companyId,
+      departmentId: created.id,
+      newValue: this.toDepartmentAuditPayload(created),
+      requestContext,
+    });
+
     return this.mapDepartmentDetails(created);
   }
 
@@ -256,6 +279,7 @@ export class DepartmentsService {
     actor: AuthenticatedUser,
     departmentId: string,
     input: UpdateDepartmentDto,
+    requestContext?: AuditRequestContext,
   ) {
     const user = await this.prisma.user.findUnique({
       where: { id: actor.sub },
@@ -280,6 +304,7 @@ export class DepartmentsService {
     }
 
     const nextName = input.name?.trim() ?? existing.name;
+    const oldDepartment = this.toDepartmentAuditPayload(existing);
 
     if (nextName.length < 2) {
       throw new BadRequestException('Department name must contain at least 2 characters');
@@ -319,10 +344,53 @@ export class DepartmentsService {
       return updatedDepartment;
     });
 
+    const newDepartment = this.toDepartmentAuditPayload(updated);
+    await this.auditService.log({
+      actor: {
+        id: actor.sub,
+        email: actor.email,
+        role: actor.role,
+      },
+      action: AUDIT_ACTIONS.DEPARTMENT_UPDATED,
+      entity: AUDIT_ENTITIES.DEPARTMENT,
+      entityId: updated.id,
+      companyId,
+      departmentId: updated.id,
+      oldValue: oldDepartment,
+      newValue: newDepartment,
+      requestContext,
+    });
+
+    if (oldDepartment.managerId !== newDepartment.managerId) {
+      await this.auditService.log({
+        actor: {
+          id: actor.sub,
+          email: actor.email,
+          role: actor.role,
+        },
+        action: AUDIT_ACTIONS.DEPARTMENT_MANAGER_CHANGED,
+        entity: AUDIT_ENTITIES.DEPARTMENT,
+        entityId: updated.id,
+        companyId,
+        departmentId: updated.id,
+        oldValue: {
+          managerId: oldDepartment.managerId,
+        },
+        newValue: {
+          managerId: newDepartment.managerId,
+        },
+        requestContext,
+      });
+    }
+
     return this.mapDepartmentDetails(updated);
   }
 
-  async remove(actor: AuthenticatedUser, departmentId: string) {
+  async remove(
+    actor: AuthenticatedUser,
+    departmentId: string,
+    requestContext?: AuditRequestContext,
+  ) {
     const user = await this.prisma.user.findUnique({
       where: { id: actor.sub },
       select: { companyId: true },
@@ -370,6 +438,28 @@ export class DepartmentsService {
 
     await this.prisma.department.delete({
       where: { id: departmentId },
+    });
+
+    await this.auditService.log({
+      actor: {
+        id: actor.sub,
+        email: actor.email,
+        role: actor.role,
+      },
+      action: AUDIT_ACTIONS.DEPARTMENT_DELETED,
+      entity: AUDIT_ENTITIES.DEPARTMENT,
+      entityId: department.id,
+      companyId: user.companyId,
+      departmentId: department.id,
+      oldValue: {
+        id: department.id,
+        name: department.name,
+        usersCount: department.users.length,
+        invitesCount: department.invites.length,
+        cyclesCount: department.cycles.length,
+      },
+      newValue: null,
+      requestContext,
     });
 
     return { success: true };
@@ -849,6 +939,16 @@ export class DepartmentsService {
         role: user.role,
         status: user.status,
       },
+    };
+  }
+
+  private toDepartmentAuditPayload(department: DepartmentRecord) {
+    return {
+      id: department.id,
+      name: department.name,
+      managerId: department.managerId,
+      memberIds: department.users.map((user) => user.id).sort(),
+      companyId: department.companyId,
     };
   }
 }

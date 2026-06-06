@@ -8,8 +8,15 @@ import { DashboardDomainService } from '../dashboard/domain/services/dashboard-d
 import { OkrsController } from './okrs.controller';
 import { OkrsService } from './okrs.service';
 
-function createService(prisma: Record<string, unknown>) {
-  return new OkrsService(prisma as never, new DashboardDomainService());
+function createService(
+  prisma: Record<string, unknown>,
+  auditService: Record<string, unknown> = { log: async () => undefined },
+) {
+  return new OkrsService(
+    prisma as never,
+    new DashboardDomainService(),
+    auditService as never,
+  );
 }
 
 void test('OkrsService lists company OKRs only for the director company', async () => {
@@ -439,6 +446,7 @@ void test('OkrsService blocks updates when the strategic cycle is closed', async
 void test('OkrsService creates a ProgressOKR record when progress is updated', async () => {
   let createdProgressOkrId: string | undefined;
   let createdProgressValue: number | undefined;
+  const auditCommands: Array<Record<string, unknown>> = [];
   const tx = {
     progressOKR: {
       create: async ({ data }: { data: Record<string, unknown> }) => {
@@ -488,49 +496,56 @@ void test('OkrsService creates a ProgressOKR record when progress is updated', a
     },
   };
 
-  const service = createService({
-    user: {
-      findUnique: async () => ({
-        companyId: 'company-1',
-        departmentId: 'department-1',
-        role: UserRole.MANAGER,
-      }),
-    },
-    oKR: {
-      findFirst: async () => ({
-        id: 'okr-1',
-        name: 'Receita trimestral',
-        metricType: OKRMetricType.CURRENCY,
-        objectiveId: 'objective-1',
-        currentValue: 20,
-        targetValue: 100,
-        responsibleId: 'employee-1',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        responsible: {
-          id: 'employee-1',
-          name: 'Pessoa A',
+  const service = createService(
+    {
+      user: {
+        findUnique: async () => ({
+          companyId: 'company-1',
           departmentId: 'department-1',
-        },
-        objective: {
-          id: 'objective-1',
-          name: 'Aumentar receita',
-          cycleId: 'cycle-1',
-          cycle: {
-            id: 'cycle-1',
-            name: 'Ciclo 1',
-            status: 'ACTIVE',
-            startDate: new Date('2026-01-01T00:00:00Z'),
-            endDate: new Date('2026-08-01T00:00:00Z'),
+          role: UserRole.MANAGER,
+        }),
+      },
+      oKR: {
+        findFirst: async () => ({
+          id: 'okr-1',
+          name: 'Receita trimestral',
+          metricType: OKRMetricType.CURRENCY,
+          objectiveId: 'objective-1',
+          currentValue: 20,
+          targetValue: 100,
+          responsibleId: 'employee-1',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          responsible: {
+            id: 'employee-1',
+            name: 'Pessoa A',
             departmentId: 'department-1',
-            department: { id: 'department-1', name: 'Marketing' },
           },
-        },
-        progress: [],
-      }),
+          objective: {
+            id: 'objective-1',
+            name: 'Aumentar receita',
+            cycleId: 'cycle-1',
+            cycle: {
+              id: 'cycle-1',
+              name: 'Ciclo 1',
+              status: 'ACTIVE',
+              startDate: new Date('2026-01-01T00:00:00Z'),
+              endDate: new Date('2026-08-01T00:00:00Z'),
+              departmentId: 'department-1',
+              department: { id: 'department-1', name: 'Marketing' },
+            },
+          },
+          progress: [],
+        }),
+      },
+      $transaction: async (callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx),
     },
-    $transaction: async (callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx),
-  });
+    {
+      log: async (command: Record<string, unknown>) => {
+        auditCommands.push(command);
+      },
+    },
+  );
 
   await service.addProgress(
     { sub: 'manager-1', email: 'gestora@empresa.com', role: UserRole.MANAGER },
@@ -540,6 +555,7 @@ void test('OkrsService creates a ProgressOKR record when progress is updated', a
 
   assert.equal(createdProgressOkrId, 'okr-1');
   assert.equal(createdProgressValue, 30.13);
+  assert.equal(auditCommands[0]?.action, 'OKR_PROGRESS_UPDATED');
 });
 
 void test('OkrsService normalizes numeric values before creating an OKR', async () => {

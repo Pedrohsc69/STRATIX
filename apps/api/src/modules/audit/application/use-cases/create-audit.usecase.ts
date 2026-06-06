@@ -1,32 +1,27 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { randomUUID } from 'node:crypto';
-import { AuditEntity, AuditMetadata } from '../../domain/entities/audit.entity';
-import { AUDIT_REPOSITORY, AuditRepository } from '../../domain/repositories/audit.repository';
+import { Injectable } from '@nestjs/common';
+import { AuditService } from '../../audit.service';
 
 export interface CreateAuditCommand {
   userId: string;
   action: string;
   entity: string;
-  metadata?: AuditMetadata;
+  metadata?: Record<string, unknown>;
 }
 
 @Injectable()
 export class CreateAuditUseCase {
-  constructor(
-    @Inject(AUDIT_REPOSITORY)
-    private readonly auditRepository: AuditRepository,
-  ) {}
+  constructor(private readonly auditService: AuditService) {}
 
   async execute(command: CreateAuditCommand) {
-    const audit = new AuditEntity({
-      id: randomUUID(),
-      userId: command.userId,
+    await this.auditService.log({
+      actor: {
+        id: command.userId,
+        email: 'unknown@audit.local',
+        role: 'SYSTEM',
+      },
       action: command.action,
       entity: command.entity,
-      timestamp: new Date(),
-      metadata: command.metadata ?? {},
+      metadata: command.metadata ?? null,
     });
-
-    return this.auditRepository.save(audit);
   }
 }

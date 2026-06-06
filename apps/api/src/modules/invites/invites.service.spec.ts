@@ -24,7 +24,7 @@ void test('InvitesService requires at least one department before creating invit
   const service = new InvitesService(
     prisma as never,
     { sendInviteEmail: async () => undefined } as never,
-    { execute: async () => undefined } as never,
+    { log: async () => undefined } as never,
   );
 
   await assert.rejects(
@@ -58,7 +58,7 @@ void test('InvitesService rejects director invites', async () => {
   const service = new InvitesService(
     prisma as never,
     { sendInviteEmail: async () => undefined } as never,
-    { execute: async () => undefined } as never,
+    { log: async () => undefined } as never,
   );
 
   await assert.rejects(
@@ -108,7 +108,7 @@ void test('InvitesService rejects duplicate invite e-mail', async () => {
   const service = new InvitesService(
     prisma as never,
     { sendInviteEmail: async () => undefined } as never,
-    { execute: async () => undefined } as never,
+    { log: async () => undefined } as never,
   );
 
   await assert.rejects(
@@ -126,7 +126,7 @@ void test('InvitesService rejects duplicate invite e-mail', async () => {
   );
 });
 
-void test('InvitesService deletes expired invites, audits the replacement and sends the new e-mail', async () => {
+void test('InvitesService replaces expired invites and audits INVITE_SENT without token data', async () => {
   const deletedInviteIds: string[] = [];
   const auditCommands: Array<Record<string, unknown>> = [];
   const sentMessages: Array<Record<string, unknown>> = [];
@@ -184,7 +184,7 @@ void test('InvitesService deletes expired invites, audits the replacement and se
       },
     } as never,
     {
-      execute: async (command: Record<string, unknown>) => {
+      log: async (command: Record<string, unknown>) => {
         auditCommands.push(command);
       },
     } as never,
@@ -203,7 +203,9 @@ void test('InvitesService deletes expired invites, audits the replacement and se
   assert.equal(invite.id, 'invite-new');
   assert.deepEqual(deletedInviteIds, ['invite-expired']);
   assert.equal(auditCommands.length, 1);
-  assert.equal(auditCommands[0]?.action, 'invite.expired.replaced');
+  assert.equal(auditCommands[0]?.action, 'INVITE_SENT');
+  assert.equal(JSON.stringify(auditCommands[0]).includes('tokenHash'), false);
+  assert.equal(JSON.stringify(auditCommands[0]).includes('"token"'), false);
   assert.equal(sentMessages.length, 1);
   assert.equal(sentMessages[0]?.token, 'new-token');
   assert.equal(sentMessages[0]?.inviteeName, 'Gestor Comercial');
@@ -258,7 +260,7 @@ void test('InvitesService deletes the invite when e-mail delivery fails', async 
       },
     } as never,
     {
-      execute: async (command: Record<string, unknown>) => {
+      log: async (command: Record<string, unknown>) => {
         auditCommands.push(command);
       },
     } as never,
@@ -279,8 +281,7 @@ void test('InvitesService deletes the invite when e-mail delivery fails', async 
   );
 
   assert.deepEqual(deletedInviteIds, ['invite-new']);
-  assert.equal(auditCommands.length, 1);
-  assert.equal(auditCommands[0]?.action, 'invite.email.failed');
+  assert.equal(auditCommands.length, 0);
 });
 
 void test('InvitesService rejects manager invites when the department already has a manager', async () => {
@@ -310,7 +311,7 @@ void test('InvitesService rejects manager invites when the department already ha
   const service = new InvitesService(
     prisma as never,
     { sendInviteEmail: async () => undefined } as never,
-    { execute: async () => undefined } as never,
+    { log: async () => undefined } as never,
   );
 
   await assert.rejects(
@@ -361,7 +362,7 @@ void test('InvitesService rejects a second active manager invite for the same de
   const service = new InvitesService(
     prisma as never,
     { sendInviteEmail: async () => undefined } as never,
-    { execute: async () => undefined } as never,
+    { log: async () => undefined } as never,
   );
 
   await assert.rejects(
@@ -446,7 +447,7 @@ void test('InvitesService resends an active invite without changing the token', 
       },
     } as never,
     {
-      execute: async (command: Record<string, unknown>) => {
+      log: async (command: Record<string, unknown>) => {
         auditCommands.push(command);
       },
     } as never,
@@ -459,7 +460,9 @@ void test('InvitesService resends an active invite without changing the token', 
 
   assert.equal(invite.status, 'PENDING');
   assert.equal(sentMessages[0]?.token, 'active-token');
-  assert.equal(auditCommands[0]?.action, 'invite.resent');
+  assert.equal(auditCommands[0]?.action, 'INVITE_RESENT');
+  assert.equal(JSON.stringify(auditCommands[0]).includes('tokenHash'), false);
+  assert.equal(JSON.stringify(auditCommands[0]).includes('"token"'), false);
 });
 
 void test('InvitesService renews the token when resending an expired invite', async () => {
@@ -520,7 +523,7 @@ void test('InvitesService renews the token when resending an expired invite', as
         sentMessages.push(message);
       },
     } as never,
-    { execute: async () => undefined } as never,
+    { log: async () => undefined } as never,
   );
 
   await service.resend(
@@ -565,7 +568,7 @@ void test('InvitesService does not resend an accepted invite', async () => {
   const service = new InvitesService(
     prisma as never,
     { sendInviteEmail: async () => undefined } as never,
-    { execute: async () => undefined } as never,
+    { log: async () => undefined } as never,
   );
 
   await assert.rejects(

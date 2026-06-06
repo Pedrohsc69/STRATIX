@@ -7,8 +7,13 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
+import {
+  type AuditRequestLike,
+  extractAuditRequestContext,
+} from '../audit/audit-request.util';
 import { UserRole } from '@prisma/client';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -46,8 +51,9 @@ export class DepartmentsController {
   create(
     @CurrentUser() user: AuthenticatedUser,
     @Body() body: CreateDepartmentDto,
+    @Req() request: AuditRequestLike,
   ) {
-    return this.departmentsService.create(user, body);
+    return this.departmentsService.create(user, body, extractAuditRequestContext(request));
   }
 
   @Patch(':departmentId')
@@ -56,8 +62,14 @@ export class DepartmentsController {
     @CurrentUser() user: AuthenticatedUser,
     @Param('departmentId') departmentId: string,
     @Body() body: UpdateDepartmentDto,
+    @Req() request: AuditRequestLike,
   ) {
-    return this.departmentsService.update(user, departmentId, body);
+    return this.departmentsService.update(
+      user,
+      departmentId,
+      body,
+      extractAuditRequestContext(request),
+    );
   }
 
   @Delete(':departmentId')
@@ -65,7 +77,8 @@ export class DepartmentsController {
   remove(
     @CurrentUser() user: AuthenticatedUser,
     @Param('departmentId') departmentId: string,
+    @Req() request: AuditRequestLike,
   ) {
-    return this.departmentsService.remove(user, departmentId);
+    return this.departmentsService.remove(user, departmentId, extractAuditRequestContext(request));
   }
 }

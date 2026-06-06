@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { useNavigate } from "react-router";
 import { Lock, Eye, EyeOff, Shield, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import { resetPassword } from "../../auth/services/auth-service";
 
 export  function RecoverPasswordPage() {
   const navigate = useNavigate();
@@ -12,6 +13,9 @@ export  function RecoverPasswordPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState(false);
   const [tokenValid, setTokenValid] = useState(true);
+  const [token, setToken] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   // Password strength calculation
   const getPasswordStrength = (password: string) => {
@@ -39,13 +43,12 @@ export  function RecoverPasswordPage() {
     { label: "Caractere especial (!@#$%)", met: /[!@#$%^&*(),.?":{}|<>]/.test(newPassword) }
   ];
 
-  // Simulate token validation
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get("token");
+    const currentToken = urlParams.get("token") ?? "";
+    setToken(currentToken);
 
-    // Simulate token validation (in production, validate against backend)
-    if (!token || token === "invalid") {
+    if (!currentToken) {
       setTokenValid(false);
     }
   }, []);
@@ -71,16 +74,41 @@ export  function RecoverPasswordPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError("");
 
     if (!validateForm()) {
       return;
     }
 
-    // Simulate password reset
-    console.log("Password reset:", { newPassword });
-    setSuccess(true);
+    try {
+      setSubmitting(true);
+      await resetPassword({
+        token,
+        newPassword,
+        confirmPassword,
+      });
+      setSuccess(true);
+    } catch (error) {
+      const maybeError = error as {
+        response?: {
+          data?: {
+            message?: string | string[];
+          };
+        };
+      };
+
+      if (typeof maybeError.response?.data?.message === "string") {
+        setSubmitError(maybeError.response.data.message);
+      } else if (Array.isArray(maybeError.response?.data?.message)) {
+        setSubmitError(maybeError.response.data.message.join(", "));
+      } else {
+        setSubmitError("Não foi possível redefinir a senha.");
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleGoToLogin = () => {
@@ -114,7 +142,7 @@ export  function RecoverPasswordPage() {
               Este link de redefinição de senha não é mais válido. Por favor, solicite um novo link de recuperação.
             </p>
             <button
-              onClick={() => navigate("/recuperar-senha")}
+              onClick={() => navigate("/forgot-password")}
               className="w-full py-3.5 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
             >
               Solicitar novo link
@@ -294,14 +322,21 @@ export  function RecoverPasswordPage() {
                 </div>
               </div>
 
+              {submitError ? (
+                <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-4">
+                  <p className="text-sm text-destructive">{submitError}</p>
+                </div>
+              ) : null}
+
               {/* Submit Button */}
               <motion.button
                 type="submit"
+                disabled={submitting}
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.99 }}
-                className="w-full py-3.5 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
+                className="w-full py-3.5 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Atualizar senha
+                {submitting ? "Atualizando..." : "Atualizar senha"}
               </motion.button>
             </form>
 

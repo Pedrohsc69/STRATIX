@@ -8,8 +8,15 @@ import { DashboardDomainService } from '../dashboard/domain/services/dashboard-d
 import { DepartmentsController } from './departments.controller';
 import { DepartmentsService } from './departments.service';
 
-function createService(prisma: Record<string, unknown>) {
-  return new DepartmentsService(prisma as never, new DashboardDomainService());
+function createService(
+  prisma: Record<string, unknown>,
+  auditService: Record<string, unknown> = { log: async () => undefined },
+) {
+  return new DepartmentsService(
+    prisma as never,
+    new DashboardDomainService(),
+    auditService as never,
+  );
 }
 
 void test('DepartmentsService lists only departments from the director company', async () => {
@@ -296,6 +303,109 @@ void test('DepartmentsService blocks deletion when strategic cycles are linked',
       ),
     BadRequestException,
   );
+});
+
+void test('DepartmentsService creates an audit log when creating a department', async () => {
+  const auditCommands: Array<Record<string, unknown>> = [];
+  const service = createService(
+    {
+      user: {
+        findUnique: async () => ({
+          companyId: 'company-1',
+        }),
+      },
+      department: {
+        findFirst: async () => null,
+      },
+      $transaction: async (callback: (tx: Record<string, unknown>) => Promise<unknown>) =>
+        callback({
+          department: {
+            create: async () => ({
+              id: 'department-1',
+            }),
+            findUnique: async () => ({
+              id: 'department-1',
+              name: 'Operacoes',
+              companyId: 'company-1',
+              managerId: null,
+              manager: null,
+              users: [],
+              cycles: [],
+            }),
+          },
+        }),
+    },
+    {
+      log: async (command: Record<string, unknown>) => {
+        auditCommands.push(command);
+      },
+    },
+  );
+
+  await service.create(
+    { sub: 'director-1', email: 'diretora@empresa.com', role: UserRole.DIRECTOR },
+    { name: 'Operacoes' },
+  );
+
+  assert.equal(auditCommands[0]?.action, 'DEPARTMENT_CREATED');
+});
+
+void test('DepartmentsService creates an audit log when updating a department', async () => {
+  const auditCommands: Array<Record<string, unknown>> = [];
+  const service = createService(
+    {
+      user: {
+        findUnique: async () => ({
+          companyId: 'company-1',
+        }),
+      },
+      department: {
+        findFirst: async ({ where }: { where: { id?: string } }) => {
+          if (where.id === 'department-1') {
+            return {
+              id: 'department-1',
+              name: 'Operacoes',
+              companyId: 'company-1',
+              managerId: null,
+              manager: null,
+              users: [],
+              cycles: [],
+            };
+          }
+
+          return null;
+        },
+      },
+      $transaction: async (callback: (tx: Record<string, unknown>) => Promise<unknown>) =>
+        callback({
+          department: {
+            update: async () => undefined,
+            findUnique: async () => ({
+              id: 'department-1',
+              name: 'Operacoes e Logistica',
+              companyId: 'company-1',
+              managerId: null,
+              manager: null,
+              users: [],
+              cycles: [],
+            }),
+          },
+        }),
+    },
+    {
+      log: async (command: Record<string, unknown>) => {
+        auditCommands.push(command);
+      },
+    },
+  );
+
+  await service.update(
+    { sub: 'director-1', email: 'diretora@empresa.com', role: UserRole.DIRECTOR },
+    'department-1',
+    { name: 'Operacoes e Logistica' },
+  );
+
+  assert.equal(auditCommands[0]?.action, 'DEPARTMENT_UPDATED');
 });
 
 void test('DepartmentsController protects mutations for directors only', () => {

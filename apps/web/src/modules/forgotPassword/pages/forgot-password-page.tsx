@@ -2,13 +2,15 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import { Link } from "react-router-dom";
 import { Mail, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { forgotPassword } from "../../auth/services/auth-service";
 
 export function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -23,9 +25,15 @@ export function ForgotPasswordPage() {
       return;
     }
 
-    // Simulate API call
-    console.log("Password recovery request:", email);
-    setSubmitted(true);
+    try {
+      setLoading(true);
+      await forgotPassword({ email });
+      setSubmitted(true);
+    } catch {
+      setError("Não foi possível solicitar a recuperação de senha.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -78,11 +86,12 @@ export function ForgotPasswordPage() {
 
                 <motion.button
                   type="submit"
+                  disabled={loading}
                   whileHover={{ scale: 1.01 }}
                   whileTap={{ scale: 0.99 }}
-                  className="w-full py-3.5 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
+                  className="w-full py-3.5 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  Enviar instruções
+                  {loading ? "Enviando..." : "Enviar instruções"}
                 </motion.button>
               </form>
             </>

@@ -8,20 +8,27 @@ import {
 import { UserRole, UserStatus, type User } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { PrismaService } from '../../core/shared/prisma.service';
-import { CreateAuditUseCase } from '../audit/application/use-cases/create-audit.usecase';
-import type { AuthResponse } from './auth.types';
+import { AUDIT_ACTIONS, AUDIT_ENTITIES } from '../audit/audit.constants';
+import { AuditService } from '../audit/audit.service';
+import type { AuditRequestContext } from '../audit/audit.types';
+import { EmailService } from '../email/email.service';
+import type { AuthResponse, AuthenticatedUser } from './auth.types';
 import { AcceptInviteDto } from './dto/accept-invite.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDirectorDto } from './dto/register-director.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
-    private readonly createAuditUseCase: CreateAuditUseCase,
+    private readonly auditService: AuditService,
+    private readonly emailService: EmailService,
   ) {}
 
   async registerDirector(input: RegisterDirectorDto): Promise<AuthResponse> {
@@ -81,7 +88,10 @@ export class AuthService {
     };
   }
 
-  async acceptInvite(input: AcceptInviteDto): Promise<AuthResponse> {
+  async acceptInvite(
+    input: AcceptInviteDto,
+    requestContext?: AuditRequestContext,
+  ): Promise<AuthResponse> {
     if (input.password !== input.confirmPassword) {
       throw new ConflictException('Unable to complete request');
     }
@@ -165,7 +175,221 @@ export class AuthService {
       return createdUser;
     });
 
+    await this.auditService.log({
+      actor: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      },
+      action: AUDIT_ACTIONS.INVITE_ACCEPTED,
+      entity: AUDIT_ENTITIES.INVITE,
+      entityId: invite.id,
+      companyId: invite.companyId,
+      departmentId: invite.departmentId,
+      newValue: {
+        inviteId: invite.id,
+        acceptedByUserId: user.id,
+        acceptedByEmail: user.email,
+      },
+      requestContext,
+    });
+
     return this.buildAuthResponse(user);
+  }
+
+  async changePassword(
+    actor: AuthenticatedUser,
+    input: ChangePasswordDto,
+    requestContext?: AuditRequestContext,
+  ) {
+    if (input.newPassword !== input.confirmPassword) {
+      throw new ConflictException('Unable to complete request');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: actor.sub },
+    });
+
+    if (!user || !user.isActive || user.status !== UserStatus.ACTIVE) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const passwordMatches = await bcrypt.compare(input.currentPassword, user.password);
+
+    if (!passwordMatches) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const isSamePassword = await bcrypt.compare(input.newPassword, user.password);
+
+    if (isSamePassword) {
+      throw new BadRequestException('New password must be different from the current password');
+    }
+
+    this.assertPasswordStrength(input.newPassword);
+
+    const hashedPassword = await bcrypt.hash(input.newPassword, 10);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: hashedPassword,
+      },
+    });
+
+    await this.auditService.log({
+      actor: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      },
+      action: AUDIT_ACTIONS.PASSWORD_CHANGED,
+      entity: AUDIT_ENTITIES.USER,
+      entityId: user.id,
+      companyId: user.companyId ?? null,
+      departmentId: user.departmentId ?? null,
+      metadata: {
+        email: user.email,
+      },
+      requestContext,
+    });
+
+    return {
+      success: true,
+      message: 'Password updated successfully',
+    };
+  }
+
+  async forgotPassword(input: ForgotPasswordDto) {
+    const genericResponse = {
+      success: true,
+      message: 'If the account exists, a recovery link has been sent.',
+    };
+
+    const user = await this.prisma.user.findUnique({
+      where: { email: input.email.toLowerCase() },
+      include: {
+        company: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (!user || !user.isActive || user.status !== UserStatus.ACTIVE) {
+      return genericResponse;
+    }
+
+    const rawToken = randomBytes(32).toString('hex');
+    const tokenHash = this.hashToken(rawToken);
+
+    await this.prisma.passwordResetToken.deleteMany({
+      where: {
+        userId: user.id,
+        usedAt: null,
+      },
+    });
+
+    await this.prisma.passwordResetToken.create({
+      data: {
+        userId: user.id,
+        tokenHash,
+        expiresAt: this.getPasswordResetExpirationDate(),
+      },
+    });
+
+    await this.emailService.sendPasswordResetEmail({
+      companyName: user.company?.name ?? 'STRATIX',
+      email: user.email,
+      token: rawToken,
+      userName: user.name,
+    });
+
+    return genericResponse;
+  }
+
+  async resetPassword(input: ResetPasswordDto) {
+    if (input.newPassword !== input.confirmPassword) {
+      throw new ConflictException('Unable to complete request');
+    }
+
+    this.assertPasswordStrength(input.newPassword);
+
+    const tokenHash = this.hashToken(input.token);
+    const resetToken = await this.prisma.passwordResetToken.findUnique({
+      where: { tokenHash },
+      include: {
+        user: true,
+      },
+    });
+
+    if (!resetToken || resetToken.usedAt) {
+      throw new BadRequestException('Recovery token is invalid or expired');
+    }
+
+    if (resetToken.expiresAt.getTime() < Date.now()) {
+      throw new BadRequestException('Recovery token is invalid or expired');
+    }
+
+    const isSamePassword = await bcrypt.compare(input.newPassword, resetToken.user.password);
+
+    if (isSamePassword) {
+      throw new BadRequestException('New password must be different from the current password');
+    }
+
+    const hashedPassword = await bcrypt.hash(input.newPassword, 10);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: resetToken.userId },
+        data: {
+          password: hashedPassword,
+        },
+      });
+
+      await tx.passwordResetToken.update({
+        where: { id: resetToken.id },
+        data: {
+          usedAt: new Date(),
+        },
+      });
+
+      await tx.passwordResetToken.updateMany({
+        where: {
+          userId: resetToken.userId,
+          usedAt: null,
+          id: {
+            not: resetToken.id,
+          },
+        },
+        data: {
+          usedAt: new Date(),
+        },
+      });
+    });
+
+    await this.auditService.log({
+      actor: {
+        id: resetToken.user.id,
+        email: resetToken.user.email,
+        role: resetToken.user.role,
+      },
+      action: AUDIT_ACTIONS.PASSWORD_CHANGED,
+      entity: AUDIT_ENTITIES.USER,
+      entityId: resetToken.userId,
+      companyId: resetToken.user.companyId ?? null,
+      departmentId: resetToken.user.departmentId ?? null,
+      metadata: {
+        email: resetToken.user.email,
+        source: 'password-reset',
+      },
+    });
+
+    return {
+      success: true,
+      message: 'Password reset successfully',
+    };
   }
 
   private async findValidInviteByToken(token: string) {
@@ -190,47 +414,27 @@ export class AuthService {
     }
 
     if (invite.expiresAt.getTime() < Date.now()) {
-      await this.auditAndDeleteExpiredInvite(invite, 'system', 'invite.expired.rejected');
+      await this.deleteExpiredInvite(invite.id);
       throw new BadRequestException('Invite is invalid or expired');
     }
 
     return invite;
   }
 
-  private async auditAndDeleteExpiredInvite(
-    invite: {
-      id: string;
-      email: string;
-      role: UserRole;
-      companyId: string;
-      departmentId: string | null;
-      token: string;
-      expiresAt: Date;
-    },
-    actorId: string,
-    action: string,
-  ) {
-    await this.createAuditUseCase.execute({
-      userId: actorId,
-      action,
-      entity: 'invite',
-      metadata: {
-        inviteId: invite.id,
-        email: invite.email,
-        role: invite.role,
-        companyId: invite.companyId,
-        departmentId: invite.departmentId,
-        expiresAt: invite.expiresAt.toISOString(),
-        tokenHash: createHash('sha256').update(invite.token).digest('hex'),
-      },
-    });
-
+  private async deleteExpiredInvite(inviteId: string) {
     await this.prisma.invite.delete({
-      where: { id: invite.id },
+      where: { id: inviteId },
     });
   }
 
   private async buildAuthResponse(user: User): Promise<AuthResponse> {
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        lastAccessAt: new Date(),
+      },
+    });
+
     const currentUser = await this.prisma.user.findUnique({
       where: { id: user.id },
       include: {
@@ -274,5 +478,25 @@ export class AuthService {
           }
         : null,
     };
+  }
+
+  private assertPasswordStrength(password: string) {
+    const hasMinimumLength = password.length >= 8;
+    const hasLetter = /[A-Za-z]/.test(password);
+    const hasNumber = /\d/.test(password);
+
+    if (!hasMinimumLength || !hasLetter || !hasNumber) {
+      throw new BadRequestException(
+        'Password must have at least 8 characters and include letters and numbers',
+      );
+    }
+  }
+
+  private hashToken(token: string) {
+    return createHash('sha256').update(token).digest('hex');
+  }
+
+  private getPasswordResetExpirationDate() {
+    return new Date(Date.now() + 1000 * 60 * 60);
   }
 }

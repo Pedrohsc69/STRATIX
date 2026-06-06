@@ -6,9 +6,13 @@ import {
 } from '@nestjs/common';
 import { Prisma, UserRole, UserStatus } from '@prisma/client';
 import { PrismaService } from '../../core/shared/prisma.service';
+import { AUDIT_ACTIONS, AUDIT_ENTITIES } from '../audit/audit.constants';
+import { AuditService } from '../audit/audit.service';
+import type { AuditRequestContext } from '../audit/audit.types';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { DashboardDomainService } from '../dashboard/domain/services/dashboard-domain.service';
 import { ListUsersDto } from './dto/list-users.dto';
+import { UpdateAvatarDto } from './dto/update-avatar.dto';
 import type {
   EmployeeDepartmentItem,
   EmployeeDetailsItem,
@@ -17,6 +21,8 @@ import type {
   EmployeeListStatus,
   EmployeesKpis,
   EmployeesResponse,
+  ProfileResponse,
+  ProfileStats,
 } from './users.types';
 
 const listUserSelection = Prisma.validator<Prisma.UserDefaultArgs>()({
@@ -63,10 +69,13 @@ type DetailUserRecord = Prisma.UserGetPayload<typeof detailUserSelection>;
 type UsersContextActor = {
   id: string;
   name: string;
+  email: string;
+  avatarUrl: string | null;
   role: UserRole;
   status: UserStatus;
   companyId: string | null;
   departmentId: string | null;
+  lastAccessAt: Date | null;
   company: {
     id: string;
     name: string;
@@ -83,6 +92,7 @@ export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly dashboardDomainService: DashboardDomainService,
+    private readonly auditService: AuditService,
   ) {}
 
   async list(actor: AuthenticatedUser, filters: ListUsersDto): Promise<EmployeesResponse> {
@@ -203,6 +213,112 @@ export class UsersService {
       context: this.buildContext(user),
       employee: this.mapUserDetails(employee),
     };
+  }
+
+  async getMe(actor: AuthenticatedUser): Promise<ProfileResponse> {
+    const user = await this.getActorContext(actor.sub);
+
+    const manager =
+      user.companyId && user.departmentId
+        ? await this.prisma.department.findFirst({
+            where: {
+              id: user.departmentId,
+              companyId: user.companyId,
+            },
+            select: {
+              manager: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                },
+              },
+            },
+          })
+        : null;
+
+    const stats = await this.buildProfileStats(user);
+
+    return {
+      scope: this.dashboardDomainService.getScope(user.role),
+      role: user.role,
+      permissions: this.dashboardDomainService.getPermissions(user.role),
+      context: this.buildContext(user),
+      profile: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+        avatarUrl: user.avatarUrl,
+        company: user.company
+          ? {
+              id: user.company.id,
+              name: user.company.name,
+              businessArea: user.company.businessArea,
+            }
+          : null,
+        department: user.department
+          ? {
+              id: user.department.id,
+              name: user.department.name,
+            }
+          : null,
+        manager: manager?.manager ?? null,
+      },
+      stats,
+      security: {
+        canChangePassword: true,
+        changePasswordPath: '/profile',
+        lastAccessAt: user.lastAccessAt?.toISOString() ?? null,
+        recoveryAvailable: true,
+      },
+    };
+  }
+
+  async updateMyAvatar(
+    actor: AuthenticatedUser,
+    input: UpdateAvatarDto,
+    requestContext?: AuditRequestContext,
+  ): Promise<ProfileResponse> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: actor.sub },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const nextAvatarUrl = input.avatarUrl.trim() || null;
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        avatarUrl: nextAvatarUrl,
+      },
+    });
+
+    await this.auditService.log({
+      actor: {
+        id: actor.sub,
+        email: actor.email,
+        role: actor.role,
+      },
+      action: AUDIT_ACTIONS.AVATAR_UPDATED,
+      entity: AUDIT_ENTITIES.USER,
+      entityId: user.id,
+      companyId: user.companyId ?? null,
+      departmentId: user.departmentId ?? null,
+      oldValue: {
+        avatarUrl: user.avatarUrl,
+      },
+      newValue: {
+        avatarUrl: nextAvatarUrl,
+      },
+      requestContext,
+    });
+
+    return this.getMe(actor);
   }
 
   private async getActorContext(userId: string): Promise<UsersContextActor> {
@@ -418,6 +534,121 @@ export class UsersService {
       activeUsers: users.filter((employee) => employee.status === UserStatus.ACTIVE).length,
       totalDepartmentOkrs,
     };
+  }
+
+  private async buildProfileStats(user: UsersContextActor): Promise<ProfileStats> {
+    const baseStats: ProfileStats = {
+      companyName: user.company?.name ?? null,
+      departmentName: user.department?.name ?? null,
+      totalDepartments: 0,
+      totalEmployees: 0,
+      totalCycles: 0,
+      totalDepartmentCollaborators: 0,
+      totalDepartmentCycles: 0,
+      totalDepartmentOkrs: 0,
+      ownOkrs: 0,
+      completedOwnOkrs: 0,
+      averageOwnProgress: 0,
+    };
+
+    if (user.role === UserRole.DIRECTOR && user.companyId) {
+      const [totalDepartments, totalEmployees, totalCycles] = await Promise.all([
+        this.prisma.department.count({
+          where: {
+            companyId: user.companyId,
+          },
+        }),
+        this.prisma.user.count({
+          where: {
+            companyId: user.companyId,
+          },
+        }),
+        this.prisma.strategicCycle.count({
+          where: {
+            department: {
+              companyId: user.companyId,
+            },
+          },
+        }),
+      ]);
+
+      return {
+        ...baseStats,
+        totalDepartments,
+        totalEmployees,
+        totalCycles,
+      };
+    }
+
+    if (user.role === UserRole.MANAGER && user.companyId && user.departmentId) {
+      const [totalDepartmentCollaborators, totalDepartmentCycles, totalDepartmentOkrs] =
+        await Promise.all([
+          this.prisma.user.count({
+            where: {
+              companyId: user.companyId,
+              departmentId: user.departmentId,
+              role: UserRole.EMPLOYEE,
+            },
+          }),
+          this.prisma.strategicCycle.count({
+            where: {
+              departmentId: user.departmentId,
+              department: {
+                companyId: user.companyId,
+              },
+            },
+          }),
+          this.prisma.oKR.count({
+            where: {
+              deletedAt: null,
+              objective: {
+                cycle: {
+                  departmentId: user.departmentId,
+                  department: {
+                    companyId: user.companyId,
+                  },
+                },
+              },
+            },
+          }),
+        ]);
+
+      return {
+        ...baseStats,
+        totalDepartmentCollaborators,
+        totalDepartmentCycles,
+        totalDepartmentOkrs,
+      };
+    }
+
+    if (user.role === UserRole.EMPLOYEE && user.companyId) {
+      const ownOkrs = await this.prisma.oKR.findMany({
+        where: {
+          deletedAt: null,
+          responsibleId: user.id,
+          responsible: {
+            companyId: user.companyId,
+          },
+        },
+        select: {
+          currentValue: true,
+          targetValue: true,
+        },
+      });
+
+      const ownProgresses = ownOkrs.map((okr) =>
+        this.dashboardDomainService.calculateProgress(okr.currentValue, okr.targetValue),
+      );
+
+      return {
+        ...baseStats,
+        ownOkrs: ownOkrs.length,
+        completedOwnOkrs: ownProgresses.filter((progress) => progress >= 100).length,
+        averageOwnProgress: this.dashboardDomainService.calculateAverageProgress(ownProgresses),
+      };
+    }
+
+    return baseStats;
   }
 
   private sortEmployees(

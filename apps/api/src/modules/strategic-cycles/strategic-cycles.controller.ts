@@ -1,4 +1,8 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  type AuditRequestLike,
+  extractAuditRequestContext,
+} from '../audit/audit-request.util';
 import { UserRole } from '@prisma/client';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -28,8 +32,9 @@ export class StrategicCyclesController {
   create(
     @CurrentUser() user: AuthenticatedUser,
     @Body() body: CreateStrategicCycleDto,
+    @Req() request: AuditRequestLike,
   ) {
-    return this.strategicCyclesService.create(user, body);
+    return this.strategicCyclesService.create(user, body, extractAuditRequestContext(request));
   }
 
   @Patch(':cycleId')
@@ -38,8 +43,14 @@ export class StrategicCyclesController {
     @CurrentUser() user: AuthenticatedUser,
     @Param('cycleId') cycleId: string,
     @Body() body: UpdateStrategicCycleDto,
+    @Req() request: AuditRequestLike,
   ) {
-    return this.strategicCyclesService.update(user, cycleId, body);
+    return this.strategicCyclesService.update(
+      user,
+      cycleId,
+      body,
+      extractAuditRequestContext(request),
+    );
   }
 
   @Patch(':cycleId/close')
@@ -47,7 +58,8 @@ export class StrategicCyclesController {
   close(
     @CurrentUser() user: AuthenticatedUser,
     @Param('cycleId') cycleId: string,
+    @Req() request: AuditRequestLike,
   ) {
-    return this.strategicCyclesService.close(user, cycleId);
+    return this.strategicCyclesService.close(user, cycleId, extractAuditRequestContext(request));
   }
 }

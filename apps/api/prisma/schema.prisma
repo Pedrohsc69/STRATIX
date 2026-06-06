@@ -31,6 +31,17 @@ enum OKRMetricType {
   BOOLEAN
 }
 
+enum ThemePreference {
+  LIGHT
+  DARK
+  SYSTEM
+}
+
+enum InterfaceDensity {
+  COMFORTABLE
+  COMPACT
+}
+
 model User {
   id       String   @id @default(uuid())
   name     String
@@ -40,6 +51,8 @@ model User {
   status   UserStatus @default(PENDING)
 
   isActive Boolean @default(false)
+  avatarUrl String?
+  lastAccessAt DateTime?
 
   companyId String?
   company   Company? @relation(fields: [companyId], references: [id])
@@ -50,6 +63,8 @@ model User {
   managedDepartments Department[] @relation("DepartmentManager")
 
   okrs OKR[]
+  passwordResetTokens PasswordResetToken[]
+  settings UserSettings?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -73,6 +88,35 @@ model Invite {
   accepted  Boolean @default(false)
 
   createdAt DateTime @default(now())
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+}
+
+model UserSettings {
+  id String @id @default(uuid())
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+
+  theme ThemePreference @default(SYSTEM)
+  density InterfaceDensity @default(COMFORTABLE)
+  language String @default("pt-BR")
+
+  emailNotifications Boolean @default(true)
+  inviteNotifications Boolean @default(true)
+  okrNotifications Boolean @default(true)
+  cycleNotifications Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Company {

@@ -9,14 +9,14 @@ import { ForgotPasswordPage } from '../../modules/forgotPassword/pages/forgot-pa
 import { AcceptInvitePage } from '../../modules/acceptInvite/pages/accept-invite-page';
 import { RecoverPasswordPage } from "../../modules/recoverPassword/pages/recorver-password-page";
 
-import { ProfilePage } from '../../modules/profile/pages/profile-page'
-import { SettingsPage } from '../../modules/settings/pages/settings-page';
 import { DashboardPage } from '../../features/dashboard/DashboardPage';
 import { DepartmentsPage } from '../../features/departments/pages/DepartmentsPage';
 import { EmployeesPage } from '../../features/employees/pages/EmployeesPage';
 import { OKRsPage } from '../../features/okrs/pages/OKRsPage';
 import { ObjectivesPage } from '../../features/objectives/pages/ObjectivesPage';
+import { ProfilePage } from '../../features/profile/pages/ProfilePage';
 import { ReportsPage } from '../../features/reports/pages/ReportsPage';
+import { SettingsPage } from '../../features/settings/pages/SettingsPage';
 import { StrategicCyclesPage } from '../../features/strategic-cycles/pages/StrategicCyclesPage';
 import { AccessDeniedPage } from './access-denied-page';
 
@@ -106,7 +106,7 @@ export function AppRouter() {
         <Route
           path="/settings"
           element={
-            <ProtectedRoute allowedRoles={['DIRECTOR']}>
+            <ProtectedRoute allowedRoles={['DIRECTOR', 'MANAGER', 'EMPLOYEE']}>
               <SettingsPage />
             </ProtectedRoute>
           }

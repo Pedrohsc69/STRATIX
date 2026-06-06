@@ -43,6 +43,16 @@ type AcceptInviteInput = {
   confirmPassword: string;
 };
 
+type ForgotPasswordInput = {
+  email: string;
+};
+
+type ResetPasswordInput = {
+  token: string;
+  newPassword: string;
+  confirmPassword: string;
+};
+
 type CurrentCompany = {
   id: string;
   name: string;
@@ -127,4 +137,14 @@ export async function getInviteDetails(token: string) {
 export async function acceptInvite(input: AcceptInviteInput) {
   const response = await api.post<SessionState>('/auth/accept-invite', input);
   return enrichSessionWithCompany(response.data);
+}
+
+export async function forgotPassword(input: ForgotPasswordInput) {
+  const response = await api.post<{ success: boolean; message: string }>('/auth/forgot-password', input);
+  return response.data;
+}
+
+export async function resetPassword(input: ResetPasswordInput) {
+  const response = await api.post<{ success: boolean; message: string }>('/auth/reset-password', input);
+  return response.data;
 }
