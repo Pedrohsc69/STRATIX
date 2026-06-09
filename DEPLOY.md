@@ -2,14 +2,14 @@
 
 ## Visão Geral
 
-- Backend: Railway
+- Backend: Render
 - Frontend: Vercel
 - Banco relacional: PostgreSQL
 - Auditoria: MongoDB
 - ORM: Prisma
 - E-mails: Resend
 
-## Backend Railway
+## Backend Render
 
 ### Comandos
 
