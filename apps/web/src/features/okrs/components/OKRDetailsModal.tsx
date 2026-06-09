@@ -1,7 +1,9 @@
-import { Clock3, X } from 'lucide-react';
+import { Clock3, LoaderCircle, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { ProgressIndicator } from '../../dashboard/components/ProgressIndicator';
 import { OKRStatusBadge } from './OKRStatusBadge';
-import type { OkrItem } from '../types/okrs.types';
+import { fetchOkrProgressHistory } from '../services/okrs.service';
+import type { OkrItem, OkrProgressHistoryItem } from '../types/okrs.types';
 import { formatOkrProgress, formatOkrValue, getMetricTypeLabel } from '../utils/okr-formatters';
 
 type OKRDetailsModalProps = {
@@ -14,6 +16,80 @@ function formatDate(value: string) {
 }
 
 export function OKRDetailsModal({ okr, onClose }: OKRDetailsModalProps) {
+  const [historyItems, setHistoryItems] = useState<OkrProgressHistoryItem[]>(okr.progressHistory);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyTotalPages, setHistoryTotalPages] = useState(
+    okr.progressHistory.length > 0 ? 1 : 0,
+  );
+  const [historyTotal, setHistoryTotal] = useState(okr.progressHistory.length);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyLoadingMore, setHistoryLoadingMore] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadHistory() {
+      try {
+        setHistoryLoading(true);
+        setHistoryError(null);
+        const response = await fetchOkrProgressHistory(okr.id, { page: 1, limit: 10 });
+
+        if (!active) {
+          return;
+        }
+
+        setHistoryItems(response.items);
+        setHistoryPage(response.page);
+        setHistoryTotalPages(response.totalPages);
+        setHistoryTotal(response.total);
+      } catch {
+        if (!active) {
+          return;
+        }
+
+        setHistoryItems(okr.progressHistory);
+        setHistoryPage(1);
+        setHistoryTotalPages(okr.progressHistory.length > 0 ? 1 : 0);
+        setHistoryTotal(okr.progressHistory.length);
+        setHistoryError(
+          'Não foi possível carregar o histórico dedicado. Exibindo os dados já disponíveis.',
+        );
+      } finally {
+        if (active) {
+          setHistoryLoading(false);
+        }
+      }
+    }
+
+    void loadHistory();
+
+    return () => {
+      active = false;
+    };
+  }, [okr.id, okr.progressHistory]);
+
+  const handleLoadMore = async () => {
+    if (historyLoadingMore || historyPage >= historyTotalPages) {
+      return;
+    }
+
+    try {
+      setHistoryLoadingMore(true);
+      const nextPage = historyPage + 1;
+      const response = await fetchOkrProgressHistory(okr.id, { page: nextPage, limit: 10 });
+      setHistoryItems((current) => [...current, ...response.items]);
+      setHistoryPage(response.page);
+      setHistoryTotalPages(response.totalPages);
+      setHistoryTotal(response.total);
+      setHistoryError(null);
+    } catch {
+      setHistoryError('Não foi possível carregar mais registros do histórico.');
+    } finally {
+      setHistoryLoadingMore(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/45 p-4">
       <div className="w-full max-w-4xl rounded-3xl bg-white shadow-2xl">
@@ -98,8 +174,13 @@ export function OKRDetailsModal({ okr, onClose }: OKRDetailsModalProps) {
           </div>
 
           <div className="space-y-3">
-            {okr.progressHistory.length > 0 ? (
-              okr.progressHistory.map((historyItem) => (
+            {historyLoading ? (
+              <div className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-[#F8FAFC] px-4 py-3 text-sm text-[#6B7280]">
+                <LoaderCircle className="h-4 w-4 animate-spin" />
+                Carregando histórico...
+              </div>
+            ) : historyItems.length > 0 ? (
+              historyItems.map((historyItem) => (
                 <div
                   key={historyItem.id}
                   className="rounded-2xl border border-gray-200 bg-[#F8FAFC] px-4 py-3"
@@ -118,6 +199,28 @@ export function OKRDetailsModal({ okr, onClose }: OKRDetailsModalProps) {
             ) : (
               <p className="text-sm text-[#6B7280]">Nenhum progresso registrado até o momento.</p>
             )}
+
+            {historyError ? (
+              <div className="rounded-2xl border border-[#FECACA] bg-[#FEF2F2] px-4 py-3 text-sm text-[#B91C1C]">
+                {historyError}
+              </div>
+            ) : null}
+
+            {!historyLoading && historyTotal > historyItems.length ? (
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm text-[#6B7280]">
+                  Exibindo {historyItems.length} de {historyTotal} registros.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleLoadMore}
+                  disabled={historyLoadingMore}
+                  className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-[#1E4E79] transition-colors hover:bg-[#EFF6FF] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {historyLoadingMore ? 'Carregando...' : 'Carregar mais'}
+                </button>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>

@@ -42,6 +42,15 @@ export type OkrProgressHistoryItem = {
   value: number;
   date: string;
   comment: string;
+  createdAt: string;
+};
+
+export type PaginatedOkrProgressHistoryResponse = {
+  items: OkrProgressHistoryItem[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
 };
 
 export type OkrItem = {

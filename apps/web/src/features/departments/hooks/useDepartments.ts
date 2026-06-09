@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { fetchDepartments } from "../services/departments.service";
 import type {
   DepartmentsFilters,
@@ -19,6 +19,22 @@ export function useDepartments() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
+  const requestFilters = useMemo(
+    () => ({
+      search: filters.search,
+      managerId: filters.managerId,
+      status: filters.status,
+      sortBy: filters.sortBy,
+      sortOrder: filters.sortOrder,
+    }),
+    [
+      filters.search,
+      filters.managerId,
+      filters.status,
+      filters.sortBy,
+      filters.sortOrder,
+    ],
+  );
 
   useEffect(() => {
     let active = true;
@@ -26,7 +42,7 @@ export function useDepartments() {
     async function loadDepartments() {
       try {
         setLoading(true);
-        const response = await fetchDepartments(filters);
+        const response = await fetchDepartments(requestFilters);
 
         if (active) {
           setData(response);
@@ -49,11 +65,7 @@ export function useDepartments() {
       active = false;
     };
   }, [
-    filters.search,
-    filters.managerId,
-    filters.status,
-    filters.sortBy,
-    filters.sortOrder,
+    requestFilters,
     reloadToken,
   ]);
 

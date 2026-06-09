@@ -14,6 +14,15 @@ export type OkrProgressHistoryItem = {
   value: number;
   date: string;
   comment: string;
+  createdAt: string;
+};
+
+export type PaginatedOkrProgressHistoryResponse = {
+  items: OkrProgressHistoryItem[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
 };
 
 export type OkrItem = {
@@ -111,7 +120,20 @@ export type OkrPayload = {
   targetValue: number;
 };
 
+export type UpdateOkrPayload = {
+  name: string;
+  objectiveId: string;
+  responsibleId: string;
+  metricType: OkrMetricType;
+  targetValue: number;
+};
+
 export type OkrProgressPayload = {
   value: number;
   comment: string;
+};
+
+export type OkrProgressHistoryFilters = {
+  page?: number;
+  limit?: number;
 };

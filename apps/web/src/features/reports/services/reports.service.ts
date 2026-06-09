@@ -47,13 +47,16 @@ export async function fetchReportOptions() {
 }
 
 export async function exportCompanyReport(format: ReportFormat) {
-  return downloadReport(`/reports/company/export?format=${format}`, "relatorio-empresa.csv");
+  return downloadReport(
+    `/reports/company/export?format=${format}`,
+    `relatorio-empresa.${format}`,
+  );
 }
 
 export async function exportCycleReport(cycleId: string, format: ReportFormat) {
   return downloadReport(
     `/reports/cycles/${cycleId}/export?format=${format}`,
-    "relatorio-ciclo.csv",
+    `relatorio-ciclo.${format}`,
   );
 }
 
@@ -63,6 +66,6 @@ export async function exportDepartmentReport(
 ) {
   return downloadReport(
     `/reports/departments/${departmentId}/export?format=${format}`,
-    "relatorio-departamento.csv",
+    `relatorio-departamento.${format}`,
   );
 }

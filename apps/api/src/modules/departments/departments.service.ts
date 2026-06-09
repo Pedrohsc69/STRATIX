@@ -20,7 +20,6 @@ import type {
   DepartmentDetailsItem,
   DepartmentDetailsResponse,
   DepartmentListItem,
-  DepartmentManagerItem,
   DepartmentManagerOption,
   DepartmentObjectiveReference,
   DepartmentOkrReference,
@@ -154,7 +153,7 @@ export class DepartmentsService {
             : [],
         availableCollaborators:
           user.role === UserRole.DIRECTOR
-            ? await this.getAvailableCollaborators(user.companyId, null)
+            ? await this.getAvailableCollaborators(user.companyId)
             : [],
       },
       kpis: this.buildKpis(sortedDepartments),
@@ -203,7 +202,7 @@ export class DepartmentsService {
           : [],
       availableCollaborators:
         user.role === UserRole.DIRECTOR
-          ? await this.getAvailableCollaborators(user.companyId, department.id)
+          ? await this.getAvailableCollaborators(user.companyId)
           : [],
       department: this.mapDepartmentDetails(department),
     };
@@ -897,7 +896,6 @@ export class DepartmentsService {
 
   private async getAvailableCollaborators(
     companyId: string | null,
-    currentDepartmentId: string | null,
   ): Promise<DepartmentCollaboratorOption[]> {
     if (!companyId) {
       return [];

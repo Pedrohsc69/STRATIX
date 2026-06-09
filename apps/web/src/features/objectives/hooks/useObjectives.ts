@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { fetchObjectives } from "../services/objectives.service";
 import type { ObjectivesFilters, ObjectivesResponse } from "../types/objectives.types";
 
@@ -16,6 +16,22 @@ export function useObjectives() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
+  const requestFilters = useMemo(
+    () => ({
+      search: filters.search,
+      departmentId: filters.departmentId,
+      cycleId: filters.cycleId,
+      status: filters.status,
+      priority: filters.priority,
+    }),
+    [
+      filters.search,
+      filters.departmentId,
+      filters.cycleId,
+      filters.status,
+      filters.priority,
+    ],
+  );
 
   useEffect(() => {
     let active = true;
@@ -23,7 +39,7 @@ export function useObjectives() {
     async function loadObjectives() {
       try {
         setLoading(true);
-        const response = await fetchObjectives(filters);
+        const response = await fetchObjectives(requestFilters);
 
         if (active) {
           setData(response);
@@ -45,7 +61,7 @@ export function useObjectives() {
     return () => {
       active = false;
     };
-  }, [filters.search, filters.departmentId, filters.cycleId, filters.status, filters.priority, reloadToken]);
+  }, [requestFilters, reloadToken]);
 
   return {
     data,

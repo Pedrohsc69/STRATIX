@@ -5,7 +5,7 @@ import type {
   DashboardScope,
 } from "../../dashboard/dashboard.types";
 
-export type ReportFormat = "csv";
+export type ReportFormat = "csv" | "pdf";
 export type ReportType = "COMPANY" | "CYCLE" | "DEPARTMENT";
 
 export type ReportDepartmentOption = {

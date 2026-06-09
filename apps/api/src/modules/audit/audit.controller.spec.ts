@@ -9,7 +9,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { AuditController } from './interfaces/routes/audit.controller';
 
 function createExecutionContext(
-  handler: Function,
+  handler: (...args: never[]) => unknown,
   role: UserRole,
 ): ExecutionContext {
   return {
@@ -24,7 +24,7 @@ function createExecutionContext(
         },
       }),
     }),
-  } as ExecutionContext;
+  } as unknown as ExecutionContext;
 }
 
 void test('AuditController marks listing as DIRECTOR-only', () => {

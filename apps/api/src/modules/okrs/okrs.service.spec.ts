@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ForbiddenException, BadRequestException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { OKRMetricType, UserRole, UserStatus } from '@prisma/client';
 import { ROLES_KEY } from '../auth/decorators/roles.decorator';
 import { DashboardDomainService } from '../dashboard/domain/services/dashboard-domain.service';
@@ -812,12 +812,17 @@ void test('OkrsService blocks changing the responsible when the cycle is closed'
 void test('OkrsService creates a ProgressOKR record when progress is updated', async () => {
   let createdProgressOkrId: string | undefined;
   let createdProgressValue: number | undefined;
+  let createdProgressId: string | undefined;
   const auditCommands: Array<Record<string, unknown>> = [];
   const tx = {
     progressOKR: {
       create: async ({ data }: { data: Record<string, unknown> }) => {
         createdProgressOkrId = data.okrId as string | undefined;
         createdProgressValue = data.value as number | undefined;
+        createdProgressId = 'progress-1';
+        return {
+          id: 'progress-1',
+        };
       },
     },
     oKR: {
@@ -856,6 +861,7 @@ void test('OkrsService creates a ProgressOKR record when progress is updated', a
             value: 30.13,
             date: new Date('2026-05-10T00:00:00Z'),
             comment: 'Atualizacao',
+            createdAt: new Date('2026-05-10T00:00:00Z'),
           },
         ],
       }),
@@ -913,7 +919,7 @@ void test('OkrsService creates a ProgressOKR record when progress is updated', a
     },
   );
 
-  await service.addProgress(
+  const updated = await service.addProgress(
     { sub: 'manager-1', email: 'gestora@empresa.com', role: UserRole.MANAGER },
     'okr-1',
     { value: 30.129, comment: 'Atualizacao' },
@@ -921,7 +927,18 @@ void test('OkrsService creates a ProgressOKR record when progress is updated', a
 
   assert.equal(createdProgressOkrId, 'okr-1');
   assert.equal(createdProgressValue, 30.13);
+  assert.equal(updated.currentValue, 30.13);
   assert.equal(auditCommands[0]?.action, 'OKR_PROGRESS_UPDATED');
+  assert.equal(auditCommands[0]?.entity, 'PROGRESS_OKR');
+  assert.equal(auditCommands[0]?.entityId, createdProgressId);
+  assert.deepEqual(auditCommands[0]?.metadata, {
+    okrId: 'okr-1',
+    metricType: OKRMetricType.CURRENCY,
+  });
+  assert.deepEqual(auditCommands[0]?.newValue, {
+    currentValue: 30.13,
+    progressId: 'progress-1',
+  });
 });
 
 void test('OkrsService normalizes numeric values before creating an OKR', async () => {
@@ -1160,6 +1177,293 @@ void test('OkrsService blocks invalid numeric values', async () => {
         },
       ),
     BadRequestException,
+  );
+});
+
+void test('OkrsService rejects direct currentValue updates outside the progress endpoint', async () => {
+  const service = createService({});
+
+  await assert.rejects(
+    () =>
+      service.update(
+        { sub: 'manager-1', email: 'gestora@empresa.com', role: UserRole.MANAGER },
+        'okr-1',
+        {
+          currentValue: 42,
+        } as never,
+      ),
+    /O progresso do OKR deve ser atualizado pelo endpoint de progresso\./,
+  );
+});
+
+void test('OkrsService update does not alter currentValue directly', async () => {
+  let updatedData: Record<string, unknown> | undefined;
+  const service = createService({
+    user: {
+      findUnique: async () => ({
+        companyId: 'company-1',
+        departmentId: 'department-1',
+        role: UserRole.MANAGER,
+      }),
+      findFirst: async () => ({
+        id: 'employee-1',
+        departmentId: 'department-1',
+      }),
+    },
+    oKR: {
+      findFirst: async () => ({
+        id: 'okr-1',
+        name: 'Receita trimestral',
+        metricType: OKRMetricType.NUMBER,
+        objectiveId: 'objective-1',
+        currentValue: 20,
+        targetValue: 100,
+        responsibleId: 'employee-1',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        responsible: {
+          id: 'employee-1',
+          name: 'Pessoa A',
+          departmentId: 'department-1',
+        },
+        objective: {
+          id: 'objective-1',
+          name: 'Aumentar receita',
+          cycleId: 'cycle-1',
+          cycle: {
+            id: 'cycle-1',
+            name: 'Ciclo 1',
+            status: 'ACTIVE',
+            startDate: new Date('2026-01-01T00:00:00Z'),
+            endDate: new Date('2026-08-01T00:00:00Z'),
+            departmentId: 'department-1',
+            department: { id: 'department-1', name: 'Marketing' },
+          },
+        },
+        progress: [],
+      }),
+      update: async ({ data }: { data: Record<string, unknown> }) => {
+        updatedData = data;
+        return {
+          id: 'okr-1',
+          name: 'Receita ajustada',
+          metricType: OKRMetricType.NUMBER,
+          objectiveId: 'objective-1',
+          currentValue: 20,
+          targetValue: 120,
+          responsibleId: 'employee-1',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          responsible: {
+            id: 'employee-1',
+            name: 'Pessoa A',
+            departmentId: 'department-1',
+          },
+          objective: {
+            id: 'objective-1',
+            name: 'Aumentar receita',
+            cycleId: 'cycle-1',
+            cycle: {
+              id: 'cycle-1',
+              name: 'Ciclo 1',
+              status: 'ACTIVE',
+              startDate: new Date('2026-01-01T00:00:00Z'),
+              endDate: new Date('2026-08-01T00:00:00Z'),
+              departmentId: 'department-1',
+              department: { id: 'department-1', name: 'Marketing' },
+            },
+          },
+          progress: [],
+        };
+      },
+    },
+    auditService: {
+      log: async () => undefined,
+    },
+  });
+
+  await service.update(
+    { sub: 'manager-1', email: 'gestora@empresa.com', role: UserRole.MANAGER },
+    'okr-1',
+    { name: 'Receita ajustada', targetValue: 120 },
+  );
+
+  assert.equal(updatedData?.currentValue, undefined);
+  assert.equal(updatedData?.targetValue, 120);
+});
+
+void test('OkrsService returns paginated progress history ordered by date desc', async () => {
+  const service = createService({
+    user: {
+      findUnique: async () => ({
+        companyId: 'company-1',
+        departmentId: null,
+        role: UserRole.DIRECTOR,
+      }),
+    },
+    oKR: {
+      findFirst: async () => ({
+        id: 'okr-1',
+      }),
+    },
+    progressOKR: {
+      findMany: async ({
+        orderBy,
+        skip,
+        take,
+      }: {
+        orderBy: unknown;
+        skip: number;
+        take: number;
+      }) => {
+        assert.deepEqual(orderBy, [{ date: 'desc' }, { createdAt: 'desc' }]);
+        assert.equal(skip, 0);
+        assert.equal(take, 2);
+        return [
+          {
+            id: 'progress-2',
+            value: 45,
+            comment: 'Segunda atualização',
+            date: new Date('2026-05-11T00:00:00Z'),
+            createdAt: new Date('2026-05-11T00:00:00Z'),
+          },
+          {
+            id: 'progress-1',
+            value: 30,
+            comment: 'Primeira atualização',
+            date: new Date('2026-05-10T00:00:00Z'),
+            createdAt: new Date('2026-05-10T00:00:00Z'),
+          },
+        ];
+      },
+      count: async () => 3,
+    },
+  });
+
+  const response = await service.progressHistory(
+    { sub: 'director-1', email: 'diretora@empresa.com', role: UserRole.DIRECTOR },
+    'okr-1',
+    { page: 1, limit: 2 },
+  );
+
+  assert.equal(response.items.length, 2);
+  assert.equal(response.items[0]?.id, 'progress-2');
+  assert.equal(response.page, 1);
+  assert.equal(response.limit, 2);
+  assert.equal(response.total, 3);
+  assert.equal(response.totalPages, 2);
+});
+
+void test('OkrsService progress history is readable for closed cycles', async () => {
+  const service = createService({
+    user: {
+      findUnique: async () => ({
+        companyId: 'company-1',
+        departmentId: 'department-1',
+        role: UserRole.MANAGER,
+      }),
+    },
+    oKR: {
+      findFirst: async () => ({
+        id: 'okr-closed',
+      }),
+    },
+    progressOKR: {
+      findMany: async () => [
+        {
+          id: 'progress-1',
+          value: 100,
+          comment: 'Fechamento',
+          date: new Date('2026-02-01T00:00:00Z'),
+          createdAt: new Date('2026-02-01T00:00:00Z'),
+        },
+      ],
+      count: async () => 1,
+    },
+  });
+
+  const response = await service.progressHistory(
+    { sub: 'manager-1', email: 'gestora@empresa.com', role: UserRole.MANAGER },
+    'okr-closed',
+    {},
+  );
+
+  assert.equal(response.items.length, 1);
+  assert.equal(response.items[0]?.id, 'progress-1');
+});
+
+void test('OkrsService blocks managers from reading progress history outside their department', async () => {
+  const service = createService({
+    user: {
+      findUnique: async () => ({
+        companyId: 'company-1',
+        departmentId: 'department-1',
+        role: UserRole.MANAGER,
+      }),
+    },
+    oKR: {
+      findFirst: async () => null,
+    },
+  });
+
+  await assert.rejects(
+    () =>
+      service.progressHistory(
+        { sub: 'manager-1', email: 'gestora@empresa.com', role: UserRole.MANAGER },
+        'okr-foreign',
+        {},
+      ),
+    /OKR not found/,
+  );
+});
+
+void test('OkrsService blocks directors from reading progress history outside their company', async () => {
+  const service = createService({
+    user: {
+      findUnique: async () => ({
+        companyId: 'company-1',
+        departmentId: null,
+        role: UserRole.DIRECTOR,
+      }),
+    },
+    oKR: {
+      findFirst: async () => null,
+    },
+  });
+
+  await assert.rejects(
+    () =>
+      service.progressHistory(
+        { sub: 'director-1', email: 'diretora@empresa.com', role: UserRole.DIRECTOR },
+        'okr-foreign',
+        {},
+      ),
+    /OKR not found/,
+  );
+});
+
+void test('OkrsService blocks employees from reading progress history outside allowed scope', async () => {
+  const service = createService({
+    user: {
+      findUnique: async () => ({
+        companyId: 'company-1',
+        departmentId: 'department-2',
+        role: UserRole.EMPLOYEE,
+      }),
+    },
+    oKR: {
+      findFirst: async () => null,
+    },
+  });
+
+  await assert.rejects(
+    () =>
+      service.progressHistory(
+        { sub: 'employee-1', email: 'colaboradora@empresa.com', role: UserRole.EMPLOYEE },
+        'okr-foreign',
+        {},
+      ),
+    /OKR not found/,
   );
 });
 

@@ -3,7 +3,6 @@ import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../../core/shared/prisma.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import type {
-  AuditLogFilters,
   AuditLogInput,
   AuditLogListResult,
   AuditValue,

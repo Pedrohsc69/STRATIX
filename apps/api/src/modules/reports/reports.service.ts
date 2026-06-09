@@ -6,8 +6,13 @@ import {
 } from '@nestjs/common';
 import { CycleStatus, Prisma, UserRole, UserStatus } from '@prisma/client';
 import { PrismaService } from '../../core/shared/prisma.service';
+import { AUDIT_ACTIONS, AUDIT_ENTITIES } from '../audit/audit.constants';
+import { AuditService } from '../audit/audit.service';
+import type { AuditRequestContext } from '../audit/audit.types';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { DashboardDomainService } from '../dashboard/domain/services/dashboard-domain.service';
+import { PdfReportService } from './pdf/pdf-report.service';
+import type { PdfReportDefinition } from './pdf/pdf-types';
 import { ReportFormatDto } from './dto/report-format.dto';
 import type {
   ReportCycleOption,
@@ -99,11 +104,38 @@ type ReportsContextUser = {
   } | null;
 };
 
+type ReportDepartmentDetails = {
+  id: string;
+  name: string;
+  company: {
+    id: string;
+    name: string;
+  };
+  manager: {
+    id: string;
+    name: string;
+  } | null;
+  _count: {
+    users: number;
+  };
+};
+
+type CompanyDepartmentAggregate = {
+  departmentName: string;
+  managerName: string;
+  cyclesCount: number;
+  objectivesCount: number;
+  okrsCount: number;
+  averageProgress: number;
+};
+
 @Injectable()
 export class ReportsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly dashboardDomainService: DashboardDomainService,
+    private readonly pdfReportService: PdfReportService,
+    private readonly auditService: AuditService,
   ) {}
 
   async getOptions(actor: AuthenticatedUser): Promise<ReportsOptionsResponse> {
@@ -134,7 +166,7 @@ export class ReportsService {
       role: user.role,
       permissions: this.dashboardDomainService.getPermissions(user.role),
       context: this.buildContext(user),
-      supportedFormats: ['csv'],
+      supportedFormats: ['csv', 'pdf'],
       departments: departments.map(
         (department): ReportDepartmentOption => ({
           id: department.id,
@@ -156,34 +188,54 @@ export class ReportsService {
   async exportCompany(
     actor: AuthenticatedUser,
     query: ReportFormatDto,
+    requestContext?: AuditRequestContext,
   ): Promise<ReportExportPayload> {
     this.assertSupportedFormat(query.format);
     const user = await this.getDirectorContext(actor.sub);
-    const cycles = await this.listCompanyCycles(user.companyId);
+    const [cycles, departmentsCount] = await Promise.all([
+      this.listCompanyCycles(user.companyId),
+      this.prisma.department.count({
+        where: { companyId: user.companyId },
+      }),
+    ]);
 
-    const rows = this.buildCompanyRows(cycles);
+    if (query.format === 'csv') {
+      const rows = this.buildCompanyRows(cycles);
+
+      return {
+        filename: `relatorio-empresa-${this.slugify(user.company?.name ?? 'empresa')}.csv`,
+        contentType: 'text/csv; charset=utf-8',
+        content: this.toCsv(
+          [
+            [
+              'Empresa',
+              'Departamento',
+              'Gestor',
+              'Ciclo',
+              'Status do ciclo',
+              'Objetivo',
+              'OKR',
+              'Responsável',
+              'Valor atual',
+              'Valor meta',
+              'Progresso',
+            ],
+            ...rows,
+          ],
+        ),
+      };
+    }
+
+    const content = await this.pdfReportService.generate(
+      this.buildCompanyPdfDefinition(user.company?.name ?? 'Empresa', departmentsCount, cycles),
+    );
+
+    await this.logPdfAudit(actor, user, 'COMPANY', requestContext);
 
     return {
-      filename: `relatorio-empresa-${this.slugify(user.company?.name ?? 'empresa')}.csv`,
-      contentType: 'text/csv; charset=utf-8',
-      content: this.toCsv(
-        [
-          [
-            'Empresa',
-            'Departamento',
-            'Gestor',
-            'Ciclo',
-            'Status do ciclo',
-            'Objetivo',
-            'OKR',
-            'Responsável',
-            'Valor atual',
-            'Valor meta',
-            'Progresso',
-          ],
-          ...rows,
-        ],
-      ),
+      filename: `relatorio-empresa-${this.slugify(user.company?.name ?? 'empresa')}.pdf`,
+      contentType: 'application/pdf',
+      content,
     };
   }
 
@@ -191,6 +243,7 @@ export class ReportsService {
     actor: AuthenticatedUser,
     cycleId: string,
     query: ReportFormatDto,
+    requestContext?: AuditRequestContext,
   ): Promise<ReportExportPayload> {
     this.assertSupportedFormat(query.format);
     const user = await this.getDirectorContext(actor.sub);
@@ -200,27 +253,39 @@ export class ReportsService {
       throw new NotFoundException('Strategic cycle not found');
     }
 
-    const rows = this.buildCycleRows(cycle);
+    if (query.format === 'csv') {
+      const rows = this.buildCycleRows(cycle);
+
+      return {
+        filename: `relatorio-ciclo-${this.slugify(cycle.name)}.csv`,
+        contentType: 'text/csv; charset=utf-8',
+        content: this.toCsv(
+          [
+            [
+              'Ciclo',
+              'Departamento',
+              'Objetivo',
+              'OKR',
+              'Responsável',
+              'Valor atual',
+              'Valor meta',
+              'Progresso',
+              'Status',
+            ],
+            ...rows,
+          ],
+        ),
+      };
+    }
+
+    const content = await this.pdfReportService.generate(this.buildCyclePdfDefinition(cycle));
+
+    await this.logPdfAudit(actor, user, 'CYCLE', requestContext, cycleId);
 
     return {
-      filename: `relatorio-ciclo-${this.slugify(cycle.name)}.csv`,
-      contentType: 'text/csv; charset=utf-8',
-      content: this.toCsv(
-        [
-          [
-            'Ciclo',
-            'Departamento',
-            'Objetivo',
-            'OKR',
-            'Responsável',
-            'Valor atual',
-            'Valor meta',
-            'Progresso',
-            'Status',
-          ],
-          ...rows,
-        ],
-      ),
+      filename: `relatorio-ciclo-${this.slugify(cycle.name)}.pdf`,
+      contentType: 'application/pdf',
+      content,
     };
   }
 
@@ -228,23 +293,21 @@ export class ReportsService {
     actor: AuthenticatedUser,
     departmentId: string,
     query: ReportFormatDto,
+    requestContext?: AuditRequestContext,
   ): Promise<ReportExportPayload> {
     this.assertSupportedFormat(query.format);
     const user = await this.getDirectorContext(actor.sub);
-    const cycles = await this.listDepartmentCycles(user.companyId, departmentId);
+    const [department, cycles] = await Promise.all([
+      this.findDepartmentInCompany(user.companyId, departmentId),
+      this.listDepartmentCycles(user.companyId, departmentId),
+    ]);
 
-    if (cycles.length === 0) {
-      const department = await this.prisma.department.findFirst({
-        where: {
-          id: departmentId,
-          companyId: user.companyId,
-        },
-        select: { id: true, name: true },
-      });
+    if (!department) {
+      throw new NotFoundException('Department not found');
+    }
 
-      if (!department) {
-        throw new NotFoundException('Department not found');
-      }
+    if (query.format === 'csv') {
+      const rows = this.buildDepartmentRows(cycles);
 
       return {
         filename: `relatorio-departamento-${this.slugify(department.name)}.csv`,
@@ -259,29 +322,21 @@ export class ReportsService {
             'Responsável',
             'Progresso',
           ],
+          ...rows,
         ]),
       };
     }
 
-    const rows = this.buildDepartmentRows(cycles);
+    const content = await this.pdfReportService.generate(
+      this.buildDepartmentPdfDefinition(department, cycles),
+    );
+
+    await this.logPdfAudit(actor, user, 'DEPARTMENT', requestContext, undefined, departmentId);
 
     return {
-      filename: `relatorio-departamento-${this.slugify(cycles[0]?.department.name ?? 'departamento')}.csv`,
-      contentType: 'text/csv; charset=utf-8',
-      content: this.toCsv(
-        [
-          [
-            'Departamento',
-            'Gestor',
-            'Ciclo',
-            'Objetivo',
-            'OKR',
-            'Responsável',
-            'Progresso',
-          ],
-          ...rows,
-        ],
-      ),
+      filename: `relatorio-departamento-${this.slugify(department.name)}.pdf`,
+      contentType: 'application/pdf',
+      content,
     };
   }
 
@@ -313,8 +368,8 @@ export class ReportsService {
   }
 
   private assertSupportedFormat(format: ReportFormat) {
-    if (format !== 'csv') {
-      throw new BadRequestException('Only CSV export is available right now');
+    if (format !== 'csv' && format !== 'pdf') {
+      throw new BadRequestException('Unsupported report format');
     }
   }
 
@@ -361,9 +416,43 @@ export class ReportsService {
     })) as ReportCycleRecord[];
   }
 
+  private async findDepartmentInCompany(
+    companyId: string,
+    departmentId: string,
+  ): Promise<ReportDepartmentDetails | null> {
+    return this.prisma.department.findFirst({
+      where: {
+        id: departmentId,
+        companyId,
+      },
+      select: {
+        id: true,
+        name: true,
+        company: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        manager: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        _count: {
+          select: {
+            users: true,
+          },
+        },
+      },
+    }) as Promise<ReportDepartmentDetails | null>;
+  }
+
   private buildCompanyRows(cycles: ReportCycleRecord[]) {
     return cycles.flatMap((cycle) => {
-      const objectives = cycle.objectives.length > 0 ? cycle.objectives : [{ id: '', name: '', okrs: [] }];
+      const objectives =
+        cycle.objectives.length > 0 ? cycle.objectives : [{ id: '', name: '', okrs: [] }];
 
       return objectives.flatMap((objective) => {
         const okrs = objective.okrs.length > 0 ? objective.okrs : [null];
@@ -388,7 +477,8 @@ export class ReportsService {
   }
 
   private buildCycleRows(cycle: ReportCycleRecord) {
-    const objectives = cycle.objectives.length > 0 ? cycle.objectives : [{ id: '', name: '', okrs: [] }];
+    const objectives =
+      cycle.objectives.length > 0 ? cycle.objectives : [{ id: '', name: '', okrs: [] }];
 
     return objectives.flatMap((objective) => {
       const okrs = objective.okrs.length > 0 ? objective.okrs : [null];
@@ -411,7 +501,8 @@ export class ReportsService {
 
   private buildDepartmentRows(cycles: ReportCycleRecord[]) {
     return cycles.flatMap((cycle) => {
-      const objectives = cycle.objectives.length > 0 ? cycle.objectives : [{ id: '', name: '', okrs: [] }];
+      const objectives =
+        cycle.objectives.length > 0 ? cycle.objectives : [{ id: '', name: '', okrs: [] }];
 
       return objectives.flatMap((objective) => {
         const okrs = objective.okrs.length > 0 ? objective.okrs : [null];
@@ -431,8 +522,221 @@ export class ReportsService {
     });
   }
 
+  private buildCompanyPdfDefinition(
+    companyName: string,
+    departmentsCount: number,
+    cycles: ReportCycleRecord[],
+  ): PdfReportDefinition {
+    const objectivesCount = this.countObjectives(cycles);
+    const okrsCount = this.countOkrs(cycles);
+    const averageProgress = this.calculateAverageProgress(cycles);
+    const departmentRows = this.buildCompanyDepartmentAggregates(cycles);
+
+    return {
+      reportTitle: 'Relatório Geral da Empresa',
+      companyName,
+      generatedAt: new Date(),
+      summary: [
+        { label: 'Total de departamentos', value: String(departmentsCount) },
+        { label: 'Total de ciclos', value: String(cycles.length) },
+        { label: 'Total de objetivos', value: String(objectivesCount) },
+        { label: 'Total de OKRs', value: String(okrsCount) },
+        { label: 'Progresso médio', value: `${averageProgress}%` },
+      ],
+      table: {
+        columns: [
+          { label: 'Departamento', width: 118 },
+          { label: 'Gestor', width: 110 },
+          { label: 'Ciclos', width: 52, align: 'center' },
+          { label: 'Objetivos', width: 60, align: 'center' },
+          { label: 'OKRs', width: 52, align: 'center' },
+          { label: 'Progresso', width: 76, align: 'center' },
+        ],
+        rows: departmentRows.map((item) => [
+          item.departmentName,
+          item.managerName,
+          String(item.cyclesCount),
+          String(item.objectivesCount),
+          String(item.okrsCount),
+          `${item.averageProgress}%`,
+        ]),
+        emptyMessage: 'Nenhum ciclo estratégico encontrado para a empresa.',
+      },
+    };
+  }
+
+  private buildCyclePdfDefinition(cycle: ReportCycleRecord): PdfReportDefinition {
+    const okrs = this.collectOkrs([cycle]);
+    const period = `${this.formatDate(cycle.startDate)} - ${this.formatDate(cycle.endDate)}`;
+
+    return {
+      reportTitle: 'Relatório por Ciclo Estratégico',
+      companyName: cycle.department.company.name,
+      generatedAt: new Date(),
+      summary: [
+        { label: 'Ciclo', value: cycle.name },
+        { label: 'Departamento', value: cycle.department.name },
+        { label: 'Período', value: period },
+        { label: 'Status', value: this.getCycleStatusLabel(cycle.status) },
+        { label: 'Total de objetivos', value: String(cycle.objectives.length) },
+        { label: 'Total de OKRs', value: String(okrs.length) },
+        { label: 'Progresso médio', value: `${this.calculateAverageProgress([cycle])}%` },
+      ],
+      table: {
+        columns: [
+          { label: 'Objetivo', width: 132 },
+          { label: 'OKR', width: 132 },
+          { label: 'Responsável', width: 92 },
+          { label: 'Atual', width: 44, align: 'center' },
+          { label: 'Meta', width: 44, align: 'center' },
+          { label: 'Progresso', width: 54, align: 'center' },
+        ],
+        rows: this.buildCycleRows(cycle).map((row) => row.slice(2, 8)),
+        emptyMessage: 'Nenhum objetivo ou OKR encontrado neste ciclo.',
+      },
+    };
+  }
+
+  private buildDepartmentPdfDefinition(
+    department: ReportDepartmentDetails,
+    cycles: ReportCycleRecord[],
+  ): PdfReportDefinition {
+    return {
+      reportTitle: 'Relatório por Departamento',
+      companyName: department.company.name,
+      generatedAt: new Date(),
+      summary: [
+        { label: 'Departamento', value: department.name },
+        { label: 'Gestor', value: department.manager?.name ?? 'Não informado' },
+        { label: 'Colaboradores', value: String(department._count.users) },
+        { label: 'Total de ciclos', value: String(cycles.length) },
+        { label: 'Total de objetivos', value: String(this.countObjectives(cycles)) },
+        { label: 'Total de OKRs', value: String(this.countOkrs(cycles)) },
+      ],
+      table: {
+        columns: [
+          { label: 'Ciclo', width: 94 },
+          { label: 'Objetivo', width: 132 },
+          { label: 'OKR', width: 132 },
+          { label: 'Responsável', width: 86 },
+          { label: 'Progresso', width: 54, align: 'center' },
+        ],
+        rows: this.buildDepartmentRows(cycles).map((row) => row.slice(2)),
+        emptyMessage: 'Nenhum ciclo estratégico encontrado para o departamento.',
+      },
+    };
+  }
+
+  private buildCompanyDepartmentAggregates(cycles: ReportCycleRecord[]) {
+    const departmentMap = new Map<string, CompanyDepartmentAggregate & { progresses: number[] }>();
+
+    cycles.forEach((cycle) => {
+      const key = cycle.department.id;
+      const current =
+        departmentMap.get(key) ??
+        ({
+          departmentName: cycle.department.name,
+          managerName: cycle.department.manager?.name ?? 'Sem gestor atribuído',
+          cyclesCount: 0,
+          objectivesCount: 0,
+          okrsCount: 0,
+          averageProgress: 0,
+          progresses: [],
+        } satisfies CompanyDepartmentAggregate & { progresses: number[] });
+
+      current.cyclesCount += 1;
+      current.objectivesCount += cycle.objectives.length;
+
+      cycle.objectives.forEach((objective) => {
+        current.okrsCount += objective.okrs.length;
+        objective.okrs.forEach((okr) => {
+          current.progresses.push(
+            this.dashboardDomainService.calculateProgress(okr.currentValue, okr.targetValue),
+          );
+        });
+      });
+
+      departmentMap.set(key, current);
+    });
+
+    return [...departmentMap.values()]
+      .map((item) => ({
+        departmentName: item.departmentName,
+        managerName: item.managerName,
+        cyclesCount: item.cyclesCount,
+        objectivesCount: item.objectivesCount,
+        okrsCount: item.okrsCount,
+        averageProgress: this.dashboardDomainService.calculateAverageProgress(item.progresses),
+      }))
+      .sort((left, right) => left.departmentName.localeCompare(right.departmentName));
+  }
+
+  private collectOkrs(cycles: ReportCycleRecord[]) {
+    return cycles.flatMap((cycle) =>
+      cycle.objectives.flatMap((objective) =>
+        objective.okrs.map((okr) => ({
+          currentValue: okr.currentValue,
+          targetValue: okr.targetValue,
+        })),
+      ),
+    );
+  }
+
+  private countObjectives(cycles: ReportCycleRecord[]) {
+    return cycles.reduce((total, cycle) => total + cycle.objectives.length, 0);
+  }
+
+  private countOkrs(cycles: ReportCycleRecord[]) {
+    return cycles.reduce(
+      (total, cycle) =>
+        total + cycle.objectives.reduce((objectiveTotal, objective) => objectiveTotal + objective.okrs.length, 0),
+      0,
+    );
+  }
+
+  private calculateAverageProgress(cycles: ReportCycleRecord[]) {
+    const progresses = this.collectOkrs(cycles).map((okr) =>
+      this.dashboardDomainService.calculateProgress(okr.currentValue, okr.targetValue),
+    );
+
+    return this.dashboardDomainService.calculateAverageProgress(progresses);
+  }
+
+  private async logPdfAudit(
+    actor: AuthenticatedUser,
+    user: ReportsContextUser,
+    reportType: 'COMPANY' | 'CYCLE' | 'DEPARTMENT',
+    requestContext?: AuditRequestContext,
+    cycleId?: string,
+    departmentId?: string,
+  ) {
+    await this.auditService.log({
+      actor: {
+        id: actor.sub,
+        email: actor.email,
+        role: actor.role,
+      },
+      action: AUDIT_ACTIONS.REPORT_PDF_GENERATED,
+      entity: AUDIT_ENTITIES.REPORT,
+      entityId: cycleId ?? departmentId ?? user.companyId,
+      companyId: user.companyId,
+      departmentId: departmentId ?? null,
+      metadata: {
+        reportType,
+        format: 'pdf',
+        cycleId: cycleId ?? null,
+        departmentId: departmentId ?? null,
+      },
+      requestContext,
+    });
+  }
+
   private getCycleStatusLabel(status: CycleStatus) {
     return status === CycleStatus.ACTIVE ? 'Ativo' : 'Fechado';
+  }
+
+  private formatDate(value: Date) {
+    return new Intl.DateTimeFormat('pt-BR').format(value);
   }
 
   private toCsv(rows: string[][]) {

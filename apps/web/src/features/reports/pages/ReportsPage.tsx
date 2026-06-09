@@ -12,7 +12,12 @@ import {
   exportCycleReport,
   exportDepartmentReport,
 } from "../services/reports.service";
-import type { RecentReportItem, ReportType, ReportsFilters } from "../types/reports.types";
+import type {
+  RecentReportItem,
+  ReportFormat,
+  ReportType,
+  ReportsFilters,
+} from "../types/reports.types";
 
 function LoadingState() {
   return (
@@ -92,7 +97,7 @@ export function ReportsPage() {
 
   const handleGenerate = async (payload: {
     type: ReportType;
-    format: "csv";
+    format: ReportFormat;
     departmentId?: string;
     cycleId?: string;
   }) => {
@@ -130,7 +135,7 @@ export function ReportsPage() {
         },
         ...current,
       ]);
-      setFeedbackMessage("Relatório exportado com sucesso.");
+      setFeedbackMessage(`Relatório ${payload.format.toUpperCase()} exportado com sucesso.`);
       setActiveType(null);
     } catch (requestError) {
       setSubmitError(getRequestErrorMessage(requestError));

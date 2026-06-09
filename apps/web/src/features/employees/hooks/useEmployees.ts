@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { fetchEmployees } from "../services/employees.service";
 import type { EmployeesFilters, EmployeesResponse } from "../types/employees.types";
 
@@ -17,6 +17,24 @@ export function useEmployees() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
+  const requestFilters = useMemo(
+    () => ({
+      search: filters.search,
+      departmentId: filters.departmentId,
+      role: filters.role,
+      status: filters.status,
+      sortBy: filters.sortBy,
+      sortOrder: filters.sortOrder,
+    }),
+    [
+      filters.search,
+      filters.departmentId,
+      filters.role,
+      filters.status,
+      filters.sortBy,
+      filters.sortOrder,
+    ],
+  );
 
   useEffect(() => {
     let active = true;
@@ -24,7 +42,7 @@ export function useEmployees() {
     async function loadEmployees() {
       try {
         setLoading(true);
-        const response = await fetchEmployees(filters);
+        const response = await fetchEmployees(requestFilters);
 
         if (active) {
           setData(response);
@@ -47,12 +65,7 @@ export function useEmployees() {
       active = false;
     };
   }, [
-    filters.search,
-    filters.departmentId,
-    filters.role,
-    filters.status,
-    filters.sortBy,
-    filters.sortOrder,
+    requestFilters,
     reloadToken,
   ]);
 

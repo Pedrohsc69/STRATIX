@@ -1,8 +1,16 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import {
-  type AuditRequestLike,
-  extractAuditRequestContext,
-} from '../audit/audit-request.util';
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import { type AuditRequestLike, extractAuditRequestContext } from '../audit/audit-request.util';
 import { UserRole } from '@prisma/client';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -11,6 +19,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { AddOkrProgressDto } from './dto/add-okr-progress.dto';
 import { CreateOkrDto } from './dto/create-okr.dto';
+import { ListOkrProgressHistoryDto } from './dto/list-okr-progress-history.dto';
 import { ListOkrsDto } from './dto/list-okrs.dto';
 import { UpdateOkrDto } from './dto/update-okr.dto';
 import { OkrsService } from './okrs.service';
@@ -21,10 +30,7 @@ export class OkrsController {
   constructor(private readonly okrsService: OkrsService) {}
 
   @Get()
-  list(
-    @CurrentUser() user: AuthenticatedUser,
-    @Query() query: ListOkrsDto,
-  ) {
+  list(@CurrentUser() user: AuthenticatedUser, @Query() query: ListOkrsDto) {
     return this.okrsService.list(user, query);
   }
 
@@ -67,11 +73,15 @@ export class OkrsController {
     @Body() body: AddOkrProgressDto,
     @Req() request: AuditRequestLike,
   ) {
-    return this.okrsService.addProgress(
-      user,
-      okrId,
-      body,
-      extractAuditRequestContext(request),
-    );
+    return this.okrsService.addProgress(user, okrId, body, extractAuditRequestContext(request));
+  }
+
+  @Get(':okrId/progress-history')
+  progressHistory(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('okrId') okrId: string,
+    @Query() query: ListOkrProgressHistoryDto,
+  ) {
+    return this.okrsService.progressHistory(user, okrId, query);
   }
 }

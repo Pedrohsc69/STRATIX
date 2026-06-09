@@ -1,11 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { X } from 'lucide-react';
 import type {
+  OkrPayload,
   OkrItem,
   OkrMetricType,
   OkrObjectiveOption,
-  OkrPayload,
   OkrResponsibleOption,
+  UpdateOkrPayload,
 } from '../types/okrs.types';
 import {
   getMetricInputConfig,
@@ -23,7 +24,7 @@ type OKRFormDialogProps = {
   loading?: boolean;
   error?: string | null;
   onClose: () => void;
-  onSubmit: (payload: OkrPayload) => Promise<void>;
+  onSubmit: (payload: OkrPayload | UpdateOkrPayload) => Promise<void>;
 };
 
 type FormState = {
@@ -160,6 +161,7 @@ export function OKRFormDialog({
   }, [objectives, responsibles, initialOkr]);
 
   const metricConfig = getMetricInputConfig(form.metricType);
+  const isEditing = !!initialOkr;
 
   const handleMetricTypeChange = (metricType: OkrMetricType) => {
     setForm((current) => {
@@ -202,6 +204,17 @@ export function OKRFormDialog({
     }
 
     setValidationError(null);
+
+    if (isEditing) {
+      await onSubmit({
+        name: form.name.trim(),
+        objectiveId: form.objectiveId,
+        responsibleId: form.responsibleId,
+        metricType: form.metricType,
+        targetValue: normalizeMetricValue(parsedTargetValue, form.metricType),
+      });
+      return;
+    }
 
     await onSubmit({
       name: form.name.trim(),
@@ -304,23 +317,29 @@ export function OKRFormDialog({
               </select>
             </label>
 
-            <MetricValueField
-              label="Valor inicial"
-              metricType={form.metricType}
-              value={form.currentValue}
-              placeholder={metricConfig.placeholder}
-              helper={metricConfig.helper}
-              booleanOptions={[
-                { value: '0', label: 'Não concluído' },
-                { value: '1', label: 'Concluído' },
-              ]}
-              onChange={(value) =>
-                setForm((current) => ({
-                  ...current,
-                  currentValue: value,
-                }))
-              }
-            />
+            {!isEditing ? (
+              <MetricValueField
+                label="Valor inicial"
+                metricType={form.metricType}
+                value={form.currentValue}
+                placeholder={metricConfig.placeholder}
+                helper={metricConfig.helper}
+                booleanOptions={[
+                  { value: '0', label: 'Não concluído' },
+                  { value: '1', label: 'Concluído' },
+                ]}
+                onChange={(value) =>
+                  setForm((current) => ({
+                    ...current,
+                    currentValue: value,
+                  }))
+                }
+              />
+            ) : (
+              <div className="rounded-2xl border border-[#BFDBFE] bg-[#EFF6FF] px-4 py-3 text-sm text-[#1E3A8A]">
+                O progresso do OKR é atualizado somente pelo endpoint de progresso.
+              </div>
+            )}
 
             <MetricValueField
               label="Valor meta"

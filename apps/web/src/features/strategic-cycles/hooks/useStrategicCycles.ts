@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { fetchStrategicCycles } from "../services/strategic-cycles.service";
 import type {
   StrategicCyclesFilters,
@@ -19,6 +19,22 @@ export function useStrategicCycles() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
+  const requestFilters = useMemo(
+    () => ({
+      search: filters.search,
+      departmentId: filters.departmentId,
+      status: filters.status,
+      startDate: filters.startDate,
+      endDate: filters.endDate,
+    }),
+    [
+      filters.search,
+      filters.departmentId,
+      filters.status,
+      filters.startDate,
+      filters.endDate,
+    ],
+  );
 
   useEffect(() => {
     let active = true;
@@ -26,7 +42,7 @@ export function useStrategicCycles() {
     async function loadStrategicCycles() {
       try {
         setLoading(true);
-        const response = await fetchStrategicCycles(filters);
+        const response = await fetchStrategicCycles(requestFilters);
 
         if (active) {
           setData(response);
@@ -49,11 +65,7 @@ export function useStrategicCycles() {
       active = false;
     };
   }, [
-    filters.search,
-    filters.departmentId,
-    filters.status,
-    filters.startDate,
-    filters.endDate,
+    requestFilters,
     reloadToken,
   ]);
 

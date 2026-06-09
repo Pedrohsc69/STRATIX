@@ -1,14 +1,17 @@
-import { api } from "../../../services/api";
+import { api } from '../../../services/api';
 import type {
   OkrItem,
   OkrPayload,
+  OkrProgressHistoryFilters,
   OkrProgressPayload,
+  PaginatedOkrProgressHistoryResponse,
   OkrsFilters,
   OkrsResponse,
-} from "../types/okrs.types";
+  UpdateOkrPayload,
+} from '../types/okrs.types';
 
 export async function fetchOkrs(filters: OkrsFilters) {
-  const response = await api.get<OkrsResponse>("/okrs", {
+  const response = await api.get<OkrsResponse>('/okrs', {
     params: {
       search: filters.search || undefined,
       departmentId: filters.departmentId || undefined,
@@ -16,7 +19,7 @@ export async function fetchOkrs(filters: OkrsFilters) {
       objectiveId: filters.objectiveId || undefined,
       responsibleId: filters.responsibleId || undefined,
       status: filters.status || undefined,
-      ownOnly: filters.ownOnly ? "true" : undefined,
+      ownOnly: filters.ownOnly ? 'true' : undefined,
     },
   });
 
@@ -24,11 +27,11 @@ export async function fetchOkrs(filters: OkrsFilters) {
 }
 
 export async function createOkr(payload: OkrPayload) {
-  const response = await api.post<OkrItem>("/okrs", payload);
+  const response = await api.post<OkrItem>('/okrs', payload);
   return response.data;
 }
 
-export async function updateOkr(okrId: string, payload: OkrPayload) {
+export async function updateOkr(okrId: string, payload: UpdateOkrPayload) {
   const response = await api.patch<OkrItem>(`/okrs/${okrId}`, payload);
   return response.data;
 }
@@ -40,5 +43,22 @@ export async function deleteOkr(okrId: string) {
 
 export async function addOkrProgress(okrId: string, payload: OkrProgressPayload) {
   const response = await api.post<OkrItem>(`/okrs/${okrId}/progress`, payload);
+  return response.data;
+}
+
+export async function fetchOkrProgressHistory(
+  okrId: string,
+  filters: OkrProgressHistoryFilters = {},
+) {
+  const response = await api.get<PaginatedOkrProgressHistoryResponse>(
+    `/okrs/${okrId}/progress-history`,
+    {
+      params: {
+        page: filters.page,
+        limit: filters.limit,
+      },
+    },
+  );
+
   return response.data;
 }

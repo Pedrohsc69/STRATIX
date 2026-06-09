@@ -174,7 +174,7 @@ export function GenerateReportModal({
               disabled={loading}
               className="rounded-xl bg-[#0F2A44] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#143757] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {loading ? "Gerando..." : "Baixar relatório"}
+              {loading ? "Gerando..." : `Baixar ${format.toUpperCase()}`}
             </button>
           </div>
         </form>

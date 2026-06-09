@@ -1,0 +1,11 @@
+ALTER TABLE "User" DROP CONSTRAINT "User_companyId_fkey";
+
+ALTER TABLE "User"
+ALTER COLUMN "companyId" DROP NOT NULL;
+
+ALTER TABLE "User"
+ADD CONSTRAINT "User_companyId_fkey"
+FOREIGN KEY ("companyId") REFERENCES "Company"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+ALTER TABLE "Company"
+ADD COLUMN "businessArea" TEXT NOT NULL DEFAULT 'outros';

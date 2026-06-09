@@ -18,12 +18,6 @@ export class UpdateOkrDto {
   @IsOptional()
   @IsEnum(OKRMetricType)
   metricType?: OKRMetricType;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber({ allowInfinity: false, allowNaN: false })
-  currentValue?: number;
-
   @IsOptional()
   @Type(() => Number)
   @IsNumber({ allowInfinity: false, allowNaN: false })

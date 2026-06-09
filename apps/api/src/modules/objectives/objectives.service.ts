@@ -324,7 +324,13 @@ export class ObjectivesService {
       'Objective can only be changed while the strategic cycle is active',
     );
 
-    if (objective.okrs.length > 0) {
+    const linkedOkrsCount = await this.prisma.oKR.count({
+      where: {
+        objectiveId: objective.id,
+      },
+    });
+
+    if (linkedOkrsCount > 0) {
       throw new BadRequestException('Objective has linked OKRs and cannot be deleted');
     }
 

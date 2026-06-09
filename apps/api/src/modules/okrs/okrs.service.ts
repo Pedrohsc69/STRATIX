@@ -17,15 +17,18 @@ import {
 } from '../strategic-cycles/utils/cycle-editability';
 import { AddOkrProgressDto } from './dto/add-okr-progress.dto';
 import { CreateOkrDto } from './dto/create-okr.dto';
+import { ListOkrProgressHistoryDto } from './dto/list-okr-progress-history.dto';
 import { ListOkrsDto } from './dto/list-okrs.dto';
 import { UpdateOkrDto } from './dto/update-okr.dto';
 import type {
   OkrCycleOption,
   OkrItem,
   OkrObjectiveOption,
+  OkrProgressHistoryItem,
   OkrResponsibleOption,
   OkrStatus,
   OkrsResponse,
+  PaginatedOkrProgressHistoryResponse,
 } from './okrs.types';
 import { normalizeOkrValue, validateOkrValues } from './okr-metric.utils';
 
@@ -66,6 +69,7 @@ type OkrRecord = {
     value: number;
     date: Date;
     comment: string;
+    createdAt: Date;
   }>;
 };
 
@@ -228,6 +232,12 @@ export class OkrsService {
     input: UpdateOkrDto,
     requestContext?: AuditRequestContext,
   ) {
+    if ('currentValue' in (input as Record<string, unknown>)) {
+      throw new BadRequestException(
+        'O progresso do OKR deve ser atualizado pelo endpoint de progresso.',
+      );
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { id: actor.sub },
       select: {
@@ -284,7 +294,7 @@ export class OkrsService {
     const metricType = input.metricType ?? existing.metricType ?? OKRMetricType.NUMBER;
     const normalizedValues = validateOkrValues({
       metricType,
-      currentValue: input.currentValue ?? existing.currentValue,
+      currentValue: existing.currentValue,
       targetValue: input.targetValue ?? existing.targetValue,
     });
 
@@ -295,7 +305,6 @@ export class OkrsService {
         metricType,
         objectiveId: targetObjective.id,
         responsibleId: responsible.id,
-        currentValue: normalizedValues.currentValue,
         targetValue: normalizedValues.targetValue,
       },
       include: this.okrInclude(),
@@ -424,8 +433,8 @@ export class OkrsService {
       targetValue: okr.targetValue,
     });
 
-    const updated = await this.prisma.$transaction(async (tx) => {
-      await tx.progressOKR.create({
+    const { createdProgress, updated } = await this.prisma.$transaction(async (tx) => {
+      const createdProgress = await tx.progressOKR.create({
         data: {
           okrId: okr.id,
           value: normalizedValue,
@@ -434,13 +443,15 @@ export class OkrsService {
         },
       });
 
-      return tx.oKR.update({
+      const updated = await tx.oKR.update({
         where: { id: okr.id },
         data: {
           currentValue: normalizedValue,
         },
         include: this.okrInclude(),
       });
+
+      return { createdProgress, updated };
     });
 
     await this.auditService.log({
@@ -451,7 +462,7 @@ export class OkrsService {
       },
       action: AUDIT_ACTIONS.OKR_PROGRESS_UPDATED,
       entity: AUDIT_ENTITIES.PROGRESS_OKR,
-      entityId: okr.id,
+      entityId: createdProgress.id,
       companyId: user.companyId,
       departmentId: updated.objective.cycle.departmentId,
       oldValue: {
@@ -459,14 +470,7 @@ export class OkrsService {
       },
       newValue: {
         currentValue: updated.currentValue,
-        latestProgress: updated.progress[0]
-          ? {
-              id: updated.progress[0].id,
-              value: updated.progress[0].value,
-              date: updated.progress[0].date.toISOString(),
-              comment: updated.progress[0].comment,
-            }
-          : null,
+        progressId: createdProgress.id,
       },
       metadata: {
         okrId: updated.id,
@@ -476,6 +480,67 @@ export class OkrsService {
     });
 
     return this.mapOkr(updated, actor.sub);
+  }
+
+  async progressHistory(
+    actor: AuthenticatedUser,
+    okrId: string,
+    query: ListOkrProgressHistoryDto,
+  ): Promise<PaginatedOkrProgressHistoryResponse> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: actor.sub },
+      select: {
+        companyId: true,
+        departmentId: true,
+        role: true,
+      },
+    });
+
+    if (!user?.companyId) {
+      throw new NotFoundException('User company not found');
+    }
+
+    const okr = await this.prisma.oKR.findFirst({
+      where: this.buildOkrScopeWhere(user.role, user.companyId, user.departmentId, okrId),
+      select: {
+        id: true,
+      },
+    });
+
+    if (!okr) {
+      throw new NotFoundException('OKR not found');
+    }
+
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 10;
+    const skip = (page - 1) * limit;
+
+    const [items, total] = await Promise.all([
+      this.prisma.progressOKR.findMany({
+        where: { okrId: okr.id },
+        orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          value: true,
+          comment: true,
+          date: true,
+          createdAt: true,
+        },
+      }),
+      this.prisma.progressOKR.count({
+        where: { okrId: okr.id },
+      }),
+    ]);
+
+    return {
+      items: items.map((item) => this.mapProgressHistoryItem(item)),
+      page,
+      limit,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
+    };
   }
 
   private buildListWhere(
@@ -861,6 +926,7 @@ export class OkrsService {
         value: normalizeOkrValue(progressItem.value, metricType),
         date: progressItem.date.toISOString(),
         comment: progressItem.comment,
+        createdAt: progressItem.createdAt.toISOString(),
       })),
     };
   }
@@ -924,9 +990,26 @@ export class OkrsService {
           value: true,
           date: true,
           comment: true,
+          createdAt: true,
         },
       },
     } satisfies Prisma.OKRInclude;
+  }
+
+  private mapProgressHistoryItem(item: {
+    id: string;
+    value: number;
+    comment: string;
+    date: Date;
+    createdAt: Date;
+  }): OkrProgressHistoryItem {
+    return {
+      id: item.id,
+      value: item.value,
+      comment: item.comment,
+      date: item.date.toISOString(),
+      createdAt: item.createdAt.toISOString(),
+    };
   }
 
   private toOkrAuditPayload(okr: OkrRecord) {

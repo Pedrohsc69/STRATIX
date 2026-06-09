@@ -41,5 +41,5 @@ export type ReportsOptionsResponse = {
 export type ReportExportPayload = {
   filename: string;
   contentType: string;
-  content: string;
+  content: string | Buffer;
 };

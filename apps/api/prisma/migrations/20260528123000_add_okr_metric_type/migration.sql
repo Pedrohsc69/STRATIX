@@ -1,0 +1,6 @@
+-- CreateEnum
+CREATE TYPE "OKRMetricType" AS ENUM ('PERCENTAGE', 'NUMBER', 'CURRENCY', 'BOOLEAN');
+
+-- AlterTable
+ALTER TABLE "OKR"
+ADD COLUMN "metricType" "OKRMetricType" NOT NULL DEFAULT 'NUMBER';

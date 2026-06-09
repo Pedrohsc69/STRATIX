@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { UserRole, UserStatus } from '@prisma/client';
 import { ROLES_KEY } from '../auth/decorators/roles.decorator';
 import { DashboardDomainService } from '../dashboard/domain/services/dashboard-domain.service';
@@ -448,6 +448,52 @@ void test('ObjectivesService blocks deleting an objective from a closed cycle', 
         'objective-1',
       ),
     ForbiddenException,
+  );
+});
+
+void test('ObjectivesService blocks deleting an objective with soft-deleted OKRs', async () => {
+  const service = createService({
+    user: {
+      findUnique: async () => ({
+        companyId: 'company-1',
+        departmentId: 'department-1',
+        role: UserRole.DIRECTOR,
+      }),
+    },
+    objective: {
+      findFirst: async () => ({
+        id: 'objective-1',
+        name: 'Objetivo ativo',
+        description: 'Descricao',
+        cycleId: 'cycle-active',
+        cycle: {
+          id: 'cycle-active',
+          name: 'Ciclo ativo',
+          status: 'ACTIVE',
+          startDate: new Date('2026-01-01T00:00:00Z'),
+          endDate: new Date('2026-07-01T00:00:00Z'),
+          departmentId: 'department-1',
+          department: {
+            id: 'department-1',
+            name: 'Marketing',
+            manager: null,
+          },
+        },
+        okrs: [],
+      }),
+    },
+    oKR: {
+      count: async () => 1,
+    },
+  });
+
+  await assert.rejects(
+    () =>
+      service.remove(
+        { sub: 'director-1', email: 'diretora@empresa.com', role: UserRole.DIRECTOR },
+        'objective-1',
+      ),
+    BadRequestException,
   );
 });
 

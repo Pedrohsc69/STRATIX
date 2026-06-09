@@ -3,7 +3,6 @@ import { DashboardLayout } from '../../dashboard/DashboardLayout';
 import { EmptyDashboardState } from '../../dashboard/components/EmptyDashboardState';
 import { useDashboardScope } from '../../dashboard/hooks/useDashboardScope';
 import { addOkrProgress, createOkr, deleteOkr, updateOkr } from '../services/okrs.service';
-import { OKRActions } from '../components/OKRActions';
 import { OKRDetailsModal } from '../components/OKRDetailsModal';
 import { OKRFormDialog } from '../components/OKRFormDialog';
 import { OKRProgressModal } from '../components/OKRProgressModal';
@@ -11,7 +10,12 @@ import { OKRsFilters } from '../components/OKRsFilters';
 import { OKRsKpiCards } from '../components/OKRsKpiCards';
 import { OKRsTable } from '../components/OKRsTable';
 import { useOKRs } from '../hooks/useOKRs';
-import type { OkrItem, OkrPayload, OkrProgressPayload } from '../types/okrs.types';
+import type {
+  OkrItem,
+  OkrPayload,
+  OkrProgressPayload,
+  UpdateOkrPayload,
+} from '../types/okrs.types';
 
 function LoadingState() {
   return (
@@ -103,7 +107,12 @@ export function OKRsPage() {
     okr.isCycleEditable &&
     (canManageStructure || (canUpdateOwnedProgress && okr.isOwnedByCurrentUser));
 
-  const handleCreate = async (payload: OkrPayload) => {
+  const handleCreate = async (payload: OkrPayload | UpdateOkrPayload) => {
+    if (!('currentValue' in payload)) {
+      setFormError('O valor inicial do OKR é obrigatório na criação.');
+      return;
+    }
+
     try {
       setSubmitting(true);
       setFormError(null);
@@ -117,7 +126,7 @@ export function OKRsPage() {
     }
   };
 
-  const handleUpdate = async (payload: OkrPayload) => {
+  const handleUpdate = async (payload: UpdateOkrPayload) => {
     if (!editingOkr) {
       return;
     }
