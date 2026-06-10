@@ -6,7 +6,6 @@ import type {
 } from "../types/employees.types";
 
 type InviteEmployeePayload = {
-  name: string;
   email: string;
   role: "MANAGER" | "EMPLOYEE";
   departmentId: string;

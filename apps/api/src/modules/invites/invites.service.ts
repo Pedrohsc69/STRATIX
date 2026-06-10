@@ -84,7 +84,6 @@ export class InvitesService {
         companyName: companyContext.companyName,
         departmentName: department.name ?? null,
         email: invite.email,
-        inviteeName: input.name.trim(),
         role: invite.role,
         token: invite.token,
       });

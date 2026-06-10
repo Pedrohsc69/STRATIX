@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
@@ -8,7 +9,21 @@ import {
 } from '@nestjs/common';
 import { UserRole, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
+import { AcceptInviteDto } from './dto/accept-invite.dto';
 import { AuthService } from './auth.service';
+
+void test('AcceptInviteDto requires name during invite acceptance', async () => {
+  const dto = plainToInstance(AcceptInviteDto, {
+    token: 'token-123',
+    password: '12345678',
+    confirmPassword: '12345678',
+  });
+
+  const errors = await validate(dto);
+  assert.equal(errors.some((error) => error.property === 'name'), true);
+});
 
 void test('AuthService registers a director with hashed password', async () => {
   let createdPassword = '';
@@ -318,6 +333,8 @@ void test('AuthService accepts a valid invite and activates the account', async 
   });
 
   assert.equal(response.accessToken, 'token-accepted');
+  assert.equal(response.user.name, 'Gestor Comercial');
+  assert.equal(response.user.email, 'gestor@empresa.com');
   assert.equal(response.user.role, UserRole.MANAGER);
   assert.equal(response.user.companyId, 'company-1');
   assert.equal(response.user.departmentId, 'department-1');
@@ -419,6 +436,8 @@ void test('AuthService accepts an employee invite without changing the departmen
     confirmPassword: '12345678',
   });
 
+  assert.equal(response.user.name, 'Colaborador');
+  assert.equal(response.user.email, 'colaborador@empresa.com');
   assert.equal(response.user.role, UserRole.EMPLOYEE);
   assert.equal(response.user.departmentId, 'department-1');
   assert.deepEqual(updatedDepartmentIds, []);

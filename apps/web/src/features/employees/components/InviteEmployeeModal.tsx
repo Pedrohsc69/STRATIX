@@ -9,7 +9,6 @@ type InviteEmployeeModalProps = {
   error?: string | null;
   onClose: () => void;
   onSubmit: (payload: {
-    name: string;
     email: string;
     role: Exclude<DashboardRole, "DIRECTOR">;
     departmentId: string;
@@ -17,7 +16,6 @@ type InviteEmployeeModalProps = {
 };
 
 type FormState = {
-  name: string;
   email: string;
   role: "MANAGER" | "EMPLOYEE";
   departmentId: string;
@@ -31,7 +29,6 @@ export function InviteEmployeeModal({
   onSubmit,
 }: InviteEmployeeModalProps) {
   const [form, setForm] = useState<FormState>({
-    name: "",
     email: "",
     role: "EMPLOYEE",
     departmentId: "",
@@ -50,7 +47,6 @@ export function InviteEmployeeModal({
     event.preventDefault();
 
     await onSubmit({
-      name: form.name.trim(),
       email: form.email.trim(),
       role: form.role,
       departmentId: form.departmentId,
@@ -79,19 +75,7 @@ export function InviteEmployeeModal({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5 px-6 py-6">
-          <div className="grid gap-5 md:grid-cols-2">
-            <label className="block">
-              <span className="mb-2 block text-sm font-medium text-[#4B5563]">Nome</span>
-              <input
-                required
-                minLength={2}
-                value={form.name}
-                onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-[#1F2937] outline-none transition-colors focus:border-[#1E4E79]"
-                placeholder="Ex.: Ana Souza"
-              />
-            </label>
-
+          <div className="grid gap-5">
             <label className="block">
               <span className="mb-2 block text-sm font-medium text-[#4B5563]">E-mail</span>
               <input

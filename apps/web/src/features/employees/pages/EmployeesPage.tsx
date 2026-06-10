@@ -72,7 +72,6 @@ export function EmployeesPage() {
   };
 
   const handleInvite = async (payload: {
-    name: string;
     email: string;
     role: "MANAGER" | "EMPLOYEE";
     departmentId: string;

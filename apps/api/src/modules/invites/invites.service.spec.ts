@@ -7,9 +7,32 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
 import { ROLES_KEY } from '../auth/decorators/roles.decorator';
+import { CreateInviteDto } from './dto/create-invite.dto';
 import { InvitesController } from './invites.controller';
 import { InvitesService } from './invites.service';
+
+void test('CreateInviteDto no longer requires name and only allows manager or employee roles', async () => {
+  const validDto = plainToInstance(CreateInviteDto, {
+    email: 'colaborador@empresa.com',
+    role: UserRole.EMPLOYEE,
+    departmentId: '550e8400-e29b-41d4-a716-446655440000',
+  });
+
+  const validErrors = await validate(validDto);
+  assert.deepEqual(validErrors, []);
+
+  const invalidRoleDto = plainToInstance(CreateInviteDto, {
+    email: 'diretor@empresa.com',
+    role: UserRole.DIRECTOR,
+    departmentId: '550e8400-e29b-41d4-a716-446655440000',
+  });
+
+  const invalidRoleErrors = await validate(invalidRoleDto);
+  assert.equal(invalidRoleErrors.some((error) => error.property === 'role'), true);
+});
 
 void test('InvitesService requires at least one department before creating invites', async () => {
   const prisma = {
@@ -32,7 +55,6 @@ void test('InvitesService requires at least one department before creating invit
       service.create(
         { sub: 'user-1', email: 'diretor@empresa.com', role: UserRole.DIRECTOR },
         {
-          name: 'Colaboradora',
           email: 'colaborador@empresa.com',
           role: UserRole.EMPLOYEE,
           departmentId: 'department-1',
@@ -66,7 +88,6 @@ void test('InvitesService rejects director invites', async () => {
       service.create(
         { sub: 'user-1', email: 'diretor@empresa.com', role: UserRole.DIRECTOR },
         {
-          name: 'Diretor',
           email: 'gestor@empresa.com',
           role: UserRole.DIRECTOR,
           departmentId: 'department-1',
@@ -116,7 +137,6 @@ void test('InvitesService rejects duplicate invite e-mail', async () => {
       service.create(
         { sub: 'user-1', email: 'diretor@empresa.com', role: UserRole.DIRECTOR },
         {
-          name: 'Gestor Comercial',
           email: 'gestor@empresa.com',
           role: UserRole.MANAGER,
           departmentId: 'department-1',
@@ -193,7 +213,6 @@ void test('InvitesService replaces expired invites and audits INVITE_SENT withou
   const invite = await service.create(
     { sub: 'user-1', email: 'diretor@empresa.com', role: UserRole.DIRECTOR },
     {
-      name: 'Gestor Comercial',
       email: 'gestor@empresa.com',
       role: UserRole.MANAGER,
       departmentId: 'department-1',
@@ -208,7 +227,7 @@ void test('InvitesService replaces expired invites and audits INVITE_SENT withou
   assert.equal(JSON.stringify(auditCommands[0]).includes('"token"'), false);
   assert.equal(sentMessages.length, 1);
   assert.equal(sentMessages[0]?.token, 'new-token');
-  assert.equal(sentMessages[0]?.inviteeName, 'Gestor Comercial');
+  assert.equal('inviteeName' in sentMessages[0]!, false);
 });
 
 void test('InvitesService deletes the invite when e-mail delivery fails', async () => {
@@ -271,7 +290,6 @@ void test('InvitesService deletes the invite when e-mail delivery fails', async 
       service.create(
         { sub: 'user-1', email: 'diretor@empresa.com', role: UserRole.DIRECTOR },
         {
-          name: 'Colaborador',
           email: 'colaborador@empresa.com',
           role: UserRole.EMPLOYEE,
           departmentId: 'department-1',
@@ -282,6 +300,46 @@ void test('InvitesService deletes the invite when e-mail delivery fails', async 
 
   assert.deepEqual(deletedInviteIds, ['invite-new']);
   assert.equal(auditCommands.length, 0);
+});
+
+void test('InvitesService rejects invites for departments outside the director company', async () => {
+  const prisma = {
+    user: {
+      findUnique: async ({ where }: { where?: { id?: string; email?: string } }) => {
+        if (where?.id) {
+          return {
+            companyId: 'company-1',
+            company: { name: 'Empresa X' },
+          };
+        }
+
+        return null;
+      },
+    },
+    department: {
+      count: async () => 1,
+      findFirst: async () => null,
+    },
+  };
+
+  const service = new InvitesService(
+    prisma as never,
+    { sendInviteEmail: async () => undefined } as never,
+    { log: async () => undefined } as never,
+  );
+
+  await assert.rejects(
+    () =>
+      service.create(
+        { sub: 'user-1', email: 'diretor@empresa.com', role: UserRole.DIRECTOR },
+        {
+          email: 'colaborador@empresa.com',
+          role: UserRole.EMPLOYEE,
+          departmentId: 'department-2',
+        },
+      ),
+    BadRequestException,
+  );
 });
 
 void test('InvitesService rejects manager invites when the department already has a manager', async () => {
@@ -319,7 +377,6 @@ void test('InvitesService rejects manager invites when the department already ha
       service.create(
         { sub: 'user-1', email: 'diretor@empresa.com', role: UserRole.DIRECTOR },
         {
-          name: 'Novo Gestor',
           email: 'novo-gestor@empresa.com',
           role: UserRole.MANAGER,
           departmentId: 'department-1',
@@ -370,7 +427,6 @@ void test('InvitesService rejects a second active manager invite for the same de
       service.create(
         { sub: 'user-1', email: 'diretor@empresa.com', role: UserRole.DIRECTOR },
         {
-          name: 'Novo Gestor',
           email: 'novo-gestor@empresa.com',
           role: UserRole.MANAGER,
           departmentId: 'department-1',
