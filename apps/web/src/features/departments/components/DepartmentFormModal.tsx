@@ -98,7 +98,7 @@ export function DepartmentFormModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/45 p-4">
-      <div className="w-full max-w-3xl rounded-3xl bg-white shadow-2xl">
+      <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
         <div className="flex items-start justify-between border-b border-gray-200 px-6 py-5">
           <div>
             <p className="text-sm uppercase tracking-[0.2em] text-[#6B7280]">
@@ -179,7 +179,7 @@ export function DepartmentFormModal({
                   return (
                     <label
                       key={collaborator.id}
-                      className="flex items-start gap-3 rounded-xl border border-gray-200 px-4 py-3"
+                      className="flex min-w-0 items-start gap-3 rounded-xl border border-gray-200 px-4 py-3"
                     >
                       <input
                         type="checkbox"
@@ -195,16 +195,20 @@ export function DepartmentFormModal({
                         }
                         className="mt-1 h-4 w-4 rounded border-gray-300 text-[#0F2A44] focus:ring-[#1E4E79]"
                       />
-                      <div>
+                      <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="font-medium text-[#1F2937]">{collaborator.name}</p>
+                          <p className="break-words font-medium text-[#1F2937]">
+                            {collaborator.name}
+                          </p>
                           {locked ? (
                             <span className="rounded-full bg-[#E0F2FE] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#0F4C81]">
                               Atual
                             </span>
                           ) : null}
                         </div>
-                        <p className="mt-1 text-sm text-[#6B7280]">{collaborator.email}</p>
+                        <p className="mt-1 break-all text-sm text-[#6B7280]">
+                          {collaborator.email}
+                        </p>
                       </div>
                     </label>
                   );
