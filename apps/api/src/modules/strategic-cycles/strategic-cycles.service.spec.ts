@@ -2,7 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ForbiddenException } from '@nestjs/common';
 import { UserRole, UserStatus } from '@prisma/client';
+import { ROLES_KEY } from '../auth/decorators/roles.decorator';
 import { DashboardDomainService } from '../dashboard/domain/services/dashboard-domain.service';
+import { StrategicCyclesController } from './strategic-cycles.controller';
 import { StrategicCyclesService } from './strategic-cycles.service';
 
 function createService(prisma: Record<string, unknown>) {
@@ -296,6 +298,184 @@ void test('StrategicCyclesService blocks updating a closed cycle', async () => {
       ),
     ForbiddenException,
   );
+});
+
+void test('StrategicCyclesService allows manager to create a cycle in the own department', async () => {
+  let createdData: { departmentId?: string } | null = null;
+
+  const service = createService({
+    user: {
+      findUnique: async () => ({
+        id: 'manager-1',
+        companyId: 'company-1',
+        departmentId: 'department-1',
+        role: UserRole.MANAGER,
+      }),
+    },
+    department: {
+      findFirst: async ({ where }: { where: { id: string; companyId: string } }) => {
+        assert.deepEqual(where, { id: 'department-1', companyId: 'company-1' });
+        return { id: 'department-1' };
+      },
+    },
+    strategicCycle: {
+      create: async ({ data }: { data: Record<string, unknown> }) => {
+        createdData = data;
+        return {
+          id: 'cycle-manager-1',
+          name: data.name,
+          status: 'ACTIVE',
+          startDate: new Date('2026-01-10T00:00:00Z'),
+          endDate: new Date('2026-07-10T00:00:00Z'),
+          departmentId: data.departmentId,
+          department: { id: 'department-1', name: 'Marketing' },
+          objectives: [],
+        };
+      },
+    },
+  });
+
+  const response = await service.create(
+    { sub: 'manager-1', email: 'gestora@empresa.com', role: UserRole.MANAGER },
+    {
+      name: 'Ciclo Marketing 2026.2',
+      departmentId: 'department-1',
+      startDate: '2026-01-10',
+      endDate: '2026-07-10',
+    },
+  );
+
+  assert.equal((createdData as { departmentId?: string } | null)?.departmentId, 'department-1');
+  assert.equal(response.departmentId, 'department-1');
+});
+
+void test('StrategicCyclesService blocks manager from creating a cycle in another department', async () => {
+  const service = createService({
+    user: {
+      findUnique: async () => ({
+        id: 'manager-1',
+        companyId: 'company-1',
+        departmentId: 'department-1',
+        role: UserRole.MANAGER,
+      }),
+    },
+  });
+
+  await assert.rejects(
+    () =>
+      service.create(
+        { sub: 'manager-1', email: 'gestora@empresa.com', role: UserRole.MANAGER },
+        {
+          name: 'Ciclo Produto 2026.2',
+          departmentId: 'department-2',
+          startDate: '2026-01-10',
+          endDate: '2026-07-10',
+        },
+      ),
+    ForbiddenException,
+  );
+});
+
+void test('StrategicCyclesService allows manager to edit a cycle in the own department', async () => {
+  let updatedData: { departmentId?: string } | null = null;
+
+  const service = createService({
+    user: {
+      findUnique: async () => ({
+        companyId: 'company-1',
+        departmentId: 'department-1',
+        role: UserRole.MANAGER,
+      }),
+    },
+    strategicCycle: {
+      findFirst: async () => ({
+        id: 'cycle-1',
+        name: 'Ciclo Marketing',
+        status: 'ACTIVE',
+        startDate: new Date('2026-01-10T00:00:00Z'),
+        endDate: new Date('2026-07-10T00:00:00Z'),
+        departmentId: 'department-1',
+        department: { id: 'department-1', name: 'Marketing' },
+        objectives: [],
+      }),
+      update: async ({ data }: { data: Record<string, unknown> }) => {
+        updatedData = data;
+        return {
+          id: 'cycle-1',
+          name: data.name ?? 'Ciclo Marketing',
+          status: 'ACTIVE',
+          startDate: new Date(String(data.startDate ?? '2026-01-10T00:00:00Z')),
+          endDate: new Date(String(data.endDate ?? '2026-07-10T00:00:00Z')),
+          departmentId: data.departmentId ?? 'department-1',
+          department: { id: 'department-1', name: 'Marketing' },
+          objectives: [],
+        };
+      },
+    },
+  });
+
+  const response = await service.update(
+    { sub: 'manager-1', email: 'gestora@empresa.com', role: UserRole.MANAGER },
+    'cycle-1',
+    { name: 'Ciclo Marketing Atualizado' },
+  );
+
+  assert.equal((updatedData as { departmentId?: string } | null)?.departmentId, 'department-1');
+  assert.equal(response.departmentId, 'department-1');
+  assert.equal(response.name, 'Ciclo Marketing Atualizado');
+});
+
+void test('StrategicCyclesService blocks manager from editing cycle department outside own scope', async () => {
+  const service = createService({
+    user: {
+      findUnique: async () => ({
+        companyId: 'company-1',
+        departmentId: 'department-1',
+        role: UserRole.MANAGER,
+      }),
+    },
+    strategicCycle: {
+      findFirst: async () => ({
+        id: 'cycle-1',
+        name: 'Ciclo Marketing',
+        status: 'ACTIVE',
+        startDate: new Date('2026-01-10T00:00:00Z'),
+        endDate: new Date('2026-07-10T00:00:00Z'),
+        departmentId: 'department-1',
+        department: { id: 'department-1', name: 'Marketing' },
+        objectives: [],
+      }),
+    },
+  });
+
+  await assert.rejects(
+    () =>
+      service.update(
+        { sub: 'manager-1', email: 'gestora@empresa.com', role: UserRole.MANAGER },
+        'cycle-1',
+        { departmentId: 'department-2' },
+      ),
+    ForbiddenException,
+  );
+});
+
+void test('StrategicCyclesController keeps close action director-only and allows manager on create/update', () => {
+  const createRoles = Reflect.getMetadata(
+    ROLES_KEY,
+    StrategicCyclesController.prototype.create,
+  ) as UserRole[];
+  const updateRoles = Reflect.getMetadata(
+    ROLES_KEY,
+    StrategicCyclesController.prototype.update,
+  ) as UserRole[];
+  const closeRoles = Reflect.getMetadata(
+    ROLES_KEY,
+    StrategicCyclesController.prototype.close,
+  ) as UserRole[];
+
+  assert.deepEqual(createRoles, [UserRole.DIRECTOR, UserRole.MANAGER]);
+  assert.deepEqual(updateRoles, [UserRole.DIRECTOR, UserRole.MANAGER]);
+  assert.deepEqual(closeRoles, [UserRole.DIRECTOR]);
 });
 
 void test('StrategicCyclesService blocks closing an already closed cycle', async () => {

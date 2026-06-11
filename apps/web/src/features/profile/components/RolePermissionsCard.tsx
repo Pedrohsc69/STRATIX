@@ -16,6 +16,7 @@ const permissionLabels: Record<DashboardPermission, string> = {
   "users:manage": "Gerenciar funcionários",
   "users:view:department": "Ver funcionários do departamento",
   "cycles:manage": "Gerenciar ciclos",
+  "cycles:manage:department": "Gerenciar ciclos do departamento",
   "cycles:view:department": "Ver ciclos do departamento",
   "objectives:manage": "Gerenciar objetivos",
   "objectives:manage:department": "Gerenciar objetivos do departamento",

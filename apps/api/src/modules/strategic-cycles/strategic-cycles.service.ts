@@ -159,6 +159,8 @@ export class StrategicCyclesService {
       select: {
         id: true,
         companyId: true,
+        departmentId: true,
+        role: true,
       },
     });
 
@@ -166,13 +168,18 @@ export class StrategicCyclesService {
       throw new NotFoundException('User company not found');
     }
 
+    const targetDepartmentId =
+      user.role === 'MANAGER'
+        ? this.resolveManagerDepartmentId(user.departmentId, input.departmentId)
+        : input.departmentId;
+
     const startDate = new Date(input.startDate);
     const endDate = new Date(input.endDate);
     this.assertDates(startDate, endDate);
 
     const department = await this.prisma.department.findFirst({
       where: {
-        id: input.departmentId,
+        id: targetDepartmentId,
         companyId: user.companyId,
       },
       select: {
@@ -223,6 +230,8 @@ export class StrategicCyclesService {
       where: { id: actor.sub },
       select: {
         companyId: true,
+        departmentId: true,
+        role: true,
       },
     });
 
@@ -236,6 +245,11 @@ export class StrategicCyclesService {
         department: {
           companyId: actorUser.companyId,
         },
+        ...(actorUser.role === 'MANAGER'
+          ? actorUser.departmentId
+            ? { departmentId: actorUser.departmentId }
+            : { id: '__no-department__' }
+          : {}),
       },
       include: {
         department: {
@@ -278,9 +292,16 @@ export class StrategicCyclesService {
 
     const oldCycle = this.toCycleAuditPayload(existing);
 
-    const targetDepartmentId = input.departmentId ?? existing.departmentId;
+    if (actorUser.role === 'MANAGER' && !actorUser.departmentId) {
+      throw new ForbiddenException('Manager must belong to a department to manage cycles');
+    }
 
-    if (input.departmentId) {
+    const targetDepartmentId =
+      actorUser.role === 'MANAGER'
+        ? this.resolveManagerDepartmentId(actorUser.departmentId, input.departmentId)
+        : input.departmentId ?? existing.departmentId;
+
+    if (actorUser.role === 'DIRECTOR' && input.departmentId) {
       const department = await this.prisma.department.findFirst({
         where: {
           id: input.departmentId,
@@ -326,6 +347,21 @@ export class StrategicCyclesService {
     });
 
     return this.mapCycle(updated);
+  }
+
+  private resolveManagerDepartmentId(
+    managerDepartmentId: string | null | undefined,
+    payloadDepartmentId: string | undefined,
+  ) {
+    if (!managerDepartmentId) {
+      throw new ForbiddenException('Manager must belong to a department to manage cycles');
+    }
+
+    if (payloadDepartmentId && payloadDepartmentId !== managerDepartmentId) {
+      throw new ForbiddenException('Managers can only manage cycles from their own department');
+    }
+
+    return managerDepartmentId;
   }
 
   async close(actor: AuthenticatedUser, cycleId: string, requestContext?: AuditRequestContext) {

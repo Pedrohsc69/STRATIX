@@ -17,6 +17,7 @@ export const rolePermissions: Record<DashboardRole, DashboardPermission[]> = {
     "dashboard:view:department",
     "departments:view:department",
     "users:view:department",
+    "cycles:manage:department",
     "cycles:view:department",
     "objectives:manage:department",
     "okrs:manage:department",

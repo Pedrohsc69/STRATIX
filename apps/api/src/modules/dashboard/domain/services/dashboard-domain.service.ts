@@ -42,6 +42,7 @@ export class DashboardDomainService {
         'dashboard:view:department',
         'departments:view:department',
         'users:view:department',
+        'cycles:manage:department',
         'cycles:view:department',
         'objectives:manage:department',
         'okrs:manage:department',
@@ -70,7 +71,7 @@ export class DashboardDomainService {
         { label: 'Convidar equipe', path: '/employees', permission: 'users:manage' },
       ],
       MANAGER: [
-        { label: 'Ver ciclos', path: '/dashboard-cycles', permission: 'cycles:view:department' },
+        { label: 'Novo ciclo', path: '/dashboard-cycles', permission: 'cycles:manage:department' },
         { label: 'Gerenciar objetivos', path: '/objetivos', permission: 'objectives:manage:department' },
         { label: 'Acompanhar OKRs', path: '/okrs', permission: 'okrs:manage:department' },
       ],

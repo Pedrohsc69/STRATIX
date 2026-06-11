@@ -37,7 +37,7 @@ function getPageDescription(role: 'DIRECTOR' | 'MANAGER' | 'EMPLOYEE') {
   }
 
   if (role === 'MANAGER') {
-    return 'Acompanhe exclusivamente os ciclos vinculados ao seu departamento, com foco operacional e leitura rápida.';
+    return 'Crie, acompanhe e atualize exclusivamente os ciclos vinculados ao seu departamento, com foco operacional e leitura rápida.';
   }
 
   return 'Consulte os ciclos estratégicos do seu departamento em modo leitura.';
@@ -74,7 +74,8 @@ export function StrategicCyclesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const canManageCycles = canAccess('cycles:manage');
+  const canManageCompanyCycles = canAccess('cycles:manage');
+  const canManageDepartmentCycles = canAccess('cycles:manage:department');
   const showDepartmentFilter = data?.role === 'DIRECTOR';
   const pageDescription = data ? getPageDescription(data.role) : undefined;
 
@@ -89,6 +90,9 @@ export function StrategicCyclesPage() {
 
     return data.context.department?.id ?? data.filters.departments[0]?.id ?? '';
   }, [data]);
+
+  const managerDepartmentName =
+    data?.role === 'MANAGER' ? data.context.department?.name ?? '' : '';
 
   const handleCreate = async (payload: StrategicCyclePayload) => {
     try {
@@ -159,7 +163,9 @@ export function StrategicCyclesPage() {
     );
   }
 
-  const canCreateCycles = canManageCycles && data.filters.departments.length > 0;
+  const canEditCycles = canManageCompanyCycles || canManageDepartmentCycles;
+  const canCloseCycles = canManageCompanyCycles;
+  const canCreateCycles = canEditCycles && data.filters.departments.length > 0;
 
   return (
     <DashboardLayout
@@ -188,7 +194,8 @@ export function StrategicCyclesPage() {
 
         <StrategicCyclesTable
           cycles={data.cycles}
-          canManage={canManageCycles}
+          canEdit={canEditCycles}
+          canClose={canCloseCycles}
           busyCycleId={busyCycleId}
           onView={setSelectedCycle}
           onEdit={(cycle) => {
@@ -211,6 +218,8 @@ export function StrategicCyclesPage() {
         <StrategicCycleFormDialog
           title="Novo ciclo estratégico"
           departments={data.filters.departments}
+          departmentLocked={data.role === 'MANAGER'}
+          lockedDepartmentName={managerDepartmentName}
           initialCycle={
             defaultDepartmentId
               ? ({
@@ -244,6 +253,8 @@ export function StrategicCyclesPage() {
           title="Editar ciclo estratégico"
           departments={data.filters.departments}
           initialCycle={editingCycle}
+          departmentLocked={data.role === 'MANAGER'}
+          lockedDepartmentName={managerDepartmentName}
           loading={submitting}
           error={formError}
           onClose={() => {

@@ -3,7 +3,8 @@ import type { StrategicCycleItem } from '../types/strategic-cycles.types';
 
 type StrategicCycleActionsProps = {
   cycle: StrategicCycleItem;
-  canManage: boolean;
+  canEdit: boolean;
+  canClose: boolean;
   busy?: boolean;
   onView: (cycle: StrategicCycleItem) => void;
   onEdit: (cycle: StrategicCycleItem) => void;
@@ -12,7 +13,8 @@ type StrategicCycleActionsProps = {
 
 export function StrategicCycleActions({
   cycle,
-  canManage,
+  canEdit,
+  canClose,
   busy = false,
   onView,
   onEdit,
@@ -29,9 +31,9 @@ export function StrategicCycleActions({
         Ver
       </button>
 
-      {canManage ? (
+      {canEdit || canClose ? (
         <>
-          {cycle.status !== 'CLOSED' ? (
+          {canEdit && cycle.status !== 'CLOSED' ? (
             <button
               type="button"
               onClick={() => onEdit(cycle)}
@@ -43,7 +45,7 @@ export function StrategicCycleActions({
             </button>
           ) : null}
 
-          {cycle.status !== 'CLOSED' ? (
+          {canClose && cycle.status !== 'CLOSED' ? (
             <button
               type="button"
               onClick={() => onClose(cycle)}

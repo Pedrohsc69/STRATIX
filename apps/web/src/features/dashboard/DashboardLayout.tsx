@@ -52,7 +52,7 @@ const menuItems: MenuItem[] = [
     label: "Ciclos",
     path: "/dashboard-cycles",
     icon: Target,
-    requiredPermissions: ["cycles:manage", "cycles:view:department"],
+    requiredPermissions: ["cycles:manage", "cycles:manage:department", "cycles:view:department"],
   },
   {
     label: "Objetivos",

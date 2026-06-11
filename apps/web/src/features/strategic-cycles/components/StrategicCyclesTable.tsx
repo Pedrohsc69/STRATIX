@@ -7,7 +7,8 @@ import type { StrategicCycleItem } from "../types/strategic-cycles.types";
 
 type StrategicCyclesTableProps = {
   cycles: StrategicCycleItem[];
-  canManage: boolean;
+  canEdit: boolean;
+  canClose: boolean;
   busyCycleId?: string | null;
   onView: (cycle: StrategicCycleItem) => void;
   onEdit: (cycle: StrategicCycleItem) => void;
@@ -32,7 +33,8 @@ function getProgressTone(progress: number) {
 
 export function StrategicCyclesTable({
   cycles,
-  canManage,
+  canEdit,
+  canClose,
   busyCycleId,
   onView,
   onEdit,
@@ -97,7 +99,8 @@ export function StrategicCyclesTable({
                   <td className="py-5 text-right">
                     <StrategicCycleActions
                       cycle={cycle}
-                      canManage={canManage}
+                      canEdit={canEdit}
+                      canClose={canClose}
                       busy={busyCycleId === cycle.id}
                       onView={onView}
                       onEdit={onEdit}

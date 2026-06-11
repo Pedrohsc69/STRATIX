@@ -28,7 +28,7 @@ export class StrategicCyclesController {
   }
 
   @Post()
-  @Roles(UserRole.DIRECTOR)
+  @Roles(UserRole.DIRECTOR, UserRole.MANAGER)
   create(
     @CurrentUser() user: AuthenticatedUser,
     @Body() body: CreateStrategicCycleDto,
@@ -38,7 +38,7 @@ export class StrategicCyclesController {
   }
 
   @Patch(':cycleId')
-  @Roles(UserRole.DIRECTOR)
+  @Roles(UserRole.DIRECTOR, UserRole.MANAGER)
   update(
     @CurrentUser() user: AuthenticatedUser,
     @Param('cycleId') cycleId: string,

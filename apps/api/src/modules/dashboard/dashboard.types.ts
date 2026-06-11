@@ -12,6 +12,7 @@ export type DashboardPermission =
   | 'users:manage'
   | 'users:view:department'
   | 'cycles:manage'
+  | 'cycles:manage:department'
   | 'cycles:view:department'
   | 'objectives:manage'
   | 'objectives:manage:department'

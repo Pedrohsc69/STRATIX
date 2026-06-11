@@ -10,6 +10,8 @@ type StrategicCycleFormDialogProps = {
   title: string;
   departments: StrategicCycleDepartmentOption[];
   initialCycle?: StrategicCycleItem | null;
+  departmentLocked?: boolean;
+  lockedDepartmentName?: string;
   loading?: boolean;
   error?: string | null;
   onClose: () => void;
@@ -34,6 +36,8 @@ export function StrategicCycleFormDialog({
   title,
   departments,
   initialCycle,
+  departmentLocked = false,
+  lockedDepartmentName,
   loading = false,
   error,
   onClose,
@@ -88,20 +92,37 @@ export function StrategicCycleFormDialog({
 
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-[#4B5563]">Departamento</span>
-            <select
-              required
-              value={form.departmentId}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, departmentId: event.target.value }))
-              }
-              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-[#1F2937] outline-none transition-colors focus:border-[#1E4E79]"
-            >
-              {departments.map((department) => (
-                <option key={department.id} value={department.id}>
-                  {department.name}
-                </option>
-              ))}
-            </select>
+            {departmentLocked ? (
+              <div className="space-y-2">
+                <input
+                  value={
+                    lockedDepartmentName
+                    ?? departments.find((department) => department.id === form.departmentId)?.name
+                    ?? ""
+                  }
+                  readOnly
+                  className="w-full rounded-xl border border-gray-200 bg-[#F8FAFC] px-4 py-3 text-sm text-[#1F2937] outline-none"
+                />
+                <p className="text-xs text-[#6B7280]">
+                  Gestores podem criar e editar ciclos apenas no proprio departamento.
+                </p>
+              </div>
+            ) : (
+              <select
+                required
+                value={form.departmentId}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, departmentId: event.target.value }))
+                }
+                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-[#1F2937] outline-none transition-colors focus:border-[#1E4E79]"
+              >
+                {departments.map((department) => (
+                  <option key={department.id} value={department.id}>
+                    {department.name}
+                  </option>
+                ))}
+              </select>
+            )}
           </label>
 
           <div className="grid gap-5 md:grid-cols-2">
