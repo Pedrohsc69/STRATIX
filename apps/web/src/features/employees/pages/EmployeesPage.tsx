@@ -48,8 +48,18 @@ export function EmployeesPage() {
   const [submittingInvite, setSubmittingInvite] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+  const [demoInvite, setDemoInvite] = useState<{ email: string; inviteUrl: string } | null>(null);
 
   const canInviteEmployees = canAccess("users:manage");
+
+  const copyInviteLink = async (inviteUrl: string) => {
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      setFeedbackMessage("Link do convite copiado com sucesso.");
+    } catch {
+      window.alert("Não foi possível copiar o link do convite.");
+    }
+  };
 
   const getRequestErrorMessage = (requestError: unknown) => {
     const maybeError = requestError as {
@@ -79,9 +89,18 @@ export function EmployeesPage() {
     try {
       setSubmittingInvite(true);
       setInviteError(null);
-      await inviteEmployee(payload);
+      const response = await inviteEmployee(payload);
       setIsInviteOpen(false);
-      setFeedbackMessage("Convite enviado com sucesso.");
+      if (response.inviteUrl) {
+        setDemoInvite({
+          email: response.email,
+          inviteUrl: response.inviteUrl,
+        });
+        setFeedbackMessage(null);
+      } else {
+        setDemoInvite(null);
+        setFeedbackMessage("Convite enviado com sucesso.");
+      }
       reload();
     } catch (requestError) {
       setInviteError(getRequestErrorMessage(requestError));
@@ -94,6 +113,7 @@ export function EmployeesPage() {
     try {
       setBusyEmployeeId(employee.id);
       setFeedbackMessage(null);
+      setDemoInvite(null);
       await resendInvite(employee.id);
       setFeedbackMessage(
         employee.status === "EXPIRED"
@@ -137,6 +157,27 @@ export function EmployeesPage() {
       pageDescription={getPageDescription(data.role)}
     >
       <div className="space-y-6">
+        {demoInvite ? (
+          <div className="rounded-2xl border border-[#BFDBFE] bg-[#EFF6FF] px-5 py-4 text-sm text-[#1D4ED8]">
+            <p className="font-semibold">Modo demonstração: envio por e-mail desativado.</p>
+            <p className="mt-1">
+              Use o link abaixo para aceitar o convite de {demoInvite.email}.
+            </p>
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <code className="rounded-xl bg-white px-3 py-2 text-xs text-[#1E3A8A]">
+                {demoInvite.inviteUrl}
+              </code>
+              <button
+                type="button"
+                onClick={() => void copyInviteLink(demoInvite.inviteUrl)}
+                className="rounded-xl bg-[#1D4ED8] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#1E40AF]"
+              >
+                Copiar link do convite
+              </button>
+            </div>
+          </div>
+        ) : null}
+
         {feedbackMessage ? (
           <div className="rounded-2xl border border-[#BBF7D0] bg-[#F0FDF4] px-5 py-4 text-sm text-[#166534]">
             {feedbackMessage}
@@ -155,6 +196,7 @@ export function EmployeesPage() {
           onInvite={() => {
             setInviteError(null);
             setFeedbackMessage(null);
+            setDemoInvite(null);
             setIsInviteOpen(true);
           }}
         />

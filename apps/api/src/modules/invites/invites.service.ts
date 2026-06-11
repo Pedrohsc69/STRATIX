@@ -4,7 +4,9 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { UserRole } from '@prisma/client';
 import { randomBytes } from 'node:crypto';
 import { PrismaService } from '../../core/shared/prisma.service';
@@ -22,6 +24,7 @@ export class InvitesService {
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
     private readonly auditService: AuditService,
+    @Optional() private readonly configService?: ConfigService,
   ) {}
 
   async create(
@@ -79,20 +82,24 @@ export class InvitesService {
       },
     });
 
-    try {
-      await this.sendInviteMessage({
-        companyName: companyContext.companyName,
-        departmentName: department.name ?? null,
-        email: invite.email,
-        role: invite.role,
-        token: invite.token,
-      });
-    } catch {
-      await this.prisma.invite.delete({
-        where: { id: invite.id },
-      });
+    const inviteUrl = this.isEmailDemoModeEnabled() ? this.buildInviteUrl(invite.token) : undefined;
 
-      throw new InternalServerErrorException('Unable to complete request');
+    if (!inviteUrl) {
+      try {
+        await this.sendInviteMessage({
+          companyName: companyContext.companyName,
+          departmentName: department.name ?? null,
+          email: invite.email,
+          role: invite.role,
+          token: invite.token,
+        });
+      } catch {
+        await this.prisma.invite.delete({
+          where: { id: invite.id },
+        });
+
+        throw new InternalServerErrorException('Unable to complete request');
+      }
     }
 
     await this.auditService.log({
@@ -123,7 +130,7 @@ export class InvitesService {
         id: department.id,
         name: department.name,
       },
-    });
+    }, inviteUrl);
   }
 
   async list(actor: AuthenticatedUser): Promise<InviteResponseItem[]> {
@@ -410,6 +417,20 @@ export class InvitesService {
     return new Date(Date.now() + 1000 * 60 * 60 * 24 * 7);
   }
 
+  private isEmailDemoModeEnabled() {
+    return this.configService?.get<string>('EMAIL_DEMO_MODE') === 'true';
+  }
+
+  private buildInviteUrl(token: string) {
+    const frontendUrl = this.configService?.get<string>('FRONTEND_URL')?.trim();
+
+    if (!frontendUrl) {
+      throw new InternalServerErrorException('Unable to complete request');
+    }
+
+    return `${frontendUrl}/accept-invite?token=${encodeURIComponent(token)}`;
+  }
+
   private getInviteStatus(expiresAt: Date): InviteViewStatus {
     return expiresAt.getTime() > Date.now() ? 'PENDING' : 'EXPIRED';
   }
@@ -424,7 +445,7 @@ export class InvitesService {
       id: string;
       name: string;
     } | null;
-  }): InviteResponseItem {
+  }, inviteUrl?: string): InviteResponseItem {
     return {
       id: invite.id,
       email: invite.email,
@@ -433,6 +454,7 @@ export class InvitesService {
       status: this.getInviteStatus(invite.expiresAt),
       expiresAt: invite.expiresAt.toISOString(),
       createdAt: invite.createdAt.toISOString(),
+      ...(inviteUrl ? { inviteUrl } : {}),
     };
   }
 

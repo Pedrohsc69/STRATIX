@@ -70,6 +70,13 @@ interface OnboardingData {
   }>;
 }
 
+type DemoInviteLink = {
+  email: string;
+  role: "MANAGER" | "EMPLOYEE";
+  department: string;
+  inviteUrl: string;
+};
+
 export  function RegisterPage() {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
@@ -103,6 +110,7 @@ export  function RegisterPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [demoInviteLinks, setDemoInviteLinks] = useState<DemoInviteLink[]>([]);
 
   const steps = [
     { number: 1, title: "Conta de Diretor" },
@@ -114,6 +122,14 @@ export  function RegisterPage() {
   const roleLabelMap: Record<"MANAGER" | "EMPLOYEE", string> = {
     MANAGER: "Gestor",
     EMPLOYEE: "Colaborador",
+  };
+
+  const copyInviteLink = async (inviteUrl: string) => {
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+    } catch {
+      window.alert("Não foi possível copiar o link do convite.");
+    }
   };
 
   const formatCNPJ = (value: string) => {
@@ -266,6 +282,10 @@ export  function RegisterPage() {
   };
 
   const handleAddInvite = () => {
+    if (demoInviteLinks.length > 0) {
+      return;
+    }
+
     const newErrors: Record<string, string> = {};
 
     if (!newInvite.email) {
@@ -294,6 +314,10 @@ export  function RegisterPage() {
   };
 
   const handleRemoveInvite = (index: number) => {
+    if (demoInviteLinks.length > 0) {
+      return;
+    }
+
     setFormData({
       ...formData,
       invites: formData.invites.filter((_, i) => i !== index)
@@ -301,10 +325,17 @@ export  function RegisterPage() {
   };
 
   const handleFinish = async () => {
+    if (demoInviteLinks.length > 0) {
+      setCurrentStep(5);
+      return;
+    }
+
     setSubmitError("");
     setSubmitting(true);
 
     try {
+      const createdDemoLinks: DemoInviteLink[] = [];
+
       for (const invite of formData.invites) {
         const department = formData.departments.find((item) => item.name === invite.department);
 
@@ -312,11 +343,25 @@ export  function RegisterPage() {
           throw new Error("Department not synced");
         }
 
-        await createInvite({
+        const response = await createInvite({
           email: invite.email,
           role: invite.role,
           departmentId: department.createdId,
         });
+
+        if (response.inviteUrl) {
+          createdDemoLinks.push({
+            email: invite.email,
+            role: invite.role,
+            department: invite.department,
+            inviteUrl: response.inviteUrl,
+          });
+        }
+      }
+
+      if (createdDemoLinks.length > 0) {
+        setDemoInviteLinks(createdDemoLinks);
+        return;
       }
 
       setCurrentStep(5);
@@ -847,6 +892,7 @@ export  function RegisterPage() {
                         type="email"
                         value={newInvite.email}
                         onChange={(e) => setNewInvite({ ...newInvite, email: e.target.value })}
+                        disabled={submitting || demoInviteLinks.length > 0}
                         className={`w-full px-4 py-2.5 bg-input-background border rounded-lg focus:outline-none focus:ring-2 text-sm ${
                           errors.inviteEmail ? "border-destructive" : "border-border focus:ring-accent"
                         }`}
@@ -861,6 +907,7 @@ export  function RegisterPage() {
                         <select
                           value={newInvite.role}
                           onChange={(e) => setNewInvite({ ...newInvite, role: e.target.value as "MANAGER" | "EMPLOYEE" })}
+                          disabled={submitting || demoInviteLinks.length > 0}
                           className="w-full px-4 py-2.5 bg-input-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-sm"
                         >
                           <option value="MANAGER">Gestor</option>
@@ -873,6 +920,7 @@ export  function RegisterPage() {
                         <select
                           value={newInvite.department}
                           onChange={(e) => setNewInvite({ ...newInvite, department: e.target.value })}
+                          disabled={submitting || demoInviteLinks.length > 0}
                           className={`w-full px-4 py-2.5 bg-input-background border rounded-lg focus:outline-none focus:ring-2 text-sm ${
                             errors.inviteDepartment ? "border-destructive" : "border-border focus:ring-accent"
                           }`}
@@ -891,6 +939,7 @@ export  function RegisterPage() {
                     <button
                       onClick={handleAddInvite}
                       type="button"
+                      disabled={submitting || demoInviteLinks.length > 0}
                       className="w-full px-4 py-2.5 bg-accent text-white rounded-lg hover:bg-accent/90 transition-all font-medium flex items-center justify-center gap-2"
                     >
                       <Plus className="w-5 h-5" />
@@ -919,6 +968,7 @@ export  function RegisterPage() {
                           </div>
                           <button
                             onClick={() => handleRemoveInvite(index)}
+                            disabled={demoInviteLinks.length > 0}
                             className="p-2 text-muted-foreground hover:text-destructive transition-colors"
                           >
                             <X className="w-4 h-4" />
@@ -934,17 +984,55 @@ export  function RegisterPage() {
                     </div>
                   )}
 
-                  <div className="bg-accent/5 border border-accent/20 rounded-lg p-4 mb-6">
-                    <div className="flex items-start gap-3">
-                      <Mail className="w-5 h-5 text-accent mt-0.5 flex-shrink-0" />
-                      <div>
-                        <p className="text-sm font-medium text-foreground mb-1">Convites serão enviados por e-mail</p>
-                        <p className="text-xs text-muted-foreground">
-                          Cada usuário receberá um link seguro para ativar sua conta no departamento selecionado.
-                        </p>
+                  {demoInviteLinks.length > 0 ? (
+                    <div className="mb-6 rounded-lg border border-[#BFDBFE] bg-[#EFF6FF] p-4">
+                      <div className="flex items-start gap-3">
+                        <Mail className="mt-0.5 w-5 flex-shrink-0 text-[#1D4ED8]" />
+                        <div className="w-full">
+                          <p className="text-sm font-medium text-foreground mb-1">
+                            Modo demonstração: envio por e-mail desativado. Use o link abaixo para aceitar o convite.
+                          </p>
+                          <div className="mt-4 space-y-3">
+                            {demoInviteLinks.map((invite) => (
+                              <div
+                                key={invite.email}
+                                className="rounded-lg border border-[#BFDBFE] bg-white p-3"
+                              >
+                                <p className="text-sm font-medium text-foreground">{invite.email}</p>
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                  {roleLabelMap[invite.role]} • {invite.department}
+                                </p>
+                                <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+                                  <code className="rounded-lg bg-[#EFF6FF] px-3 py-2 text-xs text-[#1E3A8A]">
+                                    {invite.inviteUrl}
+                                  </code>
+                                  <button
+                                    type="button"
+                                    onClick={() => void copyInviteLink(invite.inviteUrl)}
+                                    className="rounded-lg bg-[#1D4ED8] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#1E40AF]"
+                                  >
+                                    Copiar link do convite
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="bg-accent/5 border border-accent/20 rounded-lg p-4 mb-6">
+                      <div className="flex items-start gap-3">
+                        <Mail className="w-5 h-5 text-accent mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="text-sm font-medium text-foreground mb-1">Convites serão enviados por e-mail</p>
+                          <p className="text-xs text-muted-foreground">
+                            Cada usuário receberá um link seguro para ativar sua conta no departamento selecionado.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {submitError && (
                     <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg flex items-start gap-3">
@@ -959,7 +1047,11 @@ export  function RegisterPage() {
                     disabled={submitting}
                     className="w-full py-3.5 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-70"
                   >
-                    {submitting ? "Finalizando..." : "Finalizar configuração"}
+                    {submitting
+                      ? "Finalizando..."
+                      : demoInviteLinks.length > 0
+                        ? "Concluir configuração"
+                        : "Finalizar configuração"}
                     <CheckCircle2 className="w-5 h-5" />
                   </button>
                 </motion.div>

@@ -14,6 +14,18 @@ import { CreateInviteDto } from './dto/create-invite.dto';
 import { InvitesController } from './invites.controller';
 import { InvitesService } from './invites.service';
 
+function createInviteConfigService(overrides?: Record<string, string>) {
+  const values = {
+    EMAIL_DEMO_MODE: 'false',
+    FRONTEND_URL: 'http://localhost:5173',
+    ...overrides,
+  };
+
+  return {
+    get: (key: string) => values[key as keyof typeof values],
+  };
+}
+
 void test('CreateInviteDto no longer requires name and only allows manager or employee roles', async () => {
   const validDto = plainToInstance(CreateInviteDto, {
     email: 'colaborador@empresa.com',
@@ -48,6 +60,7 @@ void test('InvitesService requires at least one department before creating invit
     prisma as never,
     { sendInviteEmail: async () => undefined } as never,
     { log: async () => undefined } as never,
+    createInviteConfigService() as never,
   );
 
   await assert.rejects(
@@ -81,6 +94,7 @@ void test('InvitesService rejects director invites', async () => {
     prisma as never,
     { sendInviteEmail: async () => undefined } as never,
     { log: async () => undefined } as never,
+    createInviteConfigService() as never,
   );
 
   await assert.rejects(
@@ -130,6 +144,7 @@ void test('InvitesService rejects duplicate invite e-mail', async () => {
     prisma as never,
     { sendInviteEmail: async () => undefined } as never,
     { log: async () => undefined } as never,
+    createInviteConfigService() as never,
   );
 
   await assert.rejects(
@@ -208,6 +223,7 @@ void test('InvitesService replaces expired invites and audits INVITE_SENT withou
         auditCommands.push(command);
       },
     } as never,
+    createInviteConfigService() as never,
   );
 
   const invite = await service.create(
@@ -228,6 +244,77 @@ void test('InvitesService replaces expired invites and audits INVITE_SENT withou
   assert.equal(sentMessages.length, 1);
   assert.equal(sentMessages[0]?.token, 'new-token');
   assert.equal('inviteeName' in sentMessages[0]!, false);
+  assert.equal(invite.inviteUrl, undefined);
+});
+
+void test('InvitesService skips Resend and returns inviteUrl when EMAIL_DEMO_MODE is enabled', async () => {
+  const auditCommands: Array<Record<string, unknown>> = [];
+  let emailSendAttempts = 0;
+
+  const prisma = {
+    user: {
+      findUnique: async ({ where }: { where?: { id?: string; email?: string } }) => {
+        if (where?.id) {
+          return {
+            companyId: 'company-1',
+            company: { name: 'Empresa X' },
+          };
+        }
+
+        return null;
+      },
+    },
+    department: {
+      count: async () => 1,
+      findFirst: async () => ({ id: 'department-1', name: 'Comercial', managerId: null }),
+    },
+    invite: {
+      findUnique: async () => null,
+      create: async () => ({
+        id: 'invite-demo',
+        email: 'colaborador@empresa.com',
+        role: UserRole.EMPLOYEE,
+        departmentId: 'department-1',
+        companyId: 'company-1',
+        accepted: false,
+        expiresAt: new Date(Date.now() + 1000 * 60),
+        createdAt: new Date('2026-06-10T12:00:00.000Z'),
+        token: 'demo-token',
+      }),
+    },
+  };
+
+  const service = new InvitesService(
+    prisma as never,
+    {
+      sendInviteEmail: async () => {
+        emailSendAttempts += 1;
+      },
+    } as never,
+    {
+      log: async (command: Record<string, unknown>) => {
+        auditCommands.push(command);
+      },
+    } as never,
+    createInviteConfigService({ EMAIL_DEMO_MODE: 'true' }) as never,
+  );
+
+  const invite = await service.create(
+    { sub: 'user-1', email: 'diretor@empresa.com', role: UserRole.DIRECTOR },
+    {
+      email: 'colaborador@empresa.com',
+      role: UserRole.EMPLOYEE,
+      departmentId: 'department-1',
+    },
+  );
+
+  assert.equal(emailSendAttempts, 0);
+  assert.equal(
+    invite.inviteUrl,
+    'http://localhost:5173/accept-invite?token=demo-token',
+  );
+  assert.equal(auditCommands.length, 1);
+  assert.equal(JSON.stringify(auditCommands[0]).includes('"token"'), false);
 });
 
 void test('InvitesService deletes the invite when e-mail delivery fails', async () => {
@@ -283,6 +370,7 @@ void test('InvitesService deletes the invite when e-mail delivery fails', async 
         auditCommands.push(command);
       },
     } as never,
+    createInviteConfigService() as never,
   );
 
   await assert.rejects(
@@ -326,6 +414,7 @@ void test('InvitesService rejects invites for departments outside the director c
     prisma as never,
     { sendInviteEmail: async () => undefined } as never,
     { log: async () => undefined } as never,
+    createInviteConfigService() as never,
   );
 
   await assert.rejects(
@@ -370,6 +459,7 @@ void test('InvitesService rejects manager invites when the department already ha
     prisma as never,
     { sendInviteEmail: async () => undefined } as never,
     { log: async () => undefined } as never,
+    createInviteConfigService() as never,
   );
 
   await assert.rejects(
@@ -420,6 +510,7 @@ void test('InvitesService rejects a second active manager invite for the same de
     prisma as never,
     { sendInviteEmail: async () => undefined } as never,
     { log: async () => undefined } as never,
+    createInviteConfigService() as never,
   );
 
   await assert.rejects(
@@ -507,6 +598,7 @@ void test('InvitesService resends an active invite without changing the token', 
         auditCommands.push(command);
       },
     } as never,
+    createInviteConfigService() as never,
   );
 
   const invite = await service.resend(
@@ -580,6 +672,7 @@ void test('InvitesService renews the token when resending an expired invite', as
       },
     } as never,
     { log: async () => undefined } as never,
+    createInviteConfigService() as never,
   );
 
   await service.resend(
@@ -625,6 +718,7 @@ void test('InvitesService does not resend an accepted invite', async () => {
     prisma as never,
     { sendInviteEmail: async () => undefined } as never,
     { log: async () => undefined } as never,
+    createInviteConfigService() as never,
   );
 
   await assert.rejects(

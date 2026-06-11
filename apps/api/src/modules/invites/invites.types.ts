@@ -13,4 +13,5 @@ export type InviteResponseItem = {
   status: InviteViewStatus;
   expiresAt: string;
   createdAt: string;
+  inviteUrl?: string;
 };

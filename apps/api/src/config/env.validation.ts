@@ -24,6 +24,7 @@ function ensureNumber(env: EnvRecord, key: string, fallback: string) {
 export function validateEnv(env: EnvRecord) {
   const mongoUrl = env.MONGO_URL?.trim() || env.MONGODB_URI?.trim();
   const mongoDb = env.MONGO_DB?.trim() || env.MONGODB_DATABASE?.trim();
+  const emailDemoMode = env.EMAIL_DEMO_MODE?.trim() === 'true' ? 'true' : 'false';
 
   if (!mongoUrl) {
     throw new Error('MONGO_URL or MONGODB_URI is not defined');
@@ -44,6 +45,7 @@ export function validateEnv(env: EnvRecord) {
     JWT_EXPIRES_IN: ensureRequired(env, 'JWT_EXPIRES_IN'),
     FRONTEND_URL: ensureRequired(env, 'FRONTEND_URL'),
     EMAIL_FROM: ensureRequired(env, 'EMAIL_FROM'),
+    EMAIL_DEMO_MODE: emailDemoMode,
     RESEND_API_KEY: ensureRequired(env, 'RESEND_API_KEY'),
   };
 }

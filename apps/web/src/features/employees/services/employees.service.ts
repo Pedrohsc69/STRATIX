@@ -32,7 +32,13 @@ export async function fetchEmployeeDetails(userId: string) {
 }
 
 export async function inviteEmployee(payload: InviteEmployeePayload) {
-  const response = await api.post("/invites", payload);
+  const response = await api.post<{
+    id: string;
+    email: string;
+    role: "MANAGER" | "EMPLOYEE";
+    expiresAt: string;
+    inviteUrl?: string;
+  }>("/invites", payload);
   return response.data;
 }
 

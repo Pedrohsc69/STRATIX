@@ -123,6 +123,7 @@ export async function createInvite(input: CreateInviteInput) {
     role: 'MANAGER' | 'EMPLOYEE';
     departmentId: string;
     expiresAt: string;
+    inviteUrl?: string;
   };
 }
 
