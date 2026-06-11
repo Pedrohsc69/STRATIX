@@ -14,11 +14,22 @@ function createService(prisma: Record<string, unknown>) {
   } as never);
 }
 
-function buildCycleOption(id: string, name: string, status: 'ACTIVE' | 'CLOSED' = 'ACTIVE') {
+function buildCycleOption(
+  id: string,
+  name: string,
+  status: 'ACTIVE' | 'CLOSED' = 'ACTIVE',
+  departmentId = 'department-1',
+  departmentName = 'Marketing',
+) {
   return {
     id,
     name,
+    departmentId,
+    department: {
+      name: departmentName,
+    },
     status,
+    startDate: new Date('2026-01-01T00:00:00Z'),
     endDate: new Date('2026-07-01T00:00:00Z'),
   };
 }
@@ -85,6 +96,8 @@ void test('ObjectivesService lists company objectives only for the director comp
   assert.equal(response.scope, 'COMPANY');
   assert.equal(response.objectives.length, 1);
   assert.equal(response.objectives[0]?.departmentName, 'Marketing');
+  assert.equal(response.filters.cycles[0]?.departmentName, 'Marketing');
+  assert.equal(response.filters.cycles[0]?.cycleStartDate, '2026-01-01T00:00:00.000Z');
 });
 
 void test('ObjectivesService restricts managers to their own department', async () => {

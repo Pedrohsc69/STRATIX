@@ -231,6 +231,7 @@ export function ObjectivesPage() {
       {isCreateOpen ? (
         <ObjectiveFormDialog
           title="Novo objetivo estratégico"
+          departments={data.filters.departments}
           cycles={editableCycles}
           initialObjective={
             defaultCycleId
@@ -270,6 +271,7 @@ export function ObjectivesPage() {
       {editingObjective ? (
         <ObjectiveFormDialog
           title="Editar objetivo estratégico"
+          departments={data.filters.departments}
           cycles={editableCycles}
           initialObjective={editingObjective}
           loading={submitting}

@@ -7,7 +7,7 @@ import type {
 
 export type ObjectiveStatus = 'IN_PROGRESS' | 'COMPLETED' | 'AT_RISK';
 export type ObjectivePriority = 'UNSPECIFIED';
-export type ObjectiveCycleStatus = 'ACTIVE' | 'CLOSED';
+export type ObjectiveCycleStatus = 'ACTIVE' | 'CLOSED' | 'DELAYED';
 
 export type ObjectiveItem = {
   id: string;
@@ -47,7 +47,10 @@ export type ObjectiveDepartmentOption = {
 export type ObjectiveCycleOption = {
   id: string;
   name: string;
+  departmentId: string;
+  departmentName: string;
   cycleStatus: ObjectiveCycleStatus;
+  cycleStartDate: string;
   cycleEndDate: string;
   isCycleEditable: boolean;
 };

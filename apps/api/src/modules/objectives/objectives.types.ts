@@ -18,7 +18,10 @@ export type ObjectiveDepartmentOption = {
 export type ObjectiveCycleOption = {
   id: string;
   name: string;
+  departmentId: string;
+  departmentName: string;
   cycleStatus: CycleStatus;
+  cycleStartDate: string;
   cycleEndDate: string;
   isCycleEditable: boolean;
 };

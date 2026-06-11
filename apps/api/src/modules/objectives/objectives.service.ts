@@ -479,15 +479,25 @@ export class ObjectivesService {
         select: {
           id: true,
           name: true,
+          departmentId: true,
           status: true,
+          startDate: true,
           endDate: true,
+          department: {
+            select: {
+              name: true,
+            },
+          },
         },
       })
       .then((cycles) =>
         cycles.map((cycle) => ({
           id: cycle.id,
           name: cycle.name,
+          departmentId: cycle.departmentId,
+          departmentName: cycle.department.name,
           cycleStatus: cycle.status,
+          cycleStartDate: cycle.startDate.toISOString(),
           cycleEndDate: cycle.endDate.toISOString(),
           isCycleEditable: isCycleEditable(cycle),
         })),

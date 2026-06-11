@@ -1,13 +1,16 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { X } from 'lucide-react';
 import type {
   ObjectiveCycleOption,
+  ObjectiveDepartmentOption,
   ObjectiveItem,
+  ObjectiveCycleStatus,
   ObjectivePayload,
 } from '../types/objectives.types';
 
 type ObjectiveFormDialogProps = {
   title: string;
+  departments: ObjectiveDepartmentOption[];
   cycles: ObjectiveCycleOption[];
   initialObjective?: ObjectiveItem | null;
   loading?: boolean;
@@ -16,21 +19,65 @@ type ObjectiveFormDialogProps = {
   onSubmit: (payload: ObjectivePayload) => Promise<void>;
 };
 
-type FormState = ObjectivePayload;
+type FormState = ObjectivePayload & {
+  departmentId: string;
+};
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat('pt-BR').format(new Date(value));
+}
+
+function getCycleStatusLabel(status: ObjectiveCycleStatus) {
+  if (status === 'ACTIVE') {
+    return 'Em andamento';
+  }
+
+  if (status === 'DELAYED') {
+    return 'Atrasado';
+  }
+
+  return 'Encerrado';
+}
+
+function sortCycles(cycles: ObjectiveCycleOption[]) {
+  return [...cycles].sort((left, right) => {
+    const leftPriority = left.cycleStatus === 'CLOSED' ? 1 : 0;
+    const rightPriority = right.cycleStatus === 'CLOSED' ? 1 : 0;
+
+    if (leftPriority !== rightPriority) {
+      return leftPriority - rightPriority;
+    }
+
+    return new Date(right.cycleStartDate).getTime() - new Date(left.cycleStartDate).getTime();
+  });
+}
+
+function formatCycleLabel(cycle: ObjectiveCycleOption) {
+  return `${cycle.name} • ${cycle.departmentName} • ${formatDate(cycle.cycleStartDate)} → ${formatDate(cycle.cycleEndDate)} • ${getCycleStatusLabel(cycle.cycleStatus)}`;
+}
 
 function getInitialState(
   cycles: ObjectiveCycleOption[],
   objective?: ObjectiveItem | null,
 ): FormState {
+  const sortedCycles = sortCycles(cycles);
+  const fallbackCycle = sortedCycles[0];
+  const selectedCycle =
+    sortedCycles.find((cycle) => cycle.id === objective?.cycleId) ??
+    fallbackCycle ??
+    null;
+
   return {
     name: objective?.name ?? '',
     description: objective?.description ?? '',
-    cycleId: objective?.cycleId ?? cycles[0]?.id ?? '',
+    departmentId: objective?.departmentId ?? selectedCycle?.departmentId ?? '',
+    cycleId: objective?.cycleId ?? selectedCycle?.id ?? '',
   };
 }
 
 export function ObjectiveFormDialog({
   title,
+  departments,
   cycles,
   initialObjective,
   loading = false,
@@ -43,6 +90,33 @@ export function ObjectiveFormDialog({
   useEffect(() => {
     setForm(getInitialState(cycles, initialObjective));
   }, [cycles, initialObjective]);
+
+  const sortedCycles = useMemo(() => sortCycles(cycles), [cycles]);
+  const filteredCycles = useMemo(
+    () =>
+      sortedCycles.filter((cycle) =>
+        form.departmentId ? cycle.departmentId === form.departmentId : true,
+      ),
+    [form.departmentId, sortedCycles],
+  );
+
+  useEffect(() => {
+    if (!filteredCycles.length) {
+      if (form.cycleId) {
+        setForm((current) => ({ ...current, cycleId: '' }));
+      }
+      return;
+    }
+
+    const selectedCycleStillVisible = filteredCycles.some((cycle) => cycle.id === form.cycleId);
+
+    if (!selectedCycleStillVisible) {
+      setForm((current) => ({
+        ...current,
+        cycleId: filteredCycles[0]?.id ?? '',
+      }));
+    }
+  }, [filteredCycles, form.cycleId]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -71,6 +145,31 @@ export function ObjectiveFormDialog({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5 px-6 py-6">
+          <label className="block">
+            <span className="mb-2 block text-sm font-medium text-[#4B5563]">Departamento</span>
+            <select
+              required
+              value={form.departmentId}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  departmentId: event.target.value,
+                }))
+              }
+              disabled={departments.length <= 1}
+              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-[#1F2937] outline-none transition-colors focus:border-[#1E4E79] disabled:cursor-not-allowed disabled:bg-[#F8FAFC]"
+            >
+              <option value="" disabled>
+                Selecione um departamento
+              </option>
+              {departments.map((department) => (
+                <option key={department.id} value={department.id}>
+                  {department.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-[#4B5563]">Nome do objetivo</span>
             <input
@@ -105,10 +204,14 @@ export function ObjectiveFormDialog({
                 setForm((current) => ({ ...current, cycleId: event.target.value }))
               }
               className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-[#1F2937] outline-none transition-colors focus:border-[#1E4E79]"
+              disabled={!filteredCycles.length}
             >
-              {cycles.map((cycle) => (
+              {!filteredCycles.length ? (
+                <option value="">Nenhum ciclo disponível para o departamento selecionado</option>
+              ) : null}
+              {filteredCycles.map((cycle) => (
                 <option key={cycle.id} value={cycle.id} disabled={!cycle.isCycleEditable}>
-                  {cycle.name}
+                  {formatCycleLabel(cycle)}
                   {!cycle.isCycleEditable ? ' • somente leitura' : ''}
                 </option>
               ))}
