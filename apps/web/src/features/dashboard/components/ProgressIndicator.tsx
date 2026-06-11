@@ -20,13 +20,15 @@ export function ProgressIndicator({
 
   return (
     <div className="w-full">
-      <div className="h-2 rounded-full bg-[#E5E7EB] overflow-hidden">
+      <div className="h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
         <div
           className={`h-full rounded-full ${toneClasses[tone]}`}
           style={{ width: `${clampedValue}%` }}
         />
       </div>
-      <p className="text-xs font-medium text-[#6B7280] mt-2">{label ?? `${clampedValue}%`}</p>
+      <p className="mt-2 text-xs font-medium text-[#6B7280] dark:text-slate-400">
+        {label ?? `${clampedValue}%`}
+      </p>
     </div>
   );
 }

@@ -458,7 +458,7 @@ export  function RegisterPage() {
       </motion.div>
 
       {/* Right Side - Multi-Step Form */}
-      <div className="flex-1 overflow-y-auto bg-background px-4 py-8 sm:px-6 sm:py-12">
+      <div className="flex flex-1 items-center justify-center overflow-y-auto bg-background px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -466,7 +466,7 @@ export  function RegisterPage() {
           className="mx-auto w-full max-w-lg"
         >
           {/* Mobile Logo */}
-          <div className="lg:hidden flex items-center gap-2 mb-8">
+          <div className="mb-8 flex items-center justify-center gap-2 lg:hidden">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
               <div className="w-5 h-5 border-2 border-accent rounded" />
             </div>
@@ -478,8 +478,7 @@ export  function RegisterPage() {
             {/* Progress Indicator */}
             {currentStep < 5 && (
               <div className="mb-8">
-                <div className="overflow-x-auto pb-2">
-                  <div className="mb-3 flex min-w-[460px] items-center justify-between sm:min-w-0">
+                <div className="mb-3 flex items-start justify-between gap-2 sm:gap-3">
                   {steps.map((step, index) => (
                     <div key={step.number} className="flex items-center flex-1">
                       <div className="flex flex-col items-center">
@@ -498,20 +497,19 @@ export  function RegisterPage() {
                             step.number
                           )}
                         </div>
-                        <p className="mt-2 hidden text-center text-xs text-muted-foreground sm:block">
+                        <p className="mt-2 hidden text-center text-[11px] text-muted-foreground md:block">
                           {step.title}
                         </p>
                       </div>
                       {index < steps.length - 1 && (
                         <div
-                          className={`h-0.5 flex-1 mx-2 transition-all ${
+                          className={`mx-1 mt-5 h-0.5 flex-1 transition-all sm:mx-2 ${
                             currentStep > step.number ? "bg-accent" : "bg-border"
                           }`}
                         />
                       )}
                     </div>
                   ))}
-                  </div>
                 </div>
               </div>
             )}

@@ -7,13 +7,16 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  Moon,
   Settings,
+  Sun,
   Target,
   Users,
 } from "lucide-react";
 import { clearSession } from "../../store/app-store";
 import { canAccess } from "./dashboard.permissions";
 import type { DashboardContext, DashboardPermission, DashboardRole } from "./dashboard.types";
+import { useTheme } from "../../core/theme/theme-context";
 import logoMain from '@/shared/assets/logos/originals/logo-main.png';
 
 
@@ -104,6 +107,7 @@ export function DashboardLayout({
   const location = useLocation();
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { resolvedTheme, toggleTheme } = useTheme();
   const availableMenuItems = menuItems.filter(
     (item) =>
       !item.requiredPermissions ||
@@ -135,8 +139,10 @@ export function DashboardLayout({
     setIsSidebarOpen(false);
   }, [location.pathname]);
 
+  const nextThemeLabel = resolvedTheme === "dark" ? "claro" : "escuro";
+
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#F5F7FA] lg:flex">
+    <div className="min-h-screen overflow-x-hidden bg-background text-foreground lg:flex">
       {isSidebarOpen ? (
         <button
           type="button"
@@ -147,11 +153,11 @@ export function DashboardLayout({
       ) : null}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-gray-200 bg-white p-5 transition-transform duration-200 lg:static lg:max-w-none lg:translate-x-0 lg:p-6 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-gray-200 bg-white p-5 text-foreground transition-transform duration-200 dark:border-slate-800 dark:bg-slate-950 lg:static lg:max-w-none lg:translate-x-0 lg:p-6 ${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <Link to="/dashboard" className="border-b border-gray-200 pb-6  mb-10">
+        <Link to="/dashboard" className="mb-10 border-b border-gray-200 pb-6 dark:border-slate-800">
           <img className="w-40 pl-2 sm:w-48 sm:pl-4" src={logoMain} alt="STRATIX" />
         </Link>
 
@@ -164,8 +170,8 @@ export function DashboardLayout({
                 to={item.path}
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
                   active
-                    ? "bg-[#0F2A44] text-white"
-                    : "text-[#4B5563] hover:bg-[#F8FAFC]"
+                    ? "bg-[#0F2A44] text-white dark:bg-[#1E4E79]"
+                    : "text-[#4B5563] hover:bg-[#F8FAFC] dark:text-slate-300 dark:hover:bg-slate-800"
                 }`}
               >
                 <item.icon className="w-5 h-5" />
@@ -175,22 +181,42 @@ export function DashboardLayout({
           })}
         </nav>
 
-        <div className="mt-auto border-t border-gray-200 pt-6">
+        <div className="mt-auto border-t border-gray-200 pt-6 dark:border-slate-800">
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-[#F8FAFC] px-3 py-2 dark:border-slate-800 dark:bg-slate-900">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6B7280] dark:text-slate-400">
+                Tema
+              </p>
+              <p className="truncate text-sm text-[#1F2937] dark:text-slate-100">
+                Alternar para {nextThemeLabel}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-[#4B5563] transition-colors hover:bg-[#F8FAFC] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+              aria-label={`Ativar tema ${nextThemeLabel}`}
+              title={`Ativar tema ${nextThemeLabel}`}
+            >
+              {resolvedTheme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </button>
+          </div>
+
           <div className="flex items-center justify-between gap-3">
-            <Link to="/profile" className="flex items-center gap-3 min-w-0">
-              <div className="w-11 h-11 rounded-full bg-[#1E4E79] text-white flex items-center justify-center font-semibold">
+            <Link to="/profile" className="flex min-w-0 items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#1E4E79] text-white dark:bg-cyan-600 dark:text-slate-950">
                 {getInitials(context.user.name)}
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-medium text-[#1F2937] truncate">{context.user.name}</p>
-                <p className="text-xs text-[#6B7280]">{context.user.role}</p>
+                <p className="truncate text-sm font-medium text-[#1F2937] dark:text-slate-100">{context.user.name}</p>
+                <p className="text-xs text-[#6B7280] dark:text-slate-400">{context.user.role}</p>
               </div>
             </Link>
 
             <button
               type="button"
               onClick={handleLogout}
-              className="inline-flex items-center justify-center w-11 h-11 rounded-xl border border-gray-200 text-[#6B7280] hover:text-[#0F2A44] hover:bg-[#F8FAFC] transition-colors"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 text-[#6B7280] transition-colors hover:bg-[#F8FAFC] hover:text-[#0F2A44] dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-cyan-300"
               aria-label="Sair da conta"
               title="Sair"
             >
@@ -201,14 +227,14 @@ export function DashboardLayout({
       </aside>
 
       <div className="min-w-0 flex-1">
-        <header className="border-b border-gray-200 bg-white px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6">
+        <header className="border-b border-gray-200 bg-white px-4 py-4 dark:border-slate-800 dark:bg-slate-950 sm:px-6 sm:py-5 lg:px-8 lg:py-6">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div className="min-w-0">
               <div className="mb-3 flex items-center justify-between gap-3 lg:hidden">
                 <button
                   type="button"
                   onClick={() => setIsSidebarOpen(true)}
-                  className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 text-[#4B5563] transition-colors hover:bg-[#F8FAFC]"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 text-[#4B5563] transition-colors hover:bg-[#F8FAFC] dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                   aria-label="Abrir menu"
                 >
                   <Menu className="h-5 w-5" />
@@ -216,38 +242,49 @@ export function DashboardLayout({
                 <Link to="/dashboard" className="min-w-0">
                   <img className="h-8 w-auto max-w-[160px]" src={logoMain} alt="STRATIX" />
                 </Link>
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 text-[#6B7280] transition-colors hover:bg-[#F8FAFC] hover:text-[#0F2A44]"
-                  aria-label="Sair da conta"
-                >
-                  <LogOut className="h-5 w-5" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={toggleTheme}
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 text-[#4B5563] transition-colors hover:bg-[#F8FAFC] dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                    aria-label={`Ativar tema ${nextThemeLabel}`}
+                    title={`Ativar tema ${nextThemeLabel}`}
+                  >
+                    {resolvedTheme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 text-[#6B7280] transition-colors hover:bg-[#F8FAFC] hover:text-[#0F2A44] dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-cyan-300"
+                    aria-label="Sair da conta"
+                  >
+                    <LogOut className="h-5 w-5" />
+                  </button>
+                </div>
               </div>
 
-              <p className="text-sm uppercase tracking-[0.24em] text-[#6B7280] mb-2">
+              <p className="mb-2 text-sm uppercase tracking-[0.24em] text-[#6B7280] dark:text-slate-400">
                 {pageEyebrow ?? context.company?.businessArea ?? "STRATIX"}
               </p>
-              <h1 className="text-2xl font-semibold text-[#1F2937] sm:text-3xl">
+              <h1 className="text-2xl font-semibold text-[#1F2937] dark:text-slate-50 sm:text-3xl">
                 {resolvedPageTitle}
               </h1>
-              <p className="mt-2 max-w-3xl text-sm text-[#6B7280] sm:text-base">
+              <p className="mt-2 max-w-3xl text-sm text-[#6B7280] dark:text-slate-400 sm:text-base">
                 {resolvedPageDescription}
               </p>
             </div>
 
-            <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-gray-200 bg-[#F8FAFC] px-4 py-3 sm:gap-4 sm:px-5 sm:py-4">
+            <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-gray-200 bg-[#F8FAFC] px-4 py-3 dark:border-slate-800 dark:bg-slate-900 sm:gap-4 sm:px-5 sm:py-4">
               <div className="min-w-0 flex-1 text-left sm:text-right">
-                <p className="text-sm font-medium text-[#1F2937]">
+                <p className="text-sm font-medium text-[#1F2937] dark:text-slate-100">
                   {context.company?.name ?? "Empresa não configurada"}
                 </p>
-                <p className="truncate text-xs text-[#6B7280]">
+                <p className="truncate text-xs text-[#6B7280] dark:text-slate-400">
                   {context.department?.name ??
                     (role === "DIRECTOR" ? "Escopo corporativo" : "Sem departamento")}
                 </p>
               </div>
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#2BB3A3] font-semibold text-white">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#2BB3A3] font-semibold text-white dark:bg-cyan-500 dark:text-slate-950">
                 {getInitials(context.company?.name)}
               </div>
             </div>

@@ -15,11 +15,11 @@ export function DashboardCard({
   children,
 }: DashboardCardProps) {
   return (
-    <section className={`bg-white rounded-2xl border border-gray-200 shadow-sm ${className}`}>
+    <section className={`rounded-2xl border border-border bg-card text-card-foreground shadow-sm ${className}`}>
       <header className="flex items-start justify-between gap-4 p-6 pb-4">
         <div>
-          <h2 className="text-lg font-semibold text-[#1F2937]">{title}</h2>
-          {subtitle && <p className="text-sm text-[#6B7280] mt-1">{subtitle}</p>}
+          <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+          {subtitle ? <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p> : null}
         </div>
         {action}
       </header>

@@ -194,7 +194,7 @@ export  function RecoverPasswordPage() {
   // Main reset password form
   return (
     <div className="min-h-screen overflow-x-hidden bg-background px-4 py-8 sm:px-6 sm:py-12">
-      <div className="flex-1">
+      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center sm:min-h-[calc(100vh-6rem)]">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -202,7 +202,7 @@ export  function RecoverPasswordPage() {
           className="mx-auto w-full max-w-md"
         >
           {/* Mobile Logo */}
-          <div className="lg:hidden flex items-center gap-2 mb-8">
+          <div className="mb-8 flex items-center justify-center gap-2 lg:hidden">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
               <div className="w-5 h-5 border-2 border-accent rounded" />
             </div>

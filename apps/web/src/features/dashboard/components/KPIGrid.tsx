@@ -37,14 +37,14 @@ export function KPIGrid({ kpis, role }: KPIGridProps) {
   return (
     <div className={`grid gap-5 ${role === "DIRECTOR" ? "xl:grid-cols-5 md:grid-cols-3" : "xl:grid-cols-4 md:grid-cols-2"} grid-cols-1`}>
       {items.map((item) => (
-        <article key={item.label} className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${item.tone}`}>
+        <article key={item.label} className="rounded-2xl border border-border bg-card p-5 text-card-foreground shadow-sm">
+          <div className="mb-4 flex items-center justify-between">
+            <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${item.tone}`}>
               <item.icon className="w-5 h-5" />
             </div>
           </div>
-          <p className="text-sm text-[#6B7280] mb-1">{item.label}</p>
-          <p className="text-3xl font-semibold text-[#1F2937]">{item.value}</p>
+          <p className="mb-1 text-sm text-muted-foreground">{item.label}</p>
+          <p className="text-3xl font-semibold text-foreground">{item.value}</p>
         </article>
       ))}
     </div>

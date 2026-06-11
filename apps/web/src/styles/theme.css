@@ -1,4 +1,5 @@
 :root {
+  color-scheme: light;
   --font-size: 16px;
   --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --background: #F5F7FA;
@@ -41,40 +42,43 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.145 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.439 0 0);
+  color-scheme: dark;
+  --background: #0F172A;
+  --foreground: #E2E8F0;
+  --card: #1E293B;
+  --card-foreground: #F8FAFC;
+  --popover: #1E293B;
+  --popover-foreground: #F8FAFC;
+  --primary: #38BDF8;
+  --primary-foreground: #082F49;
+  --secondary: #1E4E79;
+  --secondary-foreground: #F8FAFC;
+  --muted: #172033;
+  --muted-foreground: #94A3B8;
+  --accent: #2BB3A3;
+  --accent-foreground: #ECFEFF;
+  --destructive: #DC2626;
+  --destructive-foreground: #FEE2E2;
+  --border: rgba(148, 163, 184, 0.18);
+  --input: transparent;
+  --input-background: #0F172A;
+  --switch-background: #475569;
+  --ring: #2BB3A3;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.269 0 0);
-  --sidebar-ring: oklch(0.439 0 0);
+  --chart-1: #2BB3A3;
+  --chart-2: #38BDF8;
+  --chart-3: #F59E0B;
+  --chart-4: #A855F7;
+  --chart-5: #F87171;
+  --sidebar: #111827;
+  --sidebar-foreground: #E2E8F0;
+  --sidebar-primary: #38BDF8;
+  --sidebar-primary-foreground: #082F49;
+  --sidebar-accent: #1E293B;
+  --sidebar-accent-foreground: #F8FAFC;
+  --sidebar-border: rgba(148, 163, 184, 0.18);
+  --sidebar-ring: #2BB3A3;
 }
 
 @layer base {
@@ -131,5 +135,83 @@
     font-size: 1rem;
     font-weight: var(--font-weight-normal);
     line-height: 1.5;
+  }
+}
+
+@layer utilities {
+  .dark [class~='bg-white'] {
+    background-color: #1E293B;
+  }
+
+  .dark [class~='bg-[#F5F7FA]'] {
+    background-color: #0F172A;
+  }
+
+  .dark [class~='bg-[#F8FAFC]'] {
+    background-color: #172033;
+  }
+
+  .dark [class~='bg-[#EFF6FF]'] {
+    background-color: rgba(30, 78, 121, 0.24);
+  }
+
+  .dark [class~='bg-[#ECFDF5]'] {
+    background-color: rgba(22, 163, 74, 0.2);
+  }
+
+  .dark [class~='bg-[#FEF3C7]'] {
+    background-color: rgba(217, 119, 6, 0.2);
+  }
+
+  .dark [class~='bg-[#FEE2E2]'] {
+    background-color: rgba(220, 38, 38, 0.2);
+  }
+
+  .dark [class~='bg-[#E0F2FE]'] {
+    background-color: rgba(43, 179, 163, 0.18);
+  }
+
+  .dark [class~='bg-[#0F2A44]'] {
+    background-color: #1E4E79;
+  }
+
+  .dark [class~='text-[#1F2937]'] {
+    color: #F8FAFC;
+  }
+
+  .dark [class~='text-[#4B5563]'] {
+    color: #CBD5E1;
+  }
+
+  .dark [class~='text-[#6B7280]'] {
+    color: #94A3B8;
+  }
+
+  .dark [class~='text-[#0F2A44]'] {
+    color: #7DD3FC;
+  }
+
+  .dark [class~='border-gray-100'],
+  .dark [class~='border-gray-200'],
+  .dark [class~='border-gray-300'] {
+    border-color: rgba(148, 163, 184, 0.18);
+  }
+
+  .dark [class~='divide-gray-100'] > :not([hidden]) ~ :not([hidden]),
+  .dark [class~='divide-gray-200'] > :not([hidden]) ~ :not([hidden]) {
+    border-color: rgba(148, 163, 184, 0.18);
+  }
+
+  .dark [class~='hover:bg-[#F8FAFC]']:hover {
+    background-color: #243041;
+  }
+
+  .dark [class~='hover:bg-[#143757]']:hover,
+  .dark [class~='hover:bg-[#123253]']:hover {
+    background-color: #25628F;
+  }
+
+  .dark [class~='hover:text-[#0F2A44]']:hover {
+    color: #A5F3FC;
   }
 }

@@ -125,7 +125,7 @@ export function AcceptInvitePage() {
 
   if (loadingInvite) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background px-6 py-12">
+      <div className="min-h-screen flex items-center justify-center bg-background px-4 py-8 sm:px-6 sm:py-12">
         <div className="text-center">
           <p className="text-sm text-muted-foreground">Validando convite...</p>
         </div>
@@ -142,7 +142,7 @@ export function AcceptInvitePage() {
         className="w-full max-w-md"
       >
         {/* Logo */}
-        <div className="flex items-center gap-2 mb-8 justify-center">
+        <div className="mb-8 flex items-center justify-center gap-2">
           <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
             <div className="w-6 h-6 border-2 border-accent rounded" />
           </div>
@@ -158,7 +158,7 @@ export function AcceptInvitePage() {
           </div>
 
           {/* Header */}
-          <div className="text-center mb-8">
+          <div className="mb-8 text-center">
             <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
               <UserCheck className="w-8 h-8 text-accent" />
             </div>

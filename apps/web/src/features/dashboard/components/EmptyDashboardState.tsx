@@ -10,12 +10,12 @@ export function EmptyDashboardState({
   description = "Assim que houver dados estratégicos disponíveis, a dashboard será atualizada.",
 }: EmptyDashboardStateProps) {
   return (
-    <div className="bg-white rounded-2xl border border-dashed border-gray-300 p-12 text-center shadow-sm">
-      <div className="w-16 h-16 rounded-full bg-[#EFF6FF] flex items-center justify-center mx-auto mb-4">
+    <div className="rounded-2xl border border-dashed border-gray-300 bg-card p-12 text-center text-card-foreground shadow-sm dark:border-slate-700">
+      <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#EFF6FF]">
         <LayoutDashboard className="w-8 h-8 text-[#1E4E79]" />
       </div>
-      <h2 className="text-xl font-semibold text-[#1F2937] mb-2">{title}</h2>
-      <p className="text-[#6B7280] max-w-lg mx-auto">{description}</p>
+      <h2 className="mb-2 text-xl font-semibold text-foreground">{title}</h2>
+      <p className="mx-auto max-w-lg text-muted-foreground">{description}</p>
     </div>
   );
 }
