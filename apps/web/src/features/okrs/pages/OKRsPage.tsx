@@ -274,6 +274,7 @@ export function OKRsPage() {
       {isCreateOpen ? (
         <OKRFormDialog
           title="Novo OKR"
+          departments={data.filters.departments}
           objectives={editableObjectives}
           responsibles={data.filters.responsibles}
           loading={submitting}
@@ -289,6 +290,7 @@ export function OKRsPage() {
       {editingOkr ? (
         <OKRFormDialog
           title="Editar OKR"
+          departments={data.filters.departments}
           objectives={editableObjectives}
           responsibles={data.filters.responsibles}
           initialOkr={editingOkr}

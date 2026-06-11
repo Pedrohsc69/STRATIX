@@ -8,6 +8,7 @@ import type {
 export type OkrStatus = 'IN_PROGRESS' | 'COMPLETED' | 'AT_RISK';
 export type OkrMetricType = 'PERCENTAGE' | 'NUMBER' | 'CURRENCY' | 'BOOLEAN';
 export type OkrCycleStatus = 'ACTIVE' | 'CLOSED';
+export type OkrObjectivePriority = 'HIGH' | 'MEDIUM' | 'LOW' | 'UNSPECIFIED';
 
 export type OkrProgressHistoryItem = {
   id: string;
@@ -74,15 +75,23 @@ export type OkrCycleOption = {
 export type OkrObjectiveOption = {
   id: string;
   name: string;
+  description: string;
+  departmentId: string;
+  departmentName: string;
   cycleId: string;
+  cycleName: string;
   cycleStatus: OkrCycleStatus;
   cycleEndDate: string;
+  priority: OkrObjectivePriority;
+  status: OkrStatus;
+  updatedAt: string;
   isCycleEditable: boolean;
 };
 
 export type OkrResponsibleOption = {
   id: string;
   name: string;
+  departmentId: string | null;
   departmentName: string | null;
 };
 

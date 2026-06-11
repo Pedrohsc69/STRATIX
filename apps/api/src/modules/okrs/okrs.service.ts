@@ -4,7 +4,13 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { CycleStatus, OKRMetricType, type Prisma, type UserRole } from '@prisma/client';
+import {
+  CycleStatus,
+  OKRMetricType,
+  ObjectivePriority,
+  type Prisma,
+  type UserRole,
+} from '@prisma/client';
 import { PrismaService } from '../../core/shared/prisma.service';
 import { AUDIT_ACTIONS, AUDIT_ENTITIES } from '../audit/audit.constants';
 import { AuditService } from '../audit/audit.service';
@@ -731,11 +737,30 @@ export class OkrsService {
         select: {
           id: true,
           name: true,
+          description: true,
+          priority: true,
           cycleId: true,
+          updatedAt: true,
+          okrs: {
+            where: { deletedAt: null },
+            select: {
+              currentValue: true,
+              targetValue: true,
+            },
+          },
           cycle: {
             select: {
+              id: true,
+              name: true,
               status: true,
               endDate: true,
+              departmentId: true,
+              department: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
             },
           },
         },
@@ -744,9 +769,24 @@ export class OkrsService {
         objectives.map((objective) => ({
           id: objective.id,
           name: objective.name,
+          description: objective.description,
+          departmentId: objective.cycle.department.id,
+          departmentName: objective.cycle.department.name,
           cycleId: objective.cycleId,
+          cycleName: objective.cycle.name,
           cycleStatus: objective.cycle.status,
           cycleEndDate: objective.cycle.endDate.toISOString(),
+          priority: objective.priority ?? ObjectivePriority.UNSPECIFIED,
+          status: this.resolveObjectiveStatus({
+            cycleStatus: objective.cycle.status,
+            cycleEndDate: objective.cycle.endDate,
+            progress: this.dashboardDomainService.calculateAverageProgress(
+              objective.okrs.map((okr) =>
+                this.dashboardDomainService.calculateProgress(okr.currentValue, okr.targetValue),
+              ),
+            ),
+          }),
+          updatedAt: objective.updatedAt.toISOString(),
           isCycleEditable: isCycleEditable(objective.cycle),
         })),
       );
@@ -771,6 +811,7 @@ export class OkrsService {
         select: {
           id: true,
           name: true,
+          departmentId: true,
           department: {
             select: {
               name: true,
@@ -782,6 +823,7 @@ export class OkrsService {
         users.map((user) => ({
           id: user.id,
           name: user.name,
+          departmentId: user.departmentId,
           departmentName: user.department?.name ?? null,
         })),
       );
@@ -932,6 +974,26 @@ export class OkrsService {
   }
 
   private resolveStatus(input: {
+    progress: number;
+    cycleStatus: CycleStatus;
+    cycleEndDate: Date;
+  }): OkrStatus {
+    if (input.progress >= 100) {
+      return 'COMPLETED';
+    }
+
+    if (
+      input.progress < 40 ||
+      input.cycleStatus === CycleStatus.CLOSED ||
+      input.cycleEndDate.getTime() < Date.now()
+    ) {
+      return 'AT_RISK';
+    }
+
+    return 'IN_PROGRESS';
+  }
+
+  private resolveObjectiveStatus(input: {
     progress: number;
     cycleStatus: CycleStatus;
     cycleEndDate: Date;

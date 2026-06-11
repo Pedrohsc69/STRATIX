@@ -1,4 +1,4 @@
-import type { CycleStatus, OKRMetricType, UserRole } from '@prisma/client';
+import type { CycleStatus, ObjectivePriority, OKRMetricType, UserRole } from '@prisma/client';
 import type {
   DashboardCompanyContext,
   DashboardDepartmentContext,
@@ -25,15 +25,23 @@ export type OkrCycleOption = {
 export type OkrObjectiveOption = {
   id: string;
   name: string;
+  description: string;
+  departmentId: string;
+  departmentName: string;
   cycleId: string;
+  cycleName: string;
   cycleStatus: CycleStatus;
   cycleEndDate: string;
+  priority: ObjectivePriority;
+  status: OkrStatus;
+  updatedAt: string;
   isCycleEditable: boolean;
 };
 
 export type OkrResponsibleOption = {
   id: string;
   name: string;
+  departmentId: string | null;
   departmentName: string | null;
 };
 

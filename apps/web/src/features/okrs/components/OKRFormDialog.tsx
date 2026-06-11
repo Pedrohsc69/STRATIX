@@ -1,11 +1,14 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { X } from 'lucide-react';
 import type {
+  OkrDepartmentOption,
   OkrPayload,
   OkrItem,
   OkrMetricType,
+  OkrObjectivePriority,
   OkrObjectiveOption,
   OkrResponsibleOption,
+  OkrStatus,
   UpdateOkrPayload,
 } from '../types/okrs.types';
 import {
@@ -18,6 +21,7 @@ import {
 
 type OKRFormDialogProps = {
   title: string;
+  departments: OkrDepartmentOption[];
   objectives: OkrObjectiveOption[];
   responsibles: OkrResponsibleOption[];
   initialOkr?: OkrItem | null;
@@ -29,6 +33,7 @@ type OKRFormDialogProps = {
 
 type FormState = {
   name: string;
+  departmentId: string;
   objectiveId: string;
   responsibleId: string;
   metricType: OkrMetricType;
@@ -36,14 +41,94 @@ type FormState = {
   targetValue: string;
 };
 
+const objectivePriorityLabels: Record<OkrObjectivePriority, string> = {
+  HIGH: 'Alta',
+  MEDIUM: 'Média',
+  LOW: 'Baixa',
+  UNSPECIFIED: 'Não definida',
+};
+
+const objectiveStatusLabels: Record<OkrStatus, string> = {
+  IN_PROGRESS: 'Em andamento',
+  AT_RISK: 'Em risco',
+  COMPLETED: 'Concluído',
+};
+
+const objectiveStatusPriority: Record<OkrStatus, number> = {
+  IN_PROGRESS: 0,
+  AT_RISK: 1,
+  COMPLETED: 2,
+};
+
+const objectivePriorityOrder: Record<OkrObjectivePriority, number> = {
+  HIGH: 0,
+  MEDIUM: 1,
+  LOW: 2,
+  UNSPECIFIED: 3,
+};
+
+function summarizeDescription(description: string) {
+  const normalized = description.replace(/\s+/g, ' ').trim();
+
+  if (!normalized) {
+    return 'Sem descricao';
+  }
+
+  return normalized.length > 48 ? `${normalized.slice(0, 45)}...` : normalized;
+}
+
+function formatObjectiveOptionLabel(objective: OkrObjectiveOption) {
+  return [
+    objective.name,
+    summarizeDescription(objective.description),
+    objective.departmentName,
+    objective.cycleName,
+    objectivePriorityLabels[objective.priority],
+    objectiveStatusLabels[objective.status],
+  ].join(' • ');
+}
+
+function sortObjectives(objectives: OkrObjectiveOption[]) {
+  return [...objectives].sort((left, right) => {
+    const editableDelta = Number(right.isCycleEditable) - Number(left.isCycleEditable);
+
+    if (editableDelta !== 0) {
+      return editableDelta;
+    }
+
+    const statusDelta =
+      objectiveStatusPriority[left.status] - objectiveStatusPriority[right.status];
+
+    if (statusDelta !== 0) {
+      return statusDelta;
+    }
+
+    const priorityDelta =
+      objectivePriorityOrder[left.priority] - objectivePriorityOrder[right.priority];
+
+    if (priorityDelta !== 0) {
+      return priorityDelta;
+    }
+
+    return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
+  });
+}
+
 function getInitialState(
   objectives: OkrObjectiveOption[],
   responsibles: OkrResponsibleOption[],
   okr?: OkrItem | null,
 ): FormState {
+  const sortedObjectives = sortObjectives(objectives);
+  const selectedObjective =
+    sortedObjectives.find((objective) => objective.id === okr?.objectiveId) ??
+    sortedObjectives[0] ??
+    null;
+
   return {
     name: okr?.name ?? '',
-    objectiveId: okr?.objectiveId ?? objectives[0]?.id ?? '',
+    departmentId: okr?.departmentId ?? selectedObjective?.departmentId ?? '',
+    objectiveId: okr?.objectiveId ?? selectedObjective?.id ?? '',
     responsibleId: okr?.responsibleId ?? responsibles[0]?.id ?? '',
     metricType: okr?.metricType ?? 'NUMBER',
     currentValue: okr ? String(okr.currentValue) : '0',
@@ -142,6 +227,7 @@ function MetricValueField(props: {
 
 export function OKRFormDialog({
   title,
+  departments,
   objectives,
   responsibles,
   initialOkr,
@@ -160,8 +246,63 @@ export function OKRFormDialog({
     setValidationError(null);
   }, [objectives, responsibles, initialOkr]);
 
+  const sortedObjectives = useMemo(() => sortObjectives(objectives), [objectives]);
+  const filteredObjectives = useMemo(
+    () =>
+      sortedObjectives.filter((objective) =>
+        form.departmentId ? objective.departmentId === form.departmentId : true,
+      ),
+    [form.departmentId, sortedObjectives],
+  );
+  const selectedObjective = useMemo(
+    () => objectives.find((objective) => objective.id === form.objectiveId) ?? null,
+    [form.objectiveId, objectives],
+  );
+  const filteredResponsibles = useMemo(() => {
+    if (!selectedObjective) {
+      return responsibles;
+    }
+
+    return responsibles.filter(
+      (responsible) =>
+        !responsible.departmentId || responsible.departmentId === selectedObjective.departmentId,
+    );
+  }, [responsibles, selectedObjective]);
+
   const metricConfig = getMetricInputConfig(form.metricType);
   const isEditing = !!initialOkr;
+
+  useEffect(() => {
+    if (!filteredObjectives.length) {
+      if (form.objectiveId) {
+        setForm((current) => ({ ...current, objectiveId: '' }));
+      }
+      return;
+    }
+
+    if (!filteredObjectives.some((objective) => objective.id === form.objectiveId)) {
+      setForm((current) => ({
+        ...current,
+        objectiveId: filteredObjectives[0]?.id ?? '',
+      }));
+    }
+  }, [filteredObjectives, form.objectiveId]);
+
+  useEffect(() => {
+    if (!filteredResponsibles.length) {
+      if (form.responsibleId) {
+        setForm((current) => ({ ...current, responsibleId: '' }));
+      }
+      return;
+    }
+
+    if (!filteredResponsibles.some((responsible) => responsible.id === form.responsibleId)) {
+      setForm((current) => ({
+        ...current,
+        responsibleId: filteredResponsibles[0]?.id ?? '',
+      }));
+    }
+  }, [filteredResponsibles, form.responsibleId]);
 
   const handleMetricTypeChange = (metricType: OkrMetricType) => {
     setForm((current) => {
@@ -257,6 +398,28 @@ export function OKRFormDialog({
 
           <div className="grid gap-5 md:grid-cols-2">
             <label className="block">
+              <span className="mb-2 block text-sm font-medium text-[#4B5563]">Departamento</span>
+              <select
+                required
+                value={form.departmentId}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, departmentId: event.target.value }))
+                }
+                disabled={departments.length <= 1}
+                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-[#1F2937] outline-none transition-colors focus:border-[#1E4E79] disabled:cursor-not-allowed disabled:bg-[#F8FAFC]"
+              >
+                <option value="" disabled>
+                  Selecione um departamento
+                </option>
+                {departments.map((department) => (
+                  <option key={department.id} value={department.id}>
+                    {department.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block">
               <span className="mb-2 block text-sm font-medium text-[#4B5563]">Objetivo</span>
               <select
                 required
@@ -265,14 +428,18 @@ export function OKRFormDialog({
                   setForm((current) => ({ ...current, objectiveId: event.target.value }))
                 }
                 className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-[#1F2937] outline-none transition-colors focus:border-[#1E4E79]"
+                disabled={!filteredObjectives.length}
               >
-                {objectives.map((objective) => (
+                {!filteredObjectives.length ? (
+                  <option value="">Nenhum objetivo disponivel para o departamento selecionado</option>
+                ) : null}
+                {filteredObjectives.map((objective) => (
                   <option
                     key={objective.id}
                     value={objective.id}
                     disabled={!objective.isCycleEditable}
                   >
-                    {objective.name}
+                    {formatObjectiveOptionLabel(objective)}
                     {!objective.isCycleEditable ? ' • somente leitura' : ''}
                   </option>
                 ))}
@@ -288,8 +455,12 @@ export function OKRFormDialog({
                   setForm((current) => ({ ...current, responsibleId: event.target.value }))
                 }
                 className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-[#1F2937] outline-none transition-colors focus:border-[#1E4E79]"
+                disabled={!filteredResponsibles.length}
               >
-                {responsibles.map((responsible) => (
+                {!filteredResponsibles.length ? (
+                  <option value="">Nenhum responsável disponível para este departamento</option>
+                ) : null}
+                {filteredResponsibles.map((responsible) => (
                   <option key={responsible.id} value={responsible.id}>
                     {responsible.name}
                     {responsible.departmentName ? ` • ${responsible.departmentName}` : ''}

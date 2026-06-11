@@ -33,10 +33,21 @@ function buildObjectiveOption(
   return {
     id,
     name,
+    description: `${name} description`,
+    priority: 'UNSPECIFIED',
     cycleId,
+    updatedAt: new Date('2026-06-01T00:00:00Z'),
+    okrs: [],
     cycle: {
+      id: cycleId,
+      name: `Ciclo ${cycleId}`,
       status,
       endDate: new Date('2026-08-01T00:00:00Z'),
+      departmentId: 'department-1',
+      department: {
+        id: 'department-1',
+        name: 'Marketing',
+      },
     },
   };
 }
@@ -112,6 +123,11 @@ void test('OkrsService lists company OKRs only for the director company', async 
   assert.equal(response.scope, 'COMPANY');
   assert.equal(response.okrs.length, 1);
   assert.equal(response.okrs[0]?.departmentName, 'Marketing');
+  assert.equal(response.filters.objectives[0]?.description, 'Aumentar receita description');
+  assert.equal(response.filters.objectives[0]?.departmentName, 'Marketing');
+  assert.equal(response.filters.objectives[0]?.cycleName, 'Ciclo cycle-1');
+  assert.equal(response.filters.objectives[0]?.priority, 'UNSPECIFIED');
+  assert.equal(response.filters.objectives[0]?.status, 'AT_RISK');
 });
 
 void test('OkrsService restricts managers to their own department', async () => {
