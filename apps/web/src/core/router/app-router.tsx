@@ -82,7 +82,7 @@ export function AppRouter() {
         <Route
           path="/reports"
           element={
-            <ProtectedRoute allowedRoles={['DIRECTOR']}>
+            <ProtectedRoute allowedRoles={['DIRECTOR', 'MANAGER']}>
               <ReportsPage />
             </ProtectedRoute>
           }
