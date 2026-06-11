@@ -1,4 +1,4 @@
-import type { CycleStatus, UserRole } from '@prisma/client';
+import type { CycleStatus, ObjectivePriority as PrismaObjectivePriority, UserRole } from '@prisma/client';
 import type {
   DashboardCompanyContext,
   DashboardDepartmentContext,
@@ -8,7 +8,7 @@ import type {
 } from '../dashboard/dashboard.types';
 
 export type ObjectiveStatus = 'IN_PROGRESS' | 'COMPLETED' | 'AT_RISK';
-export type ObjectivePriority = 'UNSPECIFIED';
+export type ObjectivePriority = PrismaObjectivePriority;
 
 export type ObjectiveDepartmentOption = {
   id: string;

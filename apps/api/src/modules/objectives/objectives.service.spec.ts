@@ -265,6 +265,137 @@ void test('ObjectivesService blocks creating an objective in a closed cycle', as
   );
 });
 
+void test('ObjectivesService creates an objective with the informed priority', async () => {
+  let createdData: Record<string, unknown> | null = null;
+
+  const service = createService({
+    user: {
+      findUnique: async () => ({
+        companyId: 'company-1',
+        departmentId: 'department-1',
+        role: UserRole.MANAGER,
+      }),
+    },
+    strategicCycle: {
+      findFirst: async () => ({
+        id: 'cycle-1',
+        status: 'ACTIVE',
+        endDate: new Date('2026-07-01T00:00:00Z'),
+        departmentId: 'department-1',
+        department: {
+          id: 'department-1',
+          name: 'Marketing',
+          manager: null,
+        },
+      }),
+    },
+    objective: {
+      create: async ({ data }: { data: Record<string, unknown> }) => {
+        createdData = data;
+        return {
+          id: 'objective-1',
+          name: data.name,
+          description: data.description,
+          priority: data.priority,
+          cycleId: 'cycle-1',
+          cycle: {
+            id: 'cycle-1',
+            name: 'Ciclo ativo',
+            status: 'ACTIVE',
+            startDate: new Date('2026-01-01T00:00:00Z'),
+            endDate: new Date('2026-07-01T00:00:00Z'),
+            departmentId: 'department-1',
+            department: {
+              id: 'department-1',
+              name: 'Marketing',
+              manager: null,
+            },
+          },
+          okrs: [],
+        };
+      },
+    },
+  });
+
+  const response = await service.create(
+    { sub: 'manager-1', email: 'gestora@empresa.com', role: UserRole.MANAGER },
+    {
+      name: 'Expandir receita enterprise',
+      description: 'Crescer contratos estratégicos',
+      cycleId: 'cycle-1',
+      priority: 'HIGH',
+    },
+  );
+
+  assert.equal(createdData?.['priority'], 'HIGH');
+  assert.equal(response.priority, 'HIGH');
+});
+
+void test('ObjectivesService defaults priority to UNSPECIFIED when it is not informed', async () => {
+  let createdData: Record<string, unknown> | null = null;
+
+  const service = createService({
+    user: {
+      findUnique: async () => ({
+        companyId: 'company-1',
+        departmentId: 'department-1',
+        role: UserRole.MANAGER,
+      }),
+    },
+    strategicCycle: {
+      findFirst: async () => ({
+        id: 'cycle-1',
+        status: 'ACTIVE',
+        endDate: new Date('2026-07-01T00:00:00Z'),
+        departmentId: 'department-1',
+        department: {
+          id: 'department-1',
+          name: 'Marketing',
+          manager: null,
+        },
+      }),
+    },
+    objective: {
+      create: async ({ data }: { data: Record<string, unknown> }) => {
+        createdData = data;
+        return {
+          id: 'objective-2',
+          name: data.name,
+          description: data.description,
+          priority: data.priority,
+          cycleId: 'cycle-1',
+          cycle: {
+            id: 'cycle-1',
+            name: 'Ciclo ativo',
+            status: 'ACTIVE',
+            startDate: new Date('2026-01-01T00:00:00Z'),
+            endDate: new Date('2026-07-01T00:00:00Z'),
+            departmentId: 'department-1',
+            department: {
+              id: 'department-1',
+              name: 'Marketing',
+              manager: null,
+            },
+          },
+          okrs: [],
+        };
+      },
+    },
+  });
+
+  const response = await service.create(
+    { sub: 'manager-1', email: 'gestora@empresa.com', role: UserRole.MANAGER },
+    {
+      name: 'Padronizar rituais',
+      description: 'Estabelecer rotina operacional',
+      cycleId: 'cycle-1',
+    },
+  );
+
+  assert.equal(createdData?.['priority'], 'UNSPECIFIED');
+  assert.equal(response.priority, 'UNSPECIFIED');
+});
+
 void test('ObjectivesService allows listing objectives from a closed cycle', async () => {
   const service = createService({
     user: {
@@ -321,6 +452,75 @@ void test('ObjectivesService allows listing objectives from a closed cycle', asy
   assert.equal(response.objectives[0]?.cycleStatus, 'CLOSED');
 });
 
+void test('ObjectivesService filters objectives by priority and preserves the response priority', async () => {
+  let receivedWhere: unknown;
+
+  const service = createService({
+    user: {
+      findUnique: async () => ({
+        id: 'director-1',
+        name: 'Diretora',
+        email: 'diretora@empresa.com',
+        role: UserRole.DIRECTOR,
+        status: UserStatus.ACTIVE,
+        companyId: 'company-1',
+        departmentId: null,
+        company: { id: 'company-1', name: 'Empresa 1', businessArea: 'Tecnologia' },
+        department: null,
+      }),
+    },
+    department: {
+      findMany: async () => [],
+    },
+    strategicCycle: {
+      findMany: async () => [buildCycleOption('cycle-1', 'Ciclo 1')],
+    },
+    objective: {
+      findMany: async ({ where }: { where: unknown }) => {
+        receivedWhere = where;
+        return [
+          {
+            id: 'objective-priority',
+            name: 'Prioridade máxima',
+            description: 'Foco absoluto',
+            priority: 'HIGH',
+            cycleId: 'cycle-1',
+            cycle: {
+              id: 'cycle-1',
+              name: 'Ciclo 1',
+              status: 'ACTIVE',
+              startDate: new Date('2026-01-01T00:00:00Z'),
+              endDate: new Date('2026-07-01T00:00:00Z'),
+              departmentId: 'department-1',
+              department: {
+                id: 'department-1',
+                name: 'Marketing',
+                manager: null,
+              },
+            },
+            okrs: [],
+          },
+        ];
+      },
+    },
+  });
+
+  const response = await service.list(
+    { sub: 'director-1', email: 'diretora@empresa.com', role: UserRole.DIRECTOR },
+    { priority: 'HIGH' },
+  );
+
+  assert.deepEqual(receivedWhere, {
+    cycle: {
+      is: {
+        department: { companyId: 'company-1' },
+      },
+    },
+    priority: 'HIGH',
+  });
+  assert.equal(response.objectives[0]?.priority, 'HIGH');
+});
+
 void test('ObjectivesService blocks updating an objective from a closed cycle', async () => {
   const service = createService({
     user: {
@@ -363,6 +563,76 @@ void test('ObjectivesService blocks updating an objective from a closed cycle', 
       ),
     ForbiddenException,
   );
+});
+
+void test('ObjectivesService updates an objective priority', async () => {
+  let updatedData: Record<string, unknown> | null = null;
+
+  const service = createService({
+    user: {
+      findUnique: async () => ({
+        companyId: 'company-1',
+        departmentId: 'department-1',
+        role: UserRole.MANAGER,
+      }),
+    },
+    objective: {
+      findFirst: async () => ({
+        id: 'objective-1',
+        name: 'Objetivo ativo',
+        description: 'Descricao',
+        priority: 'LOW',
+        cycleId: 'cycle-active',
+        cycle: {
+          id: 'cycle-active',
+          name: 'Ciclo ativo',
+          status: 'ACTIVE',
+          startDate: new Date('2026-01-01T00:00:00Z'),
+          endDate: new Date('2026-07-01T00:00:00Z'),
+          departmentId: 'department-1',
+          department: {
+            id: 'department-1',
+            name: 'Marketing',
+            manager: null,
+          },
+        },
+        okrs: [],
+      }),
+      update: async ({ data }: { data: Record<string, unknown> }) => {
+        updatedData = data;
+        return {
+          id: 'objective-1',
+          name: 'Objetivo ativo',
+          description: 'Descricao',
+          priority: data.priority,
+          cycleId: 'cycle-active',
+          cycle: {
+            id: 'cycle-active',
+            name: 'Ciclo ativo',
+            status: 'ACTIVE',
+            startDate: new Date('2026-01-01T00:00:00Z'),
+            endDate: new Date('2026-07-01T00:00:00Z'),
+            departmentId: 'department-1',
+            department: {
+              id: 'department-1',
+              name: 'Marketing',
+              manager: null,
+            },
+          },
+          okrs: [],
+        };
+      },
+    },
+  });
+
+  const response = await service.update(
+    { sub: 'manager-1', email: 'gestora@empresa.com', role: UserRole.MANAGER },
+    'objective-1',
+    { priority: 'MEDIUM' },
+  );
+
+  assert.equal(updatedData?.['priority'], 'MEDIUM');
+  assert.equal(response.priority, 'MEDIUM');
 });
 
 void test('ObjectivesService blocks moving an objective to a closed cycle', async () => {

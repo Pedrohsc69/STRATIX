@@ -4,6 +4,7 @@ import type {
   ObjectiveCycleOption,
   ObjectiveDepartmentOption,
   ObjectiveItem,
+  ObjectivePriority,
   ObjectiveCycleStatus,
   ObjectivePayload,
 } from '../types/objectives.types';
@@ -22,6 +23,13 @@ type ObjectiveFormDialogProps = {
 type FormState = ObjectivePayload & {
   departmentId: string;
 };
+
+const priorityOptions: Array<{ value: ObjectivePriority; label: string }> = [
+  { value: 'HIGH', label: 'Alta' },
+  { value: 'MEDIUM', label: 'Média' },
+  { value: 'LOW', label: 'Baixa' },
+  { value: 'UNSPECIFIED', label: 'Não definida' },
+];
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('pt-BR').format(new Date(value));
@@ -70,6 +78,7 @@ function getInitialState(
   return {
     name: objective?.name ?? '',
     description: objective?.description ?? '',
+    priority: objective?.priority ?? 'UNSPECIFIED',
     departmentId: objective?.departmentId ?? selectedCycle?.departmentId ?? '',
     cycleId: objective?.cycleId ?? selectedCycle?.id ?? '',
   };
@@ -124,6 +133,7 @@ export function ObjectiveFormDialog({
       name: form.name.trim(),
       description: form.description.trim(),
       cycleId: form.cycleId,
+      priority: form.priority,
     });
   };
 
@@ -213,6 +223,26 @@ export function ObjectiveFormDialog({
                 <option key={cycle.id} value={cycle.id} disabled={!cycle.isCycleEditable}>
                   {formatCycleLabel(cycle)}
                   {!cycle.isCycleEditable ? ' • somente leitura' : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="mb-2 block text-sm font-medium text-[#4B5563]">Prioridade</span>
+            <select
+              value={form.priority}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  priority: event.target.value as ObjectivePriority,
+                }))
+              }
+              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-[#1F2937] outline-none transition-colors focus:border-[#1E4E79]"
+            >
+              {priorityOptions.map((priorityOption) => (
+                <option key={priorityOption.value} value={priorityOption.value}>
+                  {priorityOption.label}
                 </option>
               ))}
             </select>

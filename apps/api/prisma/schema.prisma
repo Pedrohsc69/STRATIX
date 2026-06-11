@@ -31,6 +31,13 @@ enum OKRMetricType {
   BOOLEAN
 }
 
+enum ObjectivePriority {
+  HIGH
+  MEDIUM
+  LOW
+  UNSPECIFIED
+}
+
 enum ThemePreference {
   LIGHT
   DARK
@@ -173,6 +180,7 @@ model Objective {
   id          String @id @default(uuid())
   name        String
   description String
+  priority    ObjectivePriority @default(UNSPECIFIED)
 
   cycleId String
   cycle   StrategicCycle @relation(fields: [cycleId], references: [id])

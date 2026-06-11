@@ -18,6 +18,6 @@ export class ListObjectivesDto {
   status?: 'IN_PROGRESS' | 'COMPLETED' | 'AT_RISK';
 
   @IsOptional()
-  @IsIn(['UNSPECIFIED'])
-  priority?: 'UNSPECIFIED';
+  @IsIn(['HIGH', 'MEDIUM', 'LOW', 'UNSPECIFIED'])
+  priority?: 'HIGH' | 'MEDIUM' | 'LOW' | 'UNSPECIFIED';
 }

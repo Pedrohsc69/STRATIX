@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { CycleStatus, type Prisma, type UserRole } from '@prisma/client';
+import { CycleStatus, ObjectivePriority, type Prisma, type UserRole } from '@prisma/client';
 import { PrismaService } from '../../core/shared/prisma.service';
 import { AUDIT_ACTIONS, AUDIT_ENTITIES } from '../audit/audit.constants';
 import { AuditService } from '../audit/audit.service';
@@ -24,6 +24,7 @@ type ObjectiveRecord = {
   id: string;
   name: string;
   description: string;
+  priority: ObjectivePriority;
   cycleId: string;
   cycle: {
     id: string;
@@ -152,7 +153,12 @@ export class ObjectivesService {
       filters: {
         departments,
         cycles,
-        priorities: ['UNSPECIFIED'],
+        priorities: [
+          ObjectivePriority.HIGH,
+          ObjectivePriority.MEDIUM,
+          ObjectivePriority.LOW,
+          ObjectivePriority.UNSPECIFIED,
+        ],
       },
       kpis: this.buildKpis(objectiveItems),
       objectives: objectiveItems,
@@ -189,6 +195,7 @@ export class ObjectivesService {
       data: {
         name: input.name.trim(),
         description: input.description.trim(),
+        priority: input.priority ?? ObjectivePriority.UNSPECIFIED,
         cycleId: cycle.id,
       },
       include: this.objectiveInclude(),
@@ -263,6 +270,7 @@ export class ObjectivesService {
       data: {
         name: input.name?.trim() ?? existing.name,
         description: input.description?.trim() ?? existing.description,
+        priority: input.priority ?? existing.priority,
         cycleId: targetCycle.id,
       },
       include: this.objectiveInclude(),
@@ -398,6 +406,10 @@ export class ObjectivesService {
 
     if (filters.cycleId) {
       where.cycleId = filters.cycleId;
+    }
+
+    if (filters.priority) {
+      where.priority = filters.priority;
     }
 
     return where;
@@ -607,7 +619,7 @@ export class ObjectivesService {
         cycleStatus: objective.cycle.status,
         cycleEndDate: objective.cycle.endDate,
       }),
-      priority: 'UNSPECIFIED',
+      priority: objective.priority ?? ObjectivePriority.UNSPECIFIED,
       progress,
       okrsCount: objective.okrs.length,
       ownerNames,
@@ -684,6 +696,7 @@ export class ObjectivesService {
       id: objective.id,
       name: objective.name,
       description: objective.description,
+      priority: objective.priority ?? ObjectivePriority.UNSPECIFIED,
       cycleId: objective.cycleId,
       departmentId: objective.cycle.departmentId,
     };

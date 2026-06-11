@@ -6,7 +6,7 @@ import type {
 } from '../../dashboard/dashboard.types';
 
 export type ObjectiveStatus = 'IN_PROGRESS' | 'COMPLETED' | 'AT_RISK';
-export type ObjectivePriority = 'UNSPECIFIED';
+export type ObjectivePriority = 'HIGH' | 'MEDIUM' | 'LOW' | 'UNSPECIFIED';
 export type ObjectiveCycleStatus = 'ACTIVE' | 'CLOSED' | 'DELAYED';
 
 export type ObjectiveItem = {
@@ -81,4 +81,5 @@ export type ObjectivePayload = {
   name: string;
   description: string;
   cycleId: string;
+  priority: ObjectivePriority;
 };

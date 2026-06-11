@@ -29,6 +29,13 @@ export function ObjectivesFilters({
   onReset,
   onCreate,
 }: ObjectivesFiltersProps) {
+  const priorityLabels: Record<ObjectivePriority, string> = {
+    HIGH: 'Alta',
+    MEDIUM: 'Média',
+    LOW: 'Baixa',
+    UNSPECIFIED: 'Não definida',
+  };
+
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -133,7 +140,7 @@ export function ObjectivesFilters({
             <option value="">Todas</option>
             {priorities.map((priority) => (
               <option key={priority} value={priority}>
-                Não definida
+                {priorityLabels[priority]}
               </option>
             ))}
           </select>

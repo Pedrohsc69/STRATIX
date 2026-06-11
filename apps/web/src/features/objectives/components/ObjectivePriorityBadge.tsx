@@ -5,9 +5,21 @@ type ObjectivePriorityBadgeProps = {
 };
 
 const priorityConfig: Record<ObjectivePriority, { label: string; className: string }> = {
+  HIGH: {
+    label: "Alta",
+    className: "bg-[#FEE2E2] text-[#B91C1C] dark:bg-red-950/60 dark:text-red-200",
+  },
+  MEDIUM: {
+    label: "Média",
+    className: "bg-[#FEF3C7] text-[#92400E] dark:bg-amber-950/60 dark:text-amber-200",
+  },
+  LOW: {
+    label: "Baixa",
+    className: "bg-[#DCFCE7] text-[#166534] dark:bg-emerald-950/60 dark:text-emerald-200",
+  },
   UNSPECIFIED: {
     label: "Não definida",
-    className: "bg-[#F3F4F6] text-[#4B5563]",
+    className: "bg-[#F3F4F6] text-[#4B5563] dark:bg-slate-800 dark:text-slate-300",
   },
 };
 

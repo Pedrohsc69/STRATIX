@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsUUID } from 'class-validator';
+import { IsIn, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateObjectiveDto {
   @IsString()
@@ -11,4 +11,8 @@ export class CreateObjectiveDto {
 
   @IsUUID()
   cycleId!: string;
+
+  @IsOptional()
+  @IsIn(['HIGH', 'MEDIUM', 'LOW', 'UNSPECIFIED'])
+  priority?: 'HIGH' | 'MEDIUM' | 'LOW' | 'UNSPECIFIED';
 }
