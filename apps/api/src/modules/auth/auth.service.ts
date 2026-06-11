@@ -3,7 +3,9 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { UserRole, UserStatus, type User } from '@prisma/client';
@@ -27,6 +29,8 @@ import { GoogleTokenService } from './google-token.service';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
@@ -84,31 +88,53 @@ export class AuthService {
 
   async loginWithGoogle(input: GoogleLoginDto): Promise<AuthResponse> {
     if (!this.googleTokenService) {
-      throw new UnauthorizedException('Login com Google indisponível.');
+      this.logger.error('Google login attempted without GoogleTokenService provider.');
+      throw new ServiceUnavailableException('Login com Google indisponível nesta configuração.');
     }
 
     const googleIdentity = await this.googleTokenService.verifyCredential(input.credential);
+    const normalizedEmail = googleIdentity.email.trim().toLowerCase();
 
     if (!googleIdentity.emailVerified) {
+      this.logger.warn(
+        `Google login rejected: email_not_verified email=${this.maskEmail(normalizedEmail)}`,
+      );
       throw new UnauthorizedException('A conta Google precisa ter um e-mail verificado.');
     }
 
-    const normalizedEmail = googleIdentity.email.toLowerCase();
     const user = await this.prisma.user.findUnique({
       where: { email: normalizedEmail },
     });
 
     if (!user) {
+      this.logger.warn(
+        `Google login rejected: local_user_not_found email=${this.maskEmail(normalizedEmail)}`,
+      );
       throw new NotFoundException(
         'Conta não encontrada. Cadastre-se ou aceite um convite antes de entrar com Google.',
       );
     }
 
     if (!user.isActive || user.status !== UserStatus.ACTIVE) {
+      this.logger.warn(
+        `Google login rejected: local_user_inactive email=${this.maskEmail(normalizedEmail)} status=${user.status}`,
+      );
       throw new UnauthorizedException('Conta inativa. Entre em contato com o administrador.');
     }
 
     return this.buildAuthResponse(user);
+  }
+
+  private maskEmail(email: string) {
+    const [localPart, domainPart] = email.split('@');
+
+    if (!localPart || !domainPart) {
+      return 'invalid-email';
+    }
+
+    const visibleLocal = localPart.length <= 2 ? localPart[0] ?? '*' : localPart.slice(0, 2);
+
+    return `${visibleLocal}***@${domainPart}`;
   }
 
   async getInviteDetails(token: string) {

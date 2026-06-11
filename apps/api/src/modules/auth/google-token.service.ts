@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { OAuth2Client } from 'google-auth-library';
 
@@ -11,6 +11,7 @@ type GoogleIdentity = {
 
 @Injectable()
 export class GoogleTokenService {
+  private readonly logger = new Logger(GoogleTokenService.name);
   private readonly clientId: string | null;
   private readonly client: OAuth2Client | null;
 
@@ -18,11 +19,18 @@ export class GoogleTokenService {
     const clientId = configService.get<string>('GOOGLE_CLIENT_ID')?.trim();
     this.clientId = clientId || null;
     this.client = this.clientId ? new OAuth2Client(this.clientId) : null;
+
+    if (!this.clientId) {
+      this.logger.warn('GOOGLE_CLIENT_ID is not configured. Google login is disabled.');
+    }
   }
 
   async verifyCredential(credential: string): Promise<GoogleIdentity> {
     if (!this.clientId || !this.client) {
-      throw new UnauthorizedException('Login com Google indisponível nesta configuração.');
+      this.logger.warn(
+        'Google login rejected: missing_google_client_id. Configure GOOGLE_CLIENT_ID in the API environment.',
+      );
+      throw new ServiceUnavailableException('Login com Google indisponível nesta configuração.');
     }
 
     try {
@@ -33,16 +41,18 @@ export class GoogleTokenService {
       const payload = ticket.getPayload();
 
       if (!payload?.email || !payload.sub) {
+        this.logger.warn('Google login rejected: missing_email_or_subject_in_token_payload.');
         throw new UnauthorizedException('Credencial do Google inválida.');
       }
 
       const issuer = payload.iss;
       if (issuer !== 'accounts.google.com' && issuer !== 'https://accounts.google.com') {
-        throw new UnauthorizedException('Credencial do Google inválida.');
+        this.logger.warn(`Google login rejected: invalid_issuer issuer=${issuer ?? 'unknown'}`);
+        throw new UnauthorizedException('Origem da credencial do Google inválida.');
       }
 
       return {
-        email: payload.email,
+        email: payload.email.trim().toLowerCase(),
         emailVerified: payload.email_verified === true,
         name: payload.name ?? null,
         subject: payload.sub,
@@ -52,7 +62,36 @@ export class GoogleTokenService {
         throw error;
       }
 
+      const reason = this.classifyVerificationFailure(error);
+      this.logger.warn(`Google login rejected: ${reason}`);
+
+      if (reason === 'invalid_audience') {
+        throw new UnauthorizedException('Credencial do Google incompatível com esta aplicação.');
+      }
+
       throw new UnauthorizedException('Credencial do Google inválida.');
     }
+  }
+
+  private classifyVerificationFailure(error: unknown) {
+    if (!(error instanceof Error)) {
+      return 'unknown_google_token_error';
+    }
+
+    const message = error.message.toLowerCase();
+
+    if (
+      message.includes('wrong recipient') ||
+      message.includes('audience') ||
+      message.includes('client id')
+    ) {
+      return 'invalid_audience';
+    }
+
+    if (message.includes('expired') || message.includes('token used too late')) {
+      return 'expired_token';
+    }
+
+    return 'invalid_google_token';
   }
 }
