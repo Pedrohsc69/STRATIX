@@ -22,6 +22,7 @@ export type DashboardPermission =
   | 'okrs:update:own'
   | 'okrs:view:own'
   | 'reports:export'
+  | 'reports:export:department'
   | 'settings:view:self'
   | 'settings:manage:company';
 

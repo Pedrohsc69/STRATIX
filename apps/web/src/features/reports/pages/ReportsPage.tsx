@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DashboardLayout } from "../../dashboard/DashboardLayout";
 import { EmptyDashboardState } from "../../dashboard/components/EmptyDashboardState";
 import { useDashboardScope } from "../../dashboard/hooks/useDashboardScope";
@@ -68,6 +68,27 @@ export function ReportsPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
 
+  const isManager = data?.role === "MANAGER";
+  const managerDepartmentId = isManager ? data?.context.department?.id ?? "" : "";
+  const managerDepartmentName = isManager ? data?.context.department?.name ?? "" : "";
+
+  useEffect(() => {
+    if (!isManager || !managerDepartmentId) {
+      return;
+    }
+
+    setFilters((current) => ({
+      departmentId: managerDepartmentId,
+      cycleId:
+        current.cycleId &&
+        data?.cycles.some(
+          (cycle) => cycle.id === current.cycleId && cycle.departmentId === managerDepartmentId,
+        )
+          ? current.cycleId
+          : "",
+    }));
+  }, [data?.cycles, isManager, managerDepartmentId]);
+
   const defaultCycleId = useMemo(() => {
     if (!filters.cycleId) {
       return "";
@@ -94,6 +115,11 @@ export function ReportsPage() {
       </div>
     );
   }
+
+  const availableReportTypes: ReportType[] = isManager ? ["CYCLE", "DEPARTMENT"] : ["COMPANY", "CYCLE", "DEPARTMENT"];
+  const pageDescription = isManager
+    ? "Relatórios do seu departamento com exportação por ciclo estratégico ou consolidado departamental."
+    : "Gere exportações corporativas da empresa, por ciclo estratégico ou por departamento.";
 
   const handleGenerate = async (payload: {
     type: ReportType;
@@ -151,7 +177,7 @@ export function ReportsPage() {
       role={data.role}
       pageEyebrow="Relatórios"
       pageTitle="Relatórios Estratégicos"
-      pageDescription="Gere exportações corporativas da empresa, por ciclo estratégico ou por departamento."
+      pageDescription={pageDescription}
     >
       <div className="space-y-6">
         {feedbackMessage ? (
@@ -161,6 +187,7 @@ export function ReportsPage() {
         ) : null}
 
         <ReportCards
+          availableTypes={availableReportTypes}
           onGenerate={(type) => {
             setSubmitError(null);
             setActiveType(type);
@@ -171,6 +198,8 @@ export function ReportsPage() {
           filters={filters}
           departments={data.departments}
           cycles={data.cycles}
+          departmentLocked={isManager}
+          lockedDepartmentName={managerDepartmentName}
           onChange={(nextFilters) =>
             setFilters((current) => ({
               ...current,
@@ -179,7 +208,7 @@ export function ReportsPage() {
           }
           onReset={() =>
             setFilters({
-              departmentId: "",
+              departmentId: isManager ? managerDepartmentId : "",
               cycleId: "",
             })
           }
@@ -194,6 +223,8 @@ export function ReportsPage() {
           supportedFormats={data.supportedFormats}
           departments={data.departments}
           cycles={data.cycles}
+          departmentLocked={isManager}
+          lockedDepartmentName={managerDepartmentName}
           defaultDepartmentId={filters.departmentId}
           defaultCycleId={defaultCycleId}
           loading={submitting}

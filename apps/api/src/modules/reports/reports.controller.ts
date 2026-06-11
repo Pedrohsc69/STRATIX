@@ -20,7 +20,7 @@ export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 
   @Get('options')
-  @Roles(UserRole.DIRECTOR)
+  @Roles(UserRole.DIRECTOR, UserRole.MANAGER)
   getOptions(@CurrentUser() user: AuthenticatedUser) {
     return this.reportsService.getOptions(user);
   }
@@ -42,7 +42,7 @@ export class ReportsController {
   }
 
   @Get('cycles/:cycleId/export')
-  @Roles(UserRole.DIRECTOR)
+  @Roles(UserRole.DIRECTOR, UserRole.MANAGER)
   async exportCycle(
     @CurrentUser() user: AuthenticatedUser,
     @Param('cycleId') cycleId: string,
@@ -60,7 +60,7 @@ export class ReportsController {
   }
 
   @Get('departments/:departmentId/export')
-  @Roles(UserRole.DIRECTOR)
+  @Roles(UserRole.DIRECTOR, UserRole.MANAGER)
   async exportDepartment(
     @CurrentUser() user: AuthenticatedUser,
     @Param('departmentId') departmentId: string,

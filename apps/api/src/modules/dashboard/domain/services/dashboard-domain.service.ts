@@ -46,6 +46,7 @@ export class DashboardDomainService {
         'cycles:view:department',
         'objectives:manage:department',
         'okrs:manage:department',
+        'reports:export:department',
         'settings:view:self',
       ],
       EMPLOYEE: [

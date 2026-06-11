@@ -70,7 +70,7 @@ const menuItems: MenuItem[] = [
     label: "Relatórios",
     path: "/reports",
     icon: FileText,
-    requiredPermissions: ["reports:export"],
+    requiredPermissions: ["reports:export", "reports:export:department"],
   },
   {
     label: "Funcionários",

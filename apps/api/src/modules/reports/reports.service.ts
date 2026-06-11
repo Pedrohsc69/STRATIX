@@ -139,11 +139,14 @@ export class ReportsService {
   ) {}
 
   async getOptions(actor: AuthenticatedUser): Promise<ReportsOptionsResponse> {
-    const user = await this.getDirectorContext(actor.sub);
+    const user = await this.getReportsContext(actor.sub);
 
     const [departments, cycles] = await Promise.all([
       this.prisma.department.findMany({
-        where: { companyId: user.companyId },
+        where: {
+          companyId: user.companyId,
+          ...(user.role === UserRole.MANAGER ? { id: user.departmentId ?? '__no-department__' } : {}),
+        },
         select: {
           id: true,
           name: true,
@@ -155,6 +158,9 @@ export class ReportsService {
           department: {
             companyId: user.companyId,
           },
+          ...(user.role === UserRole.MANAGER
+            ? { departmentId: user.departmentId ?? '__no-department__' }
+            : {}),
         },
         ...reportCycleOptionSelect,
         orderBy: [{ createdAt: 'desc' }],
@@ -191,7 +197,12 @@ export class ReportsService {
     requestContext?: AuditRequestContext,
   ): Promise<ReportExportPayload> {
     this.assertSupportedFormat(query.format);
-    const user = await this.getDirectorContext(actor.sub);
+    const user = await this.getReportsContext(actor.sub);
+
+    if (user.role !== UserRole.DIRECTOR) {
+      throw new ForbiddenException('Managers cannot export company-wide reports');
+    }
+
     const [cycles, departmentsCount] = await Promise.all([
       this.listCompanyCycles(user.companyId),
       this.prisma.department.count({
@@ -246,8 +257,8 @@ export class ReportsService {
     requestContext?: AuditRequestContext,
   ): Promise<ReportExportPayload> {
     this.assertSupportedFormat(query.format);
-    const user = await this.getDirectorContext(actor.sub);
-    const cycle = await this.findCompanyCycleById(user.companyId, cycleId);
+    const user = await this.getReportsContext(actor.sub);
+    const cycle = await this.findCycleForReport(user, cycleId);
 
     if (!cycle) {
       throw new NotFoundException('Strategic cycle not found');
@@ -296,7 +307,9 @@ export class ReportsService {
     requestContext?: AuditRequestContext,
   ): Promise<ReportExportPayload> {
     this.assertSupportedFormat(query.format);
-    const user = await this.getDirectorContext(actor.sub);
+    const user = await this.getReportsContext(actor.sub);
+    this.assertManagerDepartmentScope(user, departmentId);
+
     const [department, cycles] = await Promise.all([
       this.findDepartmentInCompany(user.companyId, departmentId),
       this.listDepartmentCycles(user.companyId, departmentId),
@@ -340,7 +353,7 @@ export class ReportsService {
     };
   }
 
-  private async getDirectorContext(userId: string): Promise<ReportsContextUser> {
+  private async getReportsContext(userId: string): Promise<ReportsContextUser> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -353,12 +366,16 @@ export class ReportsService {
       throw new NotFoundException('User not found');
     }
 
-    if (user.role !== UserRole.DIRECTOR) {
+    if (user.role !== UserRole.DIRECTOR && user.role !== UserRole.MANAGER) {
       throw new ForbiddenException('Access denied');
     }
 
     if (!user.companyId) {
       throw new BadRequestException('Company must be created first');
+    }
+
+    if (user.role === UserRole.MANAGER && !user.departmentId) {
+      throw new ForbiddenException('Manager must belong to a department to export reports');
     }
 
     return {
@@ -398,6 +415,21 @@ export class ReportsService {
       },
       ...reportCycleInclude,
     })) as ReportCycleRecord | null;
+  }
+
+  private async findCycleForReport(
+    user: ReportsContextUser,
+    cycleId: string,
+  ): Promise<ReportCycleRecord | null> {
+    const cycle = await this.findCompanyCycleById(user.companyId, cycleId);
+
+    if (!cycle) {
+      return null;
+    }
+
+    this.assertManagerDepartmentScope(user, cycle.department.id);
+
+    return cycle;
   }
 
   private async listDepartmentCycles(
@@ -729,6 +761,20 @@ export class ReportsService {
       },
       requestContext,
     });
+  }
+
+  private assertManagerDepartmentScope(user: ReportsContextUser, departmentId: string) {
+    if (user.role !== UserRole.MANAGER) {
+      return;
+    }
+
+    if (!user.departmentId) {
+      throw new ForbiddenException('Manager must belong to a department to export reports');
+    }
+
+    if (departmentId !== user.departmentId) {
+      throw new ForbiddenException('Managers can only export reports from their own department');
+    }
   }
 
   private getCycleStatusLabel(status: CycleStatus) {

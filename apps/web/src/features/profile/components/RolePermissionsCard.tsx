@@ -26,6 +26,7 @@ const permissionLabels: Record<DashboardPermission, string> = {
   "okrs:update:own": "Atualizar próprios OKRs",
   "okrs:view:own": "Ver próprios OKRs",
   "reports:export": "Exportar relatórios",
+  "reports:export:department": "Exportar relatórios do departamento",
   "settings:view:self": "Gerenciar preferências pessoais",
   "settings:manage:company": "Gerenciar configurações da empresa",
 };

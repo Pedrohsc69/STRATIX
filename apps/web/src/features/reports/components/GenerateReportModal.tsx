@@ -12,6 +12,8 @@ type GenerateReportModalProps = {
   supportedFormats: ReportFormat[];
   departments: ReportDepartmentOption[];
   cycles: ReportCycleOption[];
+  departmentLocked?: boolean;
+  lockedDepartmentName?: string;
   defaultDepartmentId?: string;
   defaultCycleId?: string;
   loading?: boolean;
@@ -42,6 +44,8 @@ export function GenerateReportModal({
   supportedFormats,
   departments,
   cycles,
+  departmentLocked = false,
+  lockedDepartmentName,
   defaultDepartmentId,
   defaultCycleId,
   loading = false,
@@ -139,19 +143,32 @@ export function GenerateReportModal({
           {type === "DEPARTMENT" ? (
             <label className="block">
               <span className="mb-2 block text-sm font-medium text-[#4B5563]">Departamento</span>
-              <select
-                required
-                value={departmentId}
-                onChange={(event) => setDepartmentId(event.target.value)}
-                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-[#1F2937] outline-none transition-colors focus:border-[#1E4E79]"
-              >
-                <option value="">Selecione um departamento</option>
-                {departments.map((department) => (
-                  <option key={department.id} value={department.id}>
-                    {department.name}
-                  </option>
-                ))}
-              </select>
+              {departmentLocked ? (
+                <div className="space-y-2">
+                  <input
+                    value={lockedDepartmentName ?? ""}
+                    readOnly
+                    className="w-full rounded-xl border border-gray-200 bg-[#F8FAFC] px-4 py-3 text-sm text-[#1F2937] outline-none"
+                  />
+                  <p className="text-xs text-[#6B7280]">
+                    Gestores podem exportar apenas dados do proprio departamento.
+                  </p>
+                </div>
+              ) : (
+                <select
+                  required
+                  value={departmentId}
+                  onChange={(event) => setDepartmentId(event.target.value)}
+                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-[#1F2937] outline-none transition-colors focus:border-[#1E4E79]"
+                >
+                  <option value="">Selecione um departamento</option>
+                  {departments.map((department) => (
+                    <option key={department.id} value={department.id}>
+                      {department.name}
+                    </option>
+                  ))}
+                </select>
+              )}
             </label>
           ) : null}
 

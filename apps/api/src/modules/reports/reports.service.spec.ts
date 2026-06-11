@@ -41,6 +41,19 @@ function createDirectorUser() {
   };
 }
 
+function createManagerUser() {
+  return {
+    id: 'manager-1',
+    name: 'Gestora',
+    role: UserRole.MANAGER,
+    status: UserStatus.ACTIVE,
+    companyId: 'company-1',
+    departmentId: 'department-1',
+    company: { id: 'company-1', name: 'Empresa 1', businessArea: 'Tecnologia' },
+    department: { id: 'department-1', name: 'Marketing' },
+  };
+}
+
 function createCycleRecord() {
   return {
     id: 'cycle-1',
@@ -103,6 +116,50 @@ void test('ReportsService returns options for the director company only', async 
   assert.equal(response.departments.length, 1);
   assert.equal(response.cycles.length, 1);
   assert.deepEqual(response.supportedFormats, ['csv', 'pdf']);
+});
+
+void test('ReportsService returns only department-scoped options for manager', async () => {
+  const service = createService({
+    user: {
+      findUnique: async () => createManagerUser(),
+    },
+    department: {
+      findMany: async ({ where }: { where: { companyId: string; id: string } }) => {
+        assert.deepEqual(where, { companyId: 'company-1', id: 'department-1' });
+        return [{ id: 'department-1', name: 'Marketing' }];
+      },
+    },
+    strategicCycle: {
+      findMany: async ({ where }: { where: { department: { companyId: string }; departmentId: string } }) => {
+        assert.deepEqual(where, {
+          department: { companyId: 'company-1' },
+          departmentId: 'department-1',
+        });
+
+        return [
+          {
+            id: 'cycle-1',
+            name: 'Expansao',
+            status: CycleStatus.ACTIVE,
+            departmentId: 'department-1',
+            department: { name: 'Marketing' },
+          },
+        ];
+      },
+    },
+  });
+
+  const response = await service.getOptions({
+    sub: 'manager-1',
+    email: 'gestora@empresa.com',
+    role: UserRole.MANAGER,
+  });
+
+  assert.equal(response.role, UserRole.MANAGER);
+  assert.equal(response.departments.length, 1);
+  assert.equal(response.departments[0]?.id, 'department-1');
+  assert.equal(response.cycles.length, 1);
+  assert.equal(response.cycles[0]?.departmentId, 'department-1');
 });
 
 void test('ReportsService exports company csv for the director company', async () => {
@@ -270,16 +327,7 @@ void test('ReportsService exports department pdf with expected content', async (
 void test('ReportsService does not allow manager to export global reports', async () => {
   const service = createService({
     user: {
-      findUnique: async () => ({
-        id: 'manager-1',
-        name: 'Gestora',
-        role: UserRole.MANAGER,
-        status: UserStatus.ACTIVE,
-        companyId: 'company-1',
-        departmentId: 'department-1',
-        company: { id: 'company-1', name: 'Empresa 1', businessArea: 'Tecnologia' },
-        department: { id: 'department-1', name: 'Marketing' },
-      }),
+      findUnique: async () => createManagerUser(),
     },
   });
 
@@ -288,6 +336,91 @@ void test('ReportsService does not allow manager to export global reports', asyn
       service.exportCompany(
         { sub: 'manager-1', email: 'gestora@empresa.com', role: UserRole.MANAGER },
         { format: 'csv' },
+      ),
+    ForbiddenException,
+  );
+});
+
+void test('ReportsService allows manager to export own department report', async () => {
+  const auditCommands: Array<Record<string, unknown>> = [];
+  const service = createService(
+    {
+      user: {
+        findUnique: async () => createManagerUser(),
+      },
+      department: {
+        findFirst: async () => ({
+          id: 'department-1',
+          name: 'Marketing',
+          company: { id: 'company-1', name: 'Empresa 1' },
+          manager: { id: 'manager-1', name: 'Ana' },
+          _count: { users: 8 },
+        }),
+      },
+      strategicCycle: {
+        findMany: async () => [createCycleRecord()],
+      },
+    },
+    {
+      log: async (command: Record<string, unknown>) => {
+        auditCommands.push(command);
+      },
+    },
+  );
+
+  const payload = await service.exportDepartment(
+    { sub: 'manager-1', email: 'gestora@empresa.com', role: UserRole.MANAGER },
+    'department-1',
+    { format: 'pdf' },
+  );
+
+  assert.equal(payload.contentType, 'application/pdf');
+  assert.equal(auditCommands.length, 1);
+  assert.equal(auditCommands[0]?.companyId, 'company-1');
+  assert.equal(auditCommands[0]?.departmentId, 'department-1');
+});
+
+void test('ReportsService blocks manager from exporting another department report', async () => {
+  const service = createService({
+    user: {
+      findUnique: async () => createManagerUser(),
+    },
+  });
+
+  await assert.rejects(
+    () =>
+      service.exportDepartment(
+        { sub: 'manager-1', email: 'gestora@empresa.com', role: UserRole.MANAGER },
+        'department-2',
+        { format: 'pdf' },
+      ),
+    ForbiddenException,
+  );
+});
+
+void test('ReportsService blocks manager from exporting cycle from another department', async () => {
+  const service = createService({
+    user: {
+      findUnique: async () => createManagerUser(),
+    },
+    strategicCycle: {
+      findFirst: async () => ({
+        ...createCycleRecord(),
+        department: {
+          ...createCycleRecord().department,
+          id: 'department-2',
+          name: 'Produto',
+        },
+      }),
+    },
+  });
+
+  await assert.rejects(
+    () =>
+      service.exportCycle(
+        { sub: 'manager-1', email: 'gestora@empresa.com', role: UserRole.MANAGER },
+        'cycle-2',
+        { format: 'pdf' },
       ),
     ForbiddenException,
   );
@@ -364,16 +497,16 @@ void test('ReportsService blocks company access when department is from another 
   );
 });
 
-void test('ReportsController protects options and exports for directors only', () => {
+void test('ReportsController keeps company export director-only and allows manager on department-scoped exports', () => {
   const optionsRoles = Reflect.getMetadata(ROLES_KEY, ReportsController.prototype.getOptions) as UserRole[];
   const companyRoles = Reflect.getMetadata(ROLES_KEY, ReportsController.prototype.exportCompany) as UserRole[];
   const cycleRoles = Reflect.getMetadata(ROLES_KEY, ReportsController.prototype.exportCycle) as UserRole[];
   const departmentRoles = Reflect.getMetadata(ROLES_KEY, ReportsController.prototype.exportDepartment) as UserRole[];
 
-  assert.deepEqual(optionsRoles, [UserRole.DIRECTOR]);
+  assert.deepEqual(optionsRoles, [UserRole.DIRECTOR, UserRole.MANAGER]);
   assert.deepEqual(companyRoles, [UserRole.DIRECTOR]);
-  assert.deepEqual(cycleRoles, [UserRole.DIRECTOR]);
-  assert.deepEqual(departmentRoles, [UserRole.DIRECTOR]);
+  assert.deepEqual(cycleRoles, [UserRole.DIRECTOR, UserRole.MANAGER]);
+  assert.deepEqual(departmentRoles, [UserRole.DIRECTOR, UserRole.MANAGER]);
 });
 
 void test('ReportsController forwards pdf headers and buffer content', async () => {

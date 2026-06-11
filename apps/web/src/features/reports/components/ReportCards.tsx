@@ -2,10 +2,11 @@ import { Building2, FileDown, Target } from "lucide-react";
 import type { ReportType } from "../types/reports.types";
 
 type ReportCardsProps = {
+  availableTypes: ReportType[];
   onGenerate: (type: ReportType) => void;
 };
 
-export function ReportCards({ onGenerate }: ReportCardsProps) {
+export function ReportCards({ availableTypes, onGenerate }: ReportCardsProps) {
   const items: Array<{
     type: ReportType;
     title: string;
@@ -41,7 +42,9 @@ export function ReportCards({ onGenerate }: ReportCardsProps) {
 
   return (
     <div className="grid gap-5 xl:grid-cols-3 md:grid-cols-2 grid-cols-1">
-      {items.map((item) => (
+      {items
+        .filter((item) => availableTypes.includes(item.type))
+        .map((item) => (
         <article
           key={item.type}
           className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"

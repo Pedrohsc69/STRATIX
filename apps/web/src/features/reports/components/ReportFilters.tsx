@@ -9,6 +9,8 @@ type ReportFiltersProps = {
   filters: ReportsFilters;
   departments: ReportDepartmentOption[];
   cycles: ReportCycleOption[];
+  departmentLocked?: boolean;
+  lockedDepartmentName?: string;
   onChange: (nextFilters: Partial<ReportsFilters>) => void;
   onReset: () => void;
 };
@@ -17,6 +19,8 @@ export function ReportFilters({
   filters,
   departments,
   cycles,
+  departmentLocked = false,
+  lockedDepartmentName,
   onChange,
   onReset,
 }: ReportFiltersProps) {
@@ -47,23 +51,34 @@ export function ReportFilters({
       <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
         <label className="block">
           <span className="mb-2 block text-sm font-medium text-[#4B5563]">Departamento</span>
-          <select
-            value={filters.departmentId}
-            onChange={(event) =>
-              onChange({
-                departmentId: event.target.value,
-                cycleId: "",
-              })
-            }
-            className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-[#1F2937] outline-none transition-colors focus:border-[#1E4E79]"
-          >
-            <option value="">Todos os departamentos</option>
-            {departments.map((department) => (
-              <option key={department.id} value={department.id}>
-                {department.name}
-              </option>
-            ))}
-          </select>
+          {departmentLocked ? (
+            <div className="space-y-2">
+              <input
+                value={lockedDepartmentName ?? ""}
+                readOnly
+                className="w-full rounded-xl border border-gray-200 bg-[#F8FAFC] px-4 py-3 text-sm text-[#1F2937] outline-none"
+              />
+              <p className="text-xs text-[#6B7280]">Relatórios restritos ao seu departamento.</p>
+            </div>
+          ) : (
+            <select
+              value={filters.departmentId}
+              onChange={(event) =>
+                onChange({
+                  departmentId: event.target.value,
+                  cycleId: "",
+                })
+              }
+              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-[#1F2937] outline-none transition-colors focus:border-[#1E4E79]"
+            >
+              <option value="">Todos os departamentos</option>
+              {departments.map((department) => (
+                <option key={department.id} value={department.id}>
+                  {department.name}
+                </option>
+              ))}
+            </select>
+          )}
         </label>
 
         <label className="block">
