@@ -40,7 +40,7 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col overflow-x-hidden lg:flex-row">
+    <div className="flex min-h-screen flex-col overflow-x-hidden lg:flex-row">
       {/* Left Side - Branding */}
       <motion.div
         initial={{ opacity: 0, x: -30 }}
@@ -104,15 +104,15 @@ export function LoginPage() {
       </motion.div>
 
       {/* Right Side - Login Form */}
-      <div className="flex-1 bg-background px-4 py-8 sm:px-6 sm:py-12">
+      <div className="flex flex-1 items-center justify-center bg-background px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="mx-auto flex min-h-full w-full max-w-md items-center"
+          className="mx-auto flex w-full max-w-md flex-col items-stretch"
         >
           {/* Mobile Logo */}
-          <div className="lg:hidden flex items-center gap-2 mb-8">
+          <div className="mb-8 flex items-center justify-center gap-2 lg:hidden">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
               <div className="w-5 h-5 border-2 border-accent rounded" />
             </div>
@@ -223,7 +223,10 @@ export function LoginPage() {
 
           {/* Back to Home */}
           <div className="mt-6 text-center">
-            <Link to="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <Link
+              to="/"
+              className="inline-flex items-center justify-center text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
               ← Voltar para página inicial
             </Link>
           </div>
