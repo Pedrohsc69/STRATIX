@@ -142,7 +142,9 @@ export function DashboardLayout({
   const nextThemeLabel = resolvedTheme === "dark" ? "claro" : "escuro";
 
   return (
-    <div className={`${resolvedTheme === "dark" ? "dark" : ""} min-h-screen overflow-x-hidden bg-background text-foreground lg:flex`}>
+    <div
+      className={`${resolvedTheme === "dark" ? "dark" : ""} h-screen overflow-hidden bg-background text-foreground lg:flex`}
+    >
       {isSidebarOpen ? (
         <button
           type="button"
@@ -153,7 +155,7 @@ export function DashboardLayout({
       ) : null}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-gray-200 bg-white p-5 text-foreground transition-transform duration-200 dark:border-slate-800 dark:bg-slate-950 lg:static lg:max-w-none lg:translate-x-0 lg:p-6 ${
+        className={`fixed inset-y-0 left-0 z-50 flex h-screen w-72 max-w-[85vw] flex-col overflow-hidden border-r border-gray-200 bg-white p-5 text-foreground transition-transform duration-200 dark:border-slate-800 dark:bg-slate-950 lg:relative lg:max-w-none lg:shrink-0 lg:translate-x-0 lg:p-6 ${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -161,7 +163,7 @@ export function DashboardLayout({
           <StratixLogo variant="auto" className="pl-2 sm:pl-4" imgClassName="h-10 w-auto sm:h-11" />
         </Link>
 
-        <nav className="space-y-2 overflow-y-auto">
+        <nav className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
           {availableMenuItems.map((item) => {
             const active = location.pathname === item.path;
             return (
@@ -226,8 +228,8 @@ export function DashboardLayout({
         </div>
       </aside>
 
-      <div className="min-w-0 flex-1">
-        <header className="border-b border-gray-200 bg-white px-4 py-4 dark:border-slate-800 dark:bg-slate-950 sm:px-6 sm:py-5 lg:px-8 lg:py-6">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <header className="shrink-0 border-b border-gray-200 bg-white px-4 py-4 dark:border-slate-800 dark:bg-slate-950 sm:px-6 sm:py-5 lg:px-8 lg:py-6">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div className="min-w-0">
               <div className="mb-3 flex items-center justify-between gap-3 lg:hidden">
@@ -291,7 +293,9 @@ export function DashboardLayout({
           </div>
         </header>
 
-        <main className="min-w-0 p-4 sm:p-6 lg:p-8">{children}</main>
+        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8">
+          {children}
+        </main>
       </div>
     </div>
   );
