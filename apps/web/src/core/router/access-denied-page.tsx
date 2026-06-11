@@ -1,12 +1,12 @@
 import { Link } from "react-router-dom";
-import logo from '@/shared/assets/logos/originals/logo-symbol.png';
+import { StratixLogo } from "../../shared/components/brand/StratixLogo";
 
 export function AccessDeniedPage() {
   return (
     <div className="min-h-screen bg-[#F5F7FA] flex items-center justify-center px-6">
       <div className="max-w-lg text-center bg-white border border-gray-200 rounded-3xl shadow-sm p-10">
         <div className="max-w-lg flex justify-center pb-8">
-          <img className="w-12" src={logo} alt="STRATIX" />
+          <StratixLogo theme="light" variant="symbol" imgClassName="w-12" />
         </div>
         <h1 className="text-3xl font-semibold text-[#1F2937] mb-3">Acesso negado</h1>
         <p className="text-[#6B7280] mb-8">

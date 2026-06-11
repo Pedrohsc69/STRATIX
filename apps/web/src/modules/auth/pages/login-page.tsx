@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Lock, Mail, Eye, EyeOff, Shield } from "lucide-react";
 import { login } from "../services/auth-service";
 import { saveSession } from "../../../store/app-store";
-import logoMainWhite from "@/shared/assets/logos/white-versions/logo-main-white.png";
+import { StratixLogo } from "../../../shared/components/brand/StratixLogo";
 
 
 
@@ -56,10 +56,8 @@ export function LoginPage() {
 
         <div className="relative z-10 flex flex-col justify-center px-16 xl:px-24 w-full">
           {/* Logo */}
-          <div className="flex items-center gap-2 mb-12">
-            <div className="w-40">
-                <img src={logoMainWhite} alt="stratix_logo_horizontal" />
-            </div>
+          <div className="mb-12 flex items-center gap-2">
+            <StratixLogo theme="dark" imgClassName="w-40" />
           </div>
 
           {/* Value Proposition */}
@@ -112,11 +110,8 @@ export function LoginPage() {
           className="mx-auto flex w-full max-w-md flex-col items-stretch"
         >
           {/* Mobile Logo */}
-          <div className="mb-8 flex items-center justify-center gap-2 lg:hidden">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <div className="w-5 h-5 border-2 border-accent rounded" />
-            </div>
-            <span className="text-xl font-semibold text-primary tracking-tight">STRATIX</span>
+          <div className="mb-8 flex items-center justify-center lg:hidden">
+            <StratixLogo theme="light" imgClassName="h-8 w-auto" />
           </div>
 
           {/* Form Card */}

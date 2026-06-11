@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { Link } from "react-router-dom";
 import { Mail, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { forgotPassword } from "../../auth/services/auth-service";
+import { StratixLogo } from "../../../shared/components/brand/StratixLogo";
 
 export function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -45,11 +46,8 @@ export function ForgotPasswordPage() {
         className="w-full max-w-md"
       >
         {/* Logo */}
-        <div className="flex items-center gap-2 mb-8 justify-center">
-          <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-            <div className="w-6 h-6 border-2 border-accent rounded" />
-          </div>
-          <span className="text-2xl font-semibold text-primary tracking-tight">STRATIX</span>
+        <div className="mb-8 flex items-center justify-center">
+          <StratixLogo theme="light" imgClassName="h-9 w-auto" />
         </div>
 
         {/* Card */}

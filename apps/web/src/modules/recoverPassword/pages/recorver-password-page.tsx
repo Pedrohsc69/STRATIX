@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { useNavigate } from "react-router";
 import { Lock, Eye, EyeOff, Shield, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import { resetPassword } from "../../auth/services/auth-service";
+import { StratixLogo } from "../../../shared/components/brand/StratixLogo";
 
 export  function RecoverPasswordPage() {
   const navigate = useNavigate();
@@ -126,11 +127,8 @@ export  function RecoverPasswordPage() {
           className="w-full max-w-md"
         >
           {/* Logo */}
-          <div className="flex items-center gap-2 mb-8 justify-center">
-            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-              <div className="w-6 h-6 border-2 border-accent rounded" />
-            </div>
-            <span className="text-2xl font-semibold text-primary tracking-tight">STRATIX</span>
+          <div className="mb-8 flex items-center justify-center">
+            <StratixLogo theme="light" imgClassName="h-9 w-auto" />
           </div>
 
           <div className="rounded-2xl border border-border bg-white p-6 text-center shadow-xl sm:p-8">
@@ -164,11 +162,8 @@ export  function RecoverPasswordPage() {
           className="w-full max-w-md"
         >
           {/* Logo */}
-          <div className="flex items-center gap-2 mb-8 justify-center">
-            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-              <div className="w-6 h-6 border-2 border-accent rounded" />
-            </div>
-            <span className="text-2xl font-semibold text-primary tracking-tight">STRATIX</span>
+          <div className="mb-8 flex items-center justify-center">
+            <StratixLogo theme="light" imgClassName="h-9 w-auto" />
           </div>
 
           <div className="rounded-2xl border border-border bg-white p-6 text-center shadow-xl sm:p-8">
@@ -202,11 +197,8 @@ export  function RecoverPasswordPage() {
           className="mx-auto w-full max-w-md"
         >
           {/* Mobile Logo */}
-          <div className="mb-8 flex items-center justify-center gap-2 lg:hidden">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <div className="w-5 h-5 border-2 border-accent rounded" />
-            </div>
-            <span className="text-xl font-semibold text-primary tracking-tight">STRATIX</span>
+          <div className="mb-8 flex items-center justify-center lg:hidden">
+            <StratixLogo theme="light" imgClassName="h-8 w-auto" />
           </div>
 
           {/* Form Card */}

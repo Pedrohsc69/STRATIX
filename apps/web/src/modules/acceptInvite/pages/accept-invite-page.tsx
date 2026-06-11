@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Building2, Shield, Lock, Eye, EyeOff, CheckCircle2, User, UserCheck } from "lucide-react";
 import { acceptInvite, getInviteDetails } from "../../auth/services/auth-service";
 import { saveSession } from "../../../store/app-store";
+import { StratixLogo } from "../../../shared/components/brand/StratixLogo";
 
 type InviteDetails = {
   email: string;
@@ -142,11 +143,8 @@ export function AcceptInvitePage() {
         className="w-full max-w-md"
       >
         {/* Logo */}
-        <div className="mb-8 flex items-center justify-center gap-2">
-          <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-            <div className="w-6 h-6 border-2 border-accent rounded" />
-          </div>
-          <span className="text-2xl font-semibold text-primary tracking-tight">STRATIX</span>
+        <div className="mb-8 flex items-center justify-center">
+          <StratixLogo theme="light" imgClassName="h-9 w-auto" />
         </div>
 
         {/* Card */}

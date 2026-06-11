@@ -17,7 +17,7 @@ import { clearSession } from "../../store/app-store";
 import { canAccess } from "./dashboard.permissions";
 import type { DashboardContext, DashboardPermission, DashboardRole } from "./dashboard.types";
 import { useTheme } from "../../core/theme/theme-context";
-import logoMain from '@/shared/assets/logos/originals/logo-main.png';
+import { StratixLogo } from "../../shared/components/brand/StratixLogo";
 
 
 type DashboardLayoutProps = PropsWithChildren<{
@@ -142,7 +142,7 @@ export function DashboardLayout({
   const nextThemeLabel = resolvedTheme === "dark" ? "claro" : "escuro";
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-background text-foreground lg:flex">
+    <div className={`${resolvedTheme === "dark" ? "dark" : ""} min-h-screen overflow-x-hidden bg-background text-foreground lg:flex`}>
       {isSidebarOpen ? (
         <button
           type="button"
@@ -158,7 +158,7 @@ export function DashboardLayout({
         }`}
       >
         <Link to="/dashboard" className="mb-10 border-b border-gray-200 pb-6 dark:border-slate-800">
-          <img className="w-40 pl-2 sm:w-48 sm:pl-4" src={logoMain} alt="STRATIX" />
+          <StratixLogo theme="auto" className="pl-2 sm:pl-4" imgClassName="w-40 sm:w-48" />
         </Link>
 
         <nav className="space-y-2 overflow-y-auto">
@@ -240,7 +240,7 @@ export function DashboardLayout({
                   <Menu className="h-5 w-5" />
                 </button>
                 <Link to="/dashboard" className="min-w-0">
-                  <img className="h-8 w-auto max-w-[160px]" src={logoMain} alt="STRATIX" />
+                  <StratixLogo theme="auto" imgClassName="h-8 w-auto max-w-[160px]" />
                 </Link>
                 <div className="flex items-center gap-2">
                   <button

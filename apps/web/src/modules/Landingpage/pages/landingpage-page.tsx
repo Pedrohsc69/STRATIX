@@ -2,8 +2,7 @@ import { motion } from "motion/react";
 import { Link } from "react-router-dom";
 import { Target, TrendingUp, BarChart3, Lightbulb, Users, ChevronRight } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
-import logoMain from "@/shared/assets/logos/originals/logo-main.png";
-import logoMainWhite from "@/shared/assets/logos/white-versions/logo-main-white.png";
+import { StratixLogo } from "../../../shared/components/brand/StratixLogo";
 
 
 
@@ -63,9 +62,7 @@ export function LandingPage() {
               transition={{ duration: 0.6 }}
               className="flex items-center gap-2"
             >
-              <div className="w-40">
-                <img src={logoMain} alt="stratix_logo_horizontal" />
-              </div>
+              <StratixLogo theme="light" imgClassName="w-40" />
             </motion.div>
 
             <motion.nav
@@ -246,9 +243,7 @@ export function LandingPage() {
       <footer className="bg-primary text-white py-12">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="w-60">
-              <img src={logoMainWhite} alt="stratix_logo_horizontal" />
-            </div>
+            <StratixLogo theme="dark" imgClassName="w-60" />
 
             <nav className="flex items-center gap-8">
               <a href="#" className="text-sm text-white/80 hover:text-white transition-colors">Sobre</a>

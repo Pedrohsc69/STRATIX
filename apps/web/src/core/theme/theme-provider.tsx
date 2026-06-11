@@ -55,12 +55,6 @@ export function ThemeProvider({ children }: PropsWithChildren) {
   }, [preference]);
 
   useEffect(() => {
-    const rootElement = document.documentElement;
-    rootElement.classList.toggle("dark", resolvedTheme === "dark");
-    rootElement.dataset.theme = resolvedTheme;
-  }, [resolvedTheme]);
-
-  useEffect(() => {
     if (typeof window === "undefined") {
       return undefined;
     }
