@@ -4,6 +4,7 @@ import {
   useState,
   type PropsWithChildren,
 } from "react";
+import { getSession, subscribeToSessionChanges, type SessionState } from "../../store/app-store";
 import {
   ThemeContext,
   type ResolvedTheme,
@@ -11,7 +12,15 @@ import {
   type ThemePreference,
 } from "./theme-context";
 
-const THEME_STORAGE_KEY = "stratix-theme-preference";
+const LEGACY_THEME_STORAGE_KEY = "stratix-theme-preference";
+
+function getThemeStorageKey(session: SessionState | null) {
+  if (!session?.user.id) {
+    return null;
+  }
+
+  return `stratix-theme:${session.user.id}`;
+}
 
 function isThemePreference(value: string | null): value is ThemePreference {
   return value === "LIGHT" || value === "DARK" || value === "SYSTEM";
@@ -33,26 +42,59 @@ function resolveTheme(preference: ThemePreference): ResolvedTheme {
   return preference === "DARK" ? "dark" : "light";
 }
 
-function readStoredPreference(): ThemePreference {
+function readStoredPreference(session: SessionState | null): ThemePreference {
   if (typeof window === "undefined") {
     return "LIGHT";
   }
 
-  const storedPreference = window.localStorage.getItem(THEME_STORAGE_KEY);
+  const themeStorageKey = getThemeStorageKey(session);
+
+  if (!themeStorageKey) {
+    return "LIGHT";
+  }
+
+  const storedPreference = window.localStorage.getItem(themeStorageKey);
   return isThemePreference(storedPreference) ? storedPreference : "LIGHT";
 }
 
 export function ThemeProvider({ children }: PropsWithChildren) {
-  const [preference, setPreference] = useState<ThemePreference>(() => readStoredPreference());
+  const [session, setSession] = useState<SessionState | null>(() => getSession());
+  const [preference, setPreference] = useState<ThemePreference>(() => readStoredPreference(getSession()));
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() =>
-    resolveTheme(readStoredPreference()),
+    resolveTheme(readStoredPreference(getSession())),
   );
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.removeItem(LEGACY_THEME_STORAGE_KEY);
+  }, []);
+
+  useEffect(() => {
+    return subscribeToSessionChanges(() => {
+      setSession(getSession());
+    });
+  }, []);
+
+  useEffect(() => {
+    const nextPreference = readStoredPreference(session);
+    setPreference(nextPreference);
+    setResolvedTheme(resolveTheme(nextPreference));
+  }, [session]);
 
   useEffect(() => {
     const nextResolvedTheme = resolveTheme(preference);
     setResolvedTheme(nextResolvedTheme);
-    window.localStorage.setItem(THEME_STORAGE_KEY, preference);
-  }, [preference]);
+
+    const themeStorageKey = getThemeStorageKey(session);
+    if (!themeStorageKey || typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem(themeStorageKey, preference);
+  }, [preference, session]);
 
   useEffect(() => {
     if (typeof window === "undefined") {

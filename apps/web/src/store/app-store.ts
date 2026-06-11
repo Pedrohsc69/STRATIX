@@ -25,6 +25,15 @@ export type SessionState = {
 };
 
 const SESSION_STORAGE_KEY = 'stratix.session';
+const SESSION_CHANGE_EVENT = 'stratix:session-change';
+
+function emitSessionChange() {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.dispatchEvent(new Event(SESSION_CHANGE_EVENT));
+}
 
 export function getSession(): SessionState | null {
   if (typeof window === 'undefined') {
@@ -62,6 +71,7 @@ export function saveSession(session: SessionState) {
   }
 
   window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+  emitSessionChange();
 }
 
 export function clearSession() {
@@ -70,6 +80,7 @@ export function clearSession() {
   }
 
   window.localStorage.removeItem(SESSION_STORAGE_KEY);
+  emitSessionChange();
 }
 
 export function getAccessToken() {
@@ -78,4 +89,18 @@ export function getAccessToken() {
 
 export function isAuthenticated() {
   return !!getAccessToken();
+}
+
+export function subscribeToSessionChanges(listener: () => void) {
+  if (typeof window === 'undefined') {
+    return () => undefined;
+  }
+
+  window.addEventListener(SESSION_CHANGE_EVENT, listener);
+  window.addEventListener('storage', listener);
+
+  return () => {
+    window.removeEventListener(SESSION_CHANGE_EVENT, listener);
+    window.removeEventListener('storage', listener);
+  };
 }
