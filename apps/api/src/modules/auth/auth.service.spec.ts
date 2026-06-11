@@ -15,6 +15,13 @@ import { validate } from 'class-validator';
 import { AcceptInviteDto } from './dto/accept-invite.dto';
 import { AuthService } from './auth.service';
 
+const createGoogleTokenServiceMock = () =>
+  ({
+    verifyCredential: async () => {
+      throw new UnauthorizedException('Credencial do Google inválida.');
+    },
+  }) as never;
+
 void test('AcceptInviteDto requires name during invite acceptance', async () => {
   const dto = plainToInstance(AcceptInviteDto, {
     token: 'token-123',
@@ -80,6 +87,7 @@ void test('AuthService registers a director with hashed password', async () => {
     jwtService as never,
     { log: async () => undefined } as never,
     { sendPasswordResetEmail: async () => undefined } as never,
+    createGoogleTokenServiceMock(),
   );
   const response = await service.registerDirector({
     name: 'Diretor',
@@ -106,6 +114,7 @@ void test('AuthService rejects duplicate director e-mail', async () => {
     { signAsync: async () => 'token' } as never,
     { log: async () => undefined } as never,
     { sendPasswordResetEmail: async () => undefined } as never,
+    createGoogleTokenServiceMock(),
   );
 
   await assert.rejects(
@@ -163,6 +172,7 @@ void test('AuthService rejects invalid login credentials', async () => {
     { signAsync: async () => 'token' } as never,
     { log: async () => undefined } as never,
     { sendPasswordResetEmail: async () => undefined } as never,
+    createGoogleTokenServiceMock(),
   );
 
   await assert.rejects(
@@ -220,6 +230,7 @@ void test('AuthService updates lastAccessAt on successful login', async () => {
     { signAsync: async () => 'token-login' } as never,
     { log: async () => undefined } as never,
     { sendPasswordResetEmail: async () => undefined } as never,
+    createGoogleTokenServiceMock(),
   );
 
   const response = await service.login({
@@ -511,6 +522,7 @@ void test('AuthService accepts a valid invite and activates the account', async 
       },
     } as never,
     { sendPasswordResetEmail: async () => undefined } as never,
+    createGoogleTokenServiceMock(),
   );
 
   const response = await service.acceptInvite({
@@ -615,6 +627,7 @@ void test('AuthService accepts an employee invite without changing the departmen
     { signAsync: async () => 'token-employee' } as never,
     { log: async () => undefined } as never,
     { sendPasswordResetEmail: async () => undefined } as never,
+    createGoogleTokenServiceMock(),
   );
 
   const response = await service.acceptInvite({
@@ -681,6 +694,7 @@ void test('AuthService rejects manager invites when the department already has a
     { signAsync: async () => 'token-accepted' } as never,
     { log: async () => undefined } as never,
     { sendPasswordResetEmail: async () => undefined } as never,
+    createGoogleTokenServiceMock(),
   );
 
   await assert.rejects(
@@ -739,6 +753,7 @@ void test('AuthService rejects invites when department data is inconsistent with
     { signAsync: async () => 'token-accepted' } as never,
     { log: async () => undefined } as never,
     { sendPasswordResetEmail: async () => undefined } as never,
+    createGoogleTokenServiceMock(),
   );
 
   await assert.rejects(
@@ -781,6 +796,7 @@ void test('AuthService rejects expired invites and removes the token', async () 
     { signAsync: async () => 'token' } as never,
     { log: async () => undefined } as never,
     { sendPasswordResetEmail: async () => undefined } as never,
+    createGoogleTokenServiceMock(),
   );
 
   await assert.rejects(
@@ -823,6 +839,7 @@ void test('AuthService changes the password when the current password is correct
       },
     } as never,
     { sendPasswordResetEmail: async () => undefined } as never,
+    createGoogleTokenServiceMock(),
   );
 
   const response = await service.changePassword(
@@ -864,6 +881,7 @@ void test('AuthService rejects password change with incorrect current password',
     { signAsync: async () => 'token' } as never,
     { log: async () => undefined } as never,
     { sendPasswordResetEmail: async () => undefined } as never,
+    createGoogleTokenServiceMock(),
   );
 
   await assert.rejects(
@@ -903,6 +921,7 @@ void test('AuthService rejects password change when the new password is equal to
     { signAsync: async () => 'token' } as never,
     { log: async () => undefined } as never,
     { sendPasswordResetEmail: async () => undefined } as never,
+    createGoogleTokenServiceMock(),
   );
 
   await assert.rejects(
@@ -957,6 +976,7 @@ void test('AuthService forgotPassword returns a generic response and sends email
         sentEmails.push(payload);
       },
     } as never,
+    createGoogleTokenServiceMock(),
   );
 
   const response = await service.forgotPassword({ email: 'diretor@empresa.com' });
@@ -976,6 +996,7 @@ void test('AuthService forgotPassword returns a generic response when the accoun
     { signAsync: async () => 'token' } as never,
     { log: async () => undefined } as never,
     { sendPasswordResetEmail: async () => undefined } as never,
+    createGoogleTokenServiceMock(),
   );
 
   const response = await service.forgotPassword({ email: 'naoexiste@empresa.com' });
@@ -1036,6 +1057,7 @@ void test('AuthService resetPassword updates the hash with a valid token and blo
     { signAsync: async () => 'token' } as never,
     { log: async () => undefined } as never,
     { sendPasswordResetEmail: async () => undefined } as never,
+    createGoogleTokenServiceMock(),
   );
 
   await service.resetPassword({
@@ -1081,6 +1103,7 @@ void test('AuthService rejects expired reset tokens', async () => {
     { signAsync: async () => 'token' } as never,
     { log: async () => undefined } as never,
     { sendPasswordResetEmail: async () => undefined } as never,
+    createGoogleTokenServiceMock(),
   );
 
   await assert.rejects(

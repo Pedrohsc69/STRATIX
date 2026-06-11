@@ -1,11 +1,9 @@
 import {
-  Optional,
   BadRequestException,
   ConflictException,
   Injectable,
   Logger,
   NotFoundException,
-  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { UserRole, UserStatus, type User } from '@prisma/client';
@@ -36,8 +34,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly auditService: AuditService,
     private readonly emailService: EmailService,
-    @Optional()
-    private readonly googleTokenService?: Pick<GoogleTokenService, 'verifyCredential'>,
+    private readonly googleTokenService: GoogleTokenService,
   ) {}
 
   async registerDirector(input: RegisterDirectorDto): Promise<AuthResponse> {
@@ -87,11 +84,6 @@ export class AuthService {
   }
 
   async loginWithGoogle(input: GoogleLoginDto): Promise<AuthResponse> {
-    if (!this.googleTokenService) {
-      this.logger.error('Google login attempted without GoogleTokenService provider.');
-      throw new ServiceUnavailableException('Login com Google indisponível nesta configuração.');
-    }
-
     const googleIdentity = await this.googleTokenService.verifyCredential(input.credential);
     const normalizedEmail = googleIdentity.email.trim().toLowerCase();
 
