@@ -92,7 +92,7 @@ export function OKRDetailsModal({ okr, onClose }: OKRDetailsModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/45 p-4">
-      <div className="w-full max-w-4xl rounded-3xl bg-white shadow-2xl">
+      <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
         <div className="flex items-start justify-between border-b border-gray-200 px-6 py-5">
           <div>
             <p className="text-sm uppercase tracking-[0.2em] text-[#6B7280]">Detalhes do OKR</p>
@@ -116,7 +116,7 @@ export function OKRDetailsModal({ okr, onClose }: OKRDetailsModalProps) {
         </div>
 
         <div className="grid gap-6 px-6 py-6 md:grid-cols-2">
-          <div className="space-y-4">
+          <div className="min-w-0 space-y-4">
             <div>
               <p className="text-sm text-[#6B7280]">Objetivo vinculado</p>
               <p className="mt-1 font-medium text-[#1F2937]">{okr.objectiveName}</p>
@@ -135,7 +135,7 @@ export function OKRDetailsModal({ okr, onClose }: OKRDetailsModalProps) {
             </div>
           </div>
 
-          <div className="space-y-4">
+          <div className="min-w-0 space-y-4">
             <div className="flex items-center gap-3">
               <OKRStatusBadge status={okr.status} />
             </div>
@@ -190,7 +190,7 @@ export function OKRDetailsModal({ okr, onClose }: OKRDetailsModalProps) {
                       <p className="font-medium text-[#1F2937]">
                         Valor registrado: {formatOkrValue(historyItem.value, okr.metricType)}
                       </p>
-                      <p className="mt-1 text-sm text-[#6B7280]">{historyItem.comment}</p>
+                      <p className="mt-1 break-words text-sm text-[#6B7280]">{historyItem.comment}</p>
                     </div>
                     <p className="text-sm text-[#6B7280]">{formatDate(historyItem.date)}</p>
                   </div>

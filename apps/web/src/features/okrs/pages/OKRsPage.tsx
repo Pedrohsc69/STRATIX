@@ -187,7 +187,7 @@ export function OKRsPage() {
 
   if (loading && !data) {
     return (
-      <div className="min-h-screen bg-[#F5F7FA] p-8">
+      <div className="min-h-screen bg-[#F5F7FA] p-4 sm:p-6 lg:p-8">
         <LoadingState />
       </div>
     );
@@ -195,7 +195,7 @@ export function OKRsPage() {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-[#F5F7FA] p-8">
+      <div className="min-h-screen bg-[#F5F7FA] p-4 sm:p-6 lg:p-8">
         <EmptyDashboardState
           title="OKRs indisponíveis"
           description={error ?? 'Não foi possível carregar o portfólio de OKRs.'}

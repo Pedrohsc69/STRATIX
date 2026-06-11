@@ -134,7 +134,7 @@ export function AcceptInvitePage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-6 py-12">
+    <div className="min-h-screen flex items-center justify-center bg-background px-4 py-8 sm:px-6 sm:py-12">
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
@@ -150,7 +150,7 @@ export function AcceptInvitePage() {
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-2xl shadow-xl border border-border p-8">
+        <div className="rounded-2xl border border-border bg-white p-6 shadow-xl sm:p-8">
           {/* Security Badge */}
           <div className="flex items-center gap-2 mb-6">
             <Shield className="w-4 h-4 text-accent" />
@@ -168,21 +168,25 @@ export function AcceptInvitePage() {
 
           {/* Invite Information */}
           <div className="bg-background rounded-xl p-6 mb-8 space-y-4">
-            <div className="flex items-center gap-3">
+            <div className="flex min-w-0 items-center gap-3">
               <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
                 <Building2 className="w-5 h-5 text-primary" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs text-muted-foreground">Empresa</p>
-                <p className="text-sm font-medium text-foreground">{inviteData?.companyName ?? "-"}</p>
+                <p className="break-words text-sm font-medium text-foreground">
+                  {inviteData?.companyName ?? "-"}
+                </p>
               </div>
             </div>
 
             <div className="border-t border-border pt-4">
-              <div className="grid grid-cols-2 gap-32">
-                <div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="min-w-0">
                   <p className="text-xs text-muted-foreground mb-1">Seu e-mail</p>
-                  <p className="text-sm font-medium text-foreground">{inviteData?.email ?? "-"}</p>
+                  <p className="break-all text-sm font-medium text-foreground">
+                    {inviteData?.email ?? "-"}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Papel atribuído</p>
@@ -194,9 +198,11 @@ export function AcceptInvitePage() {
               </div>
 
               {inviteData?.departmentName && (
-                <div className="mt-4">
+                <div className="mt-4 min-w-0">
                   <p className="text-xs text-muted-foreground mb-1">Departamento</p>
-                  <p className="text-sm font-medium text-foreground">{inviteData.departmentName}</p>
+                  <p className="break-words text-sm font-medium text-foreground">
+                    {inviteData.departmentName}
+                  </p>
                 </div>
               )}
             </div>

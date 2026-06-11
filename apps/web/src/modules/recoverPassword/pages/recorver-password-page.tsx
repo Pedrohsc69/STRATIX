@@ -118,7 +118,7 @@ export  function RecoverPasswordPage() {
   // Token invalid state
   if (!tokenValid) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background px-6 py-12">
+      <div className="min-h-screen flex items-center justify-center bg-background px-4 py-8 sm:px-6 sm:py-12">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -133,7 +133,7 @@ export  function RecoverPasswordPage() {
             <span className="text-2xl font-semibold text-primary tracking-tight">STRATIX</span>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-xl border border-border p-8 text-center">
+          <div className="rounded-2xl border border-border bg-white p-6 text-center shadow-xl sm:p-8">
             <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
               <AlertCircle className="w-8 h-8 text-red-600" />
             </div>
@@ -156,7 +156,7 @@ export  function RecoverPasswordPage() {
   // Success state
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background px-6 py-12">
+      <div className="min-h-screen flex items-center justify-center bg-background px-4 py-8 sm:px-6 sm:py-12">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -171,7 +171,7 @@ export  function RecoverPasswordPage() {
             <span className="text-2xl font-semibold text-primary tracking-tight">STRATIX</span>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-xl border border-border p-8 text-center">
+          <div className="rounded-2xl border border-border bg-white p-6 text-center shadow-xl sm:p-8">
             <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-6">
               <CheckCircle2 className="w-8 h-8 text-green-600" />
             </div>
@@ -193,13 +193,13 @@ export  function RecoverPasswordPage() {
 
   // Main reset password form
   return (
-    <div className="min-h-screen flex">
-      <div className="flex-1 flex items-center justify-center px-6 py-12 bg-background">
+    <div className="min-h-screen overflow-x-hidden bg-background px-4 py-8 sm:px-6 sm:py-12">
+      <div className="flex-1">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="w-full max-w-md"
+          className="mx-auto w-full max-w-md"
         >
           {/* Mobile Logo */}
           <div className="lg:hidden flex items-center gap-2 mb-8">
@@ -210,7 +210,7 @@ export  function RecoverPasswordPage() {
           </div>
 
           {/* Form Card */}
-          <div className="bg-white rounded-2xl shadow-xl border border-border p-8">
+          <div className="rounded-2xl border border-border bg-white p-6 shadow-xl sm:p-8">
             {/* Security Badge */}
             <div className="flex items-center gap-2 mb-6">
               <Shield className="w-4 h-4 text-accent" />

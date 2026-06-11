@@ -144,7 +144,7 @@ export function ObjectivesPage() {
 
   if (loading && !data) {
     return (
-      <div className="min-h-screen bg-[#F5F7FA] p-8">
+      <div className="min-h-screen bg-[#F5F7FA] p-4 sm:p-6 lg:p-8">
         <LoadingState />
       </div>
     );
@@ -152,7 +152,7 @@ export function ObjectivesPage() {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-[#F5F7FA] p-8">
+      <div className="min-h-screen bg-[#F5F7FA] p-4 sm:p-6 lg:p-8">
         <EmptyDashboardState
           title="Objetivos estratégicos indisponíveis"
           description={error ?? 'Não foi possível carregar o portfólio de objetivos.'}

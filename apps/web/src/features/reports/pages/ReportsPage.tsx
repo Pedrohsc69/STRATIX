@@ -78,7 +78,7 @@ export function ReportsPage() {
 
   if (loading && !data) {
     return (
-      <div className="min-h-screen bg-[#F5F7FA] p-8">
+      <div className="min-h-screen bg-[#F5F7FA] p-4 sm:p-6 lg:p-8">
         <LoadingState />
       </div>
     );
@@ -86,7 +86,7 @@ export function ReportsPage() {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-[#F5F7FA] p-8">
+      <div className="min-h-screen bg-[#F5F7FA] p-4 sm:p-6 lg:p-8">
         <EmptyDashboardState
           title="Relatórios indisponíveis"
           description={error ?? "Não foi possível carregar as opções de exportação."}

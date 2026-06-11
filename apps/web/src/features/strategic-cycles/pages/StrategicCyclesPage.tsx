@@ -142,7 +142,7 @@ export function StrategicCyclesPage() {
 
   if (loading && !data) {
     return (
-      <div className="min-h-screen bg-[#F5F7FA] p-8">
+      <div className="min-h-screen bg-[#F5F7FA] p-4 sm:p-6 lg:p-8">
         <LoadingState />
       </div>
     );
@@ -150,7 +150,7 @@ export function StrategicCyclesPage() {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-[#F5F7FA] p-8">
+      <div className="min-h-screen bg-[#F5F7FA] p-4 sm:p-6 lg:p-8">
         <EmptyDashboardState
           title="Ciclos estratégicos indisponíveis"
           description={error ?? 'Não foi possível carregar o portfólio estratégico.'}

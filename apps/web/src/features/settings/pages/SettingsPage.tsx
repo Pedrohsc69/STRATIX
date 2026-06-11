@@ -37,7 +37,7 @@ export function SettingsPage() {
 
   if (loading && !data) {
     return (
-      <div className="min-h-screen bg-[#F5F7FA] p-8">
+      <div className="min-h-screen bg-[#F5F7FA] p-4 sm:p-6 lg:p-8">
         <LoadingState />
       </div>
     );
@@ -45,7 +45,7 @@ export function SettingsPage() {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-[#F5F7FA] p-8">
+      <div className="min-h-screen bg-[#F5F7FA] p-4 sm:p-6 lg:p-8">
         <EmptyDashboardState
           title="Configurações indisponíveis"
           description={error ?? "Não foi possível carregar as configurações."}

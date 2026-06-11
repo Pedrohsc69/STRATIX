@@ -130,7 +130,7 @@ export function EmployeesPage() {
 
   if (loading && !data) {
     return (
-      <div className="min-h-screen bg-[#F5F7FA] p-8">
+      <div className="min-h-screen bg-[#F5F7FA] p-4 sm:p-6 lg:p-8">
         <LoadingState />
       </div>
     );
@@ -138,7 +138,7 @@ export function EmployeesPage() {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-[#F5F7FA] p-8">
+      <div className="min-h-screen bg-[#F5F7FA] p-4 sm:p-6 lg:p-8">
         <EmptyDashboardState
           title="Funcionários indisponíveis"
           description={error ?? "Não foi possível carregar a equipe."}
@@ -164,7 +164,7 @@ export function EmployeesPage() {
               Use o link abaixo para aceitar o convite de {demoInvite.email}.
             </p>
             <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-              <code className="rounded-xl bg-white px-3 py-2 text-xs text-[#1E3A8A]">
+              <code className="break-all rounded-xl bg-white px-3 py-2 text-xs text-[#1E3A8A]">
                 {demoInvite.inviteUrl}
               </code>
               <button

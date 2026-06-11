@@ -58,7 +58,7 @@ export function EmployeeDetailsModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/45 p-4">
-      <div className="w-full max-w-3xl rounded-3xl bg-white shadow-2xl">
+      <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
         <div className="flex items-start justify-between border-b border-gray-200 px-6 py-5">
           <div>
             <p className="text-sm uppercase tracking-[0.2em] text-[#6B7280]">
@@ -117,11 +117,11 @@ export function EmployeeDetailsModal({
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-2xl border border-gray-200 bg-white p-5">
-                <div className="flex items-center gap-3">
+                <div className="flex min-w-0 items-center gap-3">
                   <Mail className="h-5 w-5 text-[#1E4E79]" />
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-sm text-[#6B7280]">E-mail</p>
-                    <p className="font-medium text-[#1F2937]">{data.employee.email}</p>
+                    <p className="break-all font-medium text-[#1F2937]">{data.employee.email}</p>
                   </div>
                 </div>
               </div>

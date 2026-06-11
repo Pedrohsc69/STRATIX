@@ -86,7 +86,7 @@ export function OKRProgressModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/45 p-4">
-      <div className="w-full max-w-2xl rounded-3xl bg-white shadow-2xl">
+      <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
         <div className="flex items-start justify-between border-b border-gray-200 px-6 py-5">
           <div>
             <p className="text-sm uppercase tracking-[0.2em] text-[#6B7280]">Atualizar progresso</p>
@@ -109,7 +109,7 @@ export function OKRProgressModal({
             </div>
           ) : null}
 
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
             <div className="rounded-2xl bg-[#F8FAFC] px-4 py-3">
               <p className="text-sm text-[#6B7280]">Valor atual</p>
               <p className="mt-1 text-lg font-semibold text-[#1F2937]">
@@ -189,7 +189,7 @@ export function OKRProgressModal({
             </div>
           ) : null}
 
-          <div className="flex items-center justify-end gap-3 border-t border-gray-200 pt-5">
+          <div className="flex flex-col-reverse gap-3 border-t border-gray-200 pt-5 sm:flex-row sm:items-center sm:justify-end">
             <button
               type="button"
               onClick={onClose}

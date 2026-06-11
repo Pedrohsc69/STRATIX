@@ -32,7 +32,7 @@ export function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F5F7FA] p-8">
+      <div className="min-h-screen bg-[#F5F7FA] p-4 sm:p-6 lg:p-8">
         <LoadingDashboard />
       </div>
     );
@@ -40,7 +40,7 @@ export function DashboardPage() {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-[#F5F7FA] p-8">
+      <div className="min-h-screen bg-[#F5F7FA] p-4 sm:p-6 lg:p-8">
         <EmptyDashboardState
           title="Dashboard indisponível"
           description={error ?? "Não foi possível obter o panorama estratégico neste momento."}
@@ -60,7 +60,7 @@ export function DashboardPage() {
         {widgetOrder.length === 0 ? (
           <EmptyDashboardState />
         ) : (
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
             {widgetOrder.map((widgetId) => {
               switch (widgetId) {
                 case "executiveOverview":

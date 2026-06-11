@@ -377,7 +377,7 @@ export  function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex flex-col overflow-x-hidden lg:flex-row">
       {/* Left Side - Branding */}
       <motion.div
         initial={{ opacity: 0, x: -30 }}
@@ -458,12 +458,12 @@ export  function RegisterPage() {
       </motion.div>
 
       {/* Right Side - Multi-Step Form */}
-      <div className="flex-1 flex items-center justify-center px-6 py-12 bg-background overflow-y-auto">
+      <div className="flex-1 overflow-y-auto bg-background px-4 py-8 sm:px-6 sm:py-12">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="w-full max-w-lg"
+          className="mx-auto w-full max-w-lg"
         >
           {/* Mobile Logo */}
           <div className="lg:hidden flex items-center gap-2 mb-8">
@@ -474,11 +474,12 @@ export  function RegisterPage() {
           </div>
 
           {/* Form Card */}
-          <div className="bg-white rounded-2xl shadow-xl border border-border p-8">
+          <div className="rounded-2xl border border-border bg-white p-5 shadow-xl sm:p-8">
             {/* Progress Indicator */}
             {currentStep < 5 && (
               <div className="mb-8">
-                <div className="flex items-center justify-between mb-3">
+                <div className="overflow-x-auto pb-2">
+                  <div className="mb-3 flex min-w-[460px] items-center justify-between sm:min-w-0">
                   {steps.map((step, index) => (
                     <div key={step.number} className="flex items-center flex-1">
                       <div className="flex flex-col items-center">
@@ -497,7 +498,9 @@ export  function RegisterPage() {
                             step.number
                           )}
                         </div>
-                        <p className="text-xs mt-2 text-center text-muted-foreground">{step.title}</p>
+                        <p className="mt-2 hidden text-center text-xs text-muted-foreground sm:block">
+                          {step.title}
+                        </p>
                       </div>
                       {index < steps.length - 1 && (
                         <div
@@ -508,6 +511,7 @@ export  function RegisterPage() {
                       )}
                     </div>
                   ))}
+                  </div>
                 </div>
               </div>
             )}
@@ -901,7 +905,7 @@ export  function RegisterPage() {
                       {errors.inviteEmail && <p className="mt-1.5 text-sm text-destructive">{errors.inviteEmail}</p>}
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <div>
                         <label className="block text-sm font-medium text-foreground mb-2">Papel</label>
                         <select

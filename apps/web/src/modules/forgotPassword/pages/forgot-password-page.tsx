@@ -37,7 +37,7 @@ export function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-6 py-12">
+    <div className="min-h-screen flex items-center justify-center bg-background px-4 py-8 sm:px-6 sm:py-12">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -53,7 +53,7 @@ export function ForgotPasswordPage() {
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-2xl shadow-xl border border-border p-8">
+        <div className="rounded-2xl border border-border bg-white p-6 shadow-xl sm:p-8">
           {!submitted ? (
             <>
               <div className="mb-8">

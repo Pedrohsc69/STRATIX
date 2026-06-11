@@ -15,7 +15,7 @@ function formatDate(value: string) {
 export function StrategicCycleDetailsDialog({ cycle, onClose }: StrategicCycleDetailsDialogProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/45 p-4">
-      <div className="w-full max-w-3xl rounded-3xl bg-white shadow-2xl">
+      <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
         <div className="flex items-start justify-between border-b border-gray-200 px-6 py-5">
           <div>
             <p className="text-sm uppercase tracking-[0.2em] text-[#6B7280]">Detalhes do ciclo</p>
@@ -75,14 +75,14 @@ export function StrategicCycleDetailsDialog({ cycle, onClose }: StrategicCycleDe
         </div>
 
         <div className="grid gap-6 border-t border-gray-200 px-6 py-6 md:grid-cols-2">
-          <div>
+          <div className="min-w-0">
             <p className="mb-3 text-sm font-medium text-[#1F2937]">Objetivos</p>
             <div className="space-y-2">
               {cycle.objectiveNames.length > 0 ? (
                 cycle.objectiveNames.map((objectiveName) => (
                   <div
                     key={objectiveName}
-                    className="rounded-xl bg-[#F8FAFC] px-4 py-3 text-sm text-[#1F2937]"
+                    className="break-words rounded-xl bg-[#F8FAFC] px-4 py-3 text-sm text-[#1F2937]"
                   >
                     {objectiveName}
                   </div>
@@ -93,14 +93,14 @@ export function StrategicCycleDetailsDialog({ cycle, onClose }: StrategicCycleDe
             </div>
           </div>
 
-          <div>
+          <div className="min-w-0">
             <p className="mb-3 text-sm font-medium text-[#1F2937]">Responsáveis pelos OKRs</p>
             <div className="space-y-2">
               {cycle.ownerNames.length > 0 ? (
                 cycle.ownerNames.map((ownerName) => (
                   <div
                     key={ownerName}
-                    className="rounded-xl bg-[#F8FAFC] px-4 py-3 text-sm text-[#1F2937]"
+                    className="break-words rounded-xl bg-[#F8FAFC] px-4 py-3 text-sm text-[#1F2937]"
                   >
                     {ownerName}
                   </div>

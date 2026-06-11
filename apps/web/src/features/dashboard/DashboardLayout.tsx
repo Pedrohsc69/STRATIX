@@ -1,4 +1,4 @@
-import type { PropsWithChildren } from "react";
+import { useEffect, useState, type PropsWithChildren } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Building2,
@@ -6,6 +6,7 @@ import {
   FileText,
   LayoutDashboard,
   LogOut,
+  Menu,
   Settings,
   Target,
   Users,
@@ -102,6 +103,7 @@ export function DashboardLayout({
 }: DashboardLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const availableMenuItems = menuItems.filter(
     (item) =>
       !item.requiredPermissions ||
@@ -129,14 +131,31 @@ export function DashboardLayout({
     navigate("/login", { replace: true });
   };
 
+  useEffect(() => {
+    setIsSidebarOpen(false);
+  }, [location.pathname]);
+
   return (
-    <div className="min-h-screen bg-[#F5F7FA] flex">
-      <aside className="w-72 bg-white border-r border-gray-200 p-6 flex flex-col">
+    <div className="min-h-screen overflow-x-hidden bg-[#F5F7FA] lg:flex">
+      {isSidebarOpen ? (
+        <button
+          type="button"
+          aria-label="Fechar menu"
+          onClick={() => setIsSidebarOpen(false)}
+          className="fixed inset-0 z-40 bg-[#0F172A]/45 lg:hidden"
+        />
+      ) : null}
+
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-gray-200 bg-white p-5 transition-transform duration-200 lg:static lg:max-w-none lg:translate-x-0 lg:p-6 ${
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
         <Link to="/dashboard" className="border-b border-gray-200 pb-6  mb-10">
-          <img className="w-48 pl-8" src={logoMain} alt="STRATIX" />
+          <img className="w-40 pl-2 sm:w-48 sm:pl-4" src={logoMain} alt="STRATIX" />
         </Link>
 
-        <nav className="space-y-2">
+        <nav className="space-y-2 overflow-y-auto">
           {availableMenuItems.map((item) => {
             const active = location.pathname === item.path;
             return (
@@ -181,35 +200,61 @@ export function DashboardLayout({
         </div>
       </aside>
 
-      <div className="flex-1">
-        <header className="border-b border-gray-200 bg-white px-8 py-6">
+      <div className="min-w-0 flex-1">
+        <header className="border-b border-gray-200 bg-white px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-            <div>
+            <div className="min-w-0">
+              <div className="mb-3 flex items-center justify-between gap-3 lg:hidden">
+                <button
+                  type="button"
+                  onClick={() => setIsSidebarOpen(true)}
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 text-[#4B5563] transition-colors hover:bg-[#F8FAFC]"
+                  aria-label="Abrir menu"
+                >
+                  <Menu className="h-5 w-5" />
+                </button>
+                <Link to="/dashboard" className="min-w-0">
+                  <img className="h-8 w-auto max-w-[160px]" src={logoMain} alt="STRATIX" />
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 text-[#6B7280] transition-colors hover:bg-[#F8FAFC] hover:text-[#0F2A44]"
+                  aria-label="Sair da conta"
+                >
+                  <LogOut className="h-5 w-5" />
+                </button>
+              </div>
+
               <p className="text-sm uppercase tracking-[0.24em] text-[#6B7280] mb-2">
                 {pageEyebrow ?? context.company?.businessArea ?? "STRATIX"}
               </p>
-              <h1 className="text-3xl font-semibold text-[#1F2937]">{resolvedPageTitle}</h1>
-              <p className="text-[#6B7280] mt-2">{resolvedPageDescription}</p>
+              <h1 className="text-2xl font-semibold text-[#1F2937] sm:text-3xl">
+                {resolvedPageTitle}
+              </h1>
+              <p className="mt-2 max-w-3xl text-sm text-[#6B7280] sm:text-base">
+                {resolvedPageDescription}
+              </p>
             </div>
 
-            <div className="flex items-center gap-4 rounded-2xl border border-gray-200 bg-[#F8FAFC] px-5 py-4">
-              <div className="text-right">
+            <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-gray-200 bg-[#F8FAFC] px-4 py-3 sm:gap-4 sm:px-5 sm:py-4">
+              <div className="min-w-0 flex-1 text-left sm:text-right">
                 <p className="text-sm font-medium text-[#1F2937]">
                   {context.company?.name ?? "Empresa não configurada"}
                 </p>
-                <p className="text-xs text-[#6B7280]">
+                <p className="truncate text-xs text-[#6B7280]">
                   {context.department?.name ??
                     (role === "DIRECTOR" ? "Escopo corporativo" : "Sem departamento")}
                 </p>
               </div>
-              <div className="w-11 h-11 rounded-full bg-[#2BB3A3] text-white flex items-center justify-center font-semibold">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#2BB3A3] font-semibold text-white">
                 {getInitials(context.company?.name)}
               </div>
             </div>
           </div>
         </header>
 
-        <main className="p-8">{children}</main>
+        <main className="min-w-0 p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
     </div>
   );
