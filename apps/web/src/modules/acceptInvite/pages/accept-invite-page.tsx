@@ -144,7 +144,7 @@ export function AcceptInvitePage() {
       >
         {/* Logo */}
         <div className="mb-8 flex items-center justify-center">
-          <StratixLogo theme="light" imgClassName="h-9 w-auto" />
+          <StratixLogo variant="light" imgClassName="h-9 w-auto" />
         </div>
 
         {/* Card */}

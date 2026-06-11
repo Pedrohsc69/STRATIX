@@ -6,7 +6,7 @@ export function AccessDeniedPage() {
     <div className="min-h-screen bg-[#F5F7FA] flex items-center justify-center px-6">
       <div className="max-w-lg text-center bg-white border border-gray-200 rounded-3xl shadow-sm p-10">
         <div className="max-w-lg flex justify-center pb-8">
-          <StratixLogo theme="light" variant="symbol" imgClassName="w-12" />
+          <StratixLogo variant="light" type="symbol" imgClassName="h-12 w-12" />
         </div>
         <h1 className="text-3xl font-semibold text-[#1F2937] mb-3">Acesso negado</h1>
         <p className="text-[#6B7280] mb-8">

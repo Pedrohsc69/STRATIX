@@ -128,7 +128,7 @@ export  function RecoverPasswordPage() {
         >
           {/* Logo */}
           <div className="mb-8 flex items-center justify-center">
-            <StratixLogo theme="light" imgClassName="h-9 w-auto" />
+            <StratixLogo variant="light" imgClassName="h-9 w-auto" />
           </div>
 
           <div className="rounded-2xl border border-border bg-white p-6 text-center shadow-xl sm:p-8">
@@ -163,7 +163,7 @@ export  function RecoverPasswordPage() {
         >
           {/* Logo */}
           <div className="mb-8 flex items-center justify-center">
-            <StratixLogo theme="light" imgClassName="h-9 w-auto" />
+            <StratixLogo variant="light" imgClassName="h-9 w-auto" />
           </div>
 
           <div className="rounded-2xl border border-border bg-white p-6 text-center shadow-xl sm:p-8">
@@ -198,7 +198,7 @@ export  function RecoverPasswordPage() {
         >
           {/* Mobile Logo */}
           <div className="mb-8 flex items-center justify-center lg:hidden">
-            <StratixLogo theme="light" imgClassName="h-8 w-auto" />
+            <StratixLogo variant="light" imgClassName="h-9 w-auto" />
           </div>
 
           {/* Form Card */}

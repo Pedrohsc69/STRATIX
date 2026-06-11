@@ -166,6 +166,10 @@
     background-color: rgba(56, 189, 248, 0.18);
   }
 
+  .dark [class~='bg-[#DCFCE7]'] {
+    background-color: rgba(34, 197, 94, 0.18);
+  }
+
   .dark [class~='bg-[#ECFDF5]'] {
     background-color: rgba(22, 163, 74, 0.2);
   }
@@ -230,12 +234,24 @@
     color: #FCA5A5;
   }
 
+  .dark [class~='text-[#166534]'] {
+    color: #86EFAC;
+  }
+
+  .dark [class~='text-[#B91C1C]'] {
+    color: #FCA5A5;
+  }
+
   .dark [class~='bg-red-50'] {
     background-color: rgba(220, 38, 38, 0.16);
   }
 
   .dark [class~='bg-green-50'] {
     background-color: rgba(34, 197, 94, 0.16);
+  }
+
+  .dark [class~='bg-[#F3F4F6]'] {
+    background-color: rgba(148, 163, 184, 0.16);
   }
 
   .dark [class~='border-gray-100'],
@@ -260,6 +276,11 @@
   .dark select option {
     background-color: #0F172A;
     color: #F8FAFC;
+  }
+
+  .dark [class~='focus:ring-accent']:focus,
+  .dark [class~='focus:ring-2']:focus {
+    --tw-ring-color: rgba(43, 179, 163, 0.55);
   }
 
   .dark [class~='divide-gray-100'] > :not([hidden]) ~ :not([hidden]),

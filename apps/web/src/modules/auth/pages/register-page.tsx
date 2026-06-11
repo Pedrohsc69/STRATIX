@@ -394,7 +394,7 @@ export  function RegisterPage() {
         <div className="relative z-10 flex flex-col justify-center px-16 xl:px-24 w-full">
           {/* Logo */}
           <div className="mb-12 flex items-center gap-2">
-            <StratixLogo theme="dark" imgClassName="w-40" />
+            <StratixLogo variant="dark" imgClassName="h-10 w-auto" />
           </div>
 
           {/* Value Proposition */}
@@ -465,7 +465,7 @@ export  function RegisterPage() {
         >
           {/* Mobile Logo */}
           <div className="mb-8 flex items-center justify-center lg:hidden">
-            <StratixLogo theme="light" imgClassName="h-8 w-auto" />
+            <StratixLogo variant="light" imgClassName="h-9 w-auto" />
           </div>
 
           {/* Form Card */}

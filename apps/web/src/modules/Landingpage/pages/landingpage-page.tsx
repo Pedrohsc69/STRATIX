@@ -62,7 +62,7 @@ export function LandingPage() {
               transition={{ duration: 0.6 }}
               className="flex items-center gap-2"
             >
-              <StratixLogo theme="light" imgClassName="w-40" />
+              <StratixLogo variant="light" imgClassName="h-10 w-auto" />
             </motion.div>
 
             <motion.nav
@@ -243,7 +243,7 @@ export function LandingPage() {
       <footer className="bg-primary text-white py-12">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <StratixLogo theme="dark" imgClassName="w-60" />
+            <StratixLogo variant="dark" imgClassName="h-10 w-auto" />
 
             <nav className="flex items-center gap-8">
               <a href="#" className="text-sm text-white/80 hover:text-white transition-colors">Sobre</a>

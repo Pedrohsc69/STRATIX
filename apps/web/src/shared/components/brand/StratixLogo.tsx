@@ -7,8 +7,8 @@ import logoStackedWhite from "../../assets/logos/white-versions/logo-stacked-whi
 import logoSymbolWhite from "../../assets/logos/white-versions/logo-symbol-white.png";
 
 type StratixLogoProps = {
-  variant?: "horizontal" | "stacked" | "symbol";
-  theme?: "light" | "dark" | "auto";
+  variant?: "light" | "dark" | "auto";
+  type?: "full" | "symbol" | "stacked";
   className?: string;
   imgClassName?: string;
   alt?: string;
@@ -16,31 +16,31 @@ type StratixLogoProps = {
 
 const logoMap = {
   light: {
-    horizontal: logoMain,
-    stacked: logoStacked,
+    full: logoMain,
     symbol: logoSymbol,
+    stacked: logoStacked,
   },
   dark: {
-    horizontal: logoMainWhite,
-    stacked: logoStackedWhite,
+    full: logoMainWhite,
     symbol: logoSymbolWhite,
+    stacked: logoStackedWhite,
   },
 } as const;
 
 export function StratixLogo({
-  variant = "horizontal",
-  theme = "light",
+  variant = "light",
+  type = "full",
   className,
   imgClassName,
   alt = "STRATIX",
 }: StratixLogoProps) {
   const { resolvedTheme } = useTheme();
-  const resolvedVariantTheme = theme === "auto" ? resolvedTheme : theme;
-  const src = logoMap[resolvedVariantTheme][variant];
+  const resolvedVariant = variant === "auto" ? resolvedTheme : variant;
+  const src = logoMap[resolvedVariant][type];
 
   return (
     <div className={className}>
-      <img className={imgClassName} src={src} alt={alt} />
+      <img className={`object-contain ${imgClassName ?? ""}`} src={src} alt={alt} />
     </div>
   );
 }

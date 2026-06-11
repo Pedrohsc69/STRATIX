@@ -158,7 +158,7 @@ export function DashboardLayout({
         }`}
       >
         <Link to="/dashboard" className="mb-10 border-b border-gray-200 pb-6 dark:border-slate-800">
-          <StratixLogo theme="auto" className="pl-2 sm:pl-4" imgClassName="w-40 sm:w-48" />
+          <StratixLogo variant="auto" className="pl-2 sm:pl-4" imgClassName="h-10 w-auto sm:h-11" />
         </Link>
 
         <nav className="space-y-2 overflow-y-auto">
@@ -240,7 +240,7 @@ export function DashboardLayout({
                   <Menu className="h-5 w-5" />
                 </button>
                 <Link to="/dashboard" className="min-w-0">
-                  <StratixLogo theme="auto" imgClassName="h-8 w-auto max-w-[160px]" />
+                  <StratixLogo variant="auto" imgClassName="h-8 w-auto max-w-[160px]" />
                 </Link>
                 <div className="flex items-center gap-2">
                   <button
