@@ -13,6 +13,10 @@ type LoginInput = {
   password: string;
 };
 
+type GoogleLoginInput = {
+  credential: string;
+};
+
 type CreateCompanyInput = {
   name: string;
   cnpj: string;
@@ -93,6 +97,11 @@ export async function registerDirector(input: RegisterDirectorInput) {
 
 export async function login(input: LoginInput) {
   const response = await api.post<SessionState>('/auth/login', input);
+  return enrichSessionWithCompany(response.data);
+}
+
+export async function loginWithGoogle(input: GoogleLoginInput) {
+  const response = await api.post<SessionState>('/auth/google/login', input);
   return enrichSessionWithCompany(response.data);
 }
 

@@ -8,6 +8,7 @@ import { AuditModule } from '../audit/audit.module';
 import { EmailModule } from '../email/email.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { GoogleTokenService } from './google-token.service';
 import { JwtStrategy } from './jwt.strategy';
 import { RolesGuard } from './guards/roles.guard';
 
@@ -29,7 +30,7 @@ import { RolesGuard } from './guards/roles.guard';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, RolesGuard, PrismaService],
+  providers: [AuthService, GoogleTokenService, JwtStrategy, RolesGuard, PrismaService],
   exports: [AuthService, JwtModule, PassportModule, RolesGuard],
 })
 export class AuthModule {}

@@ -11,6 +11,7 @@ import { GetInviteDetailsDto } from './dto/get-invite-details.dto';
 import { AuthService } from './auth.service';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { GoogleLoginDto } from './dto/google-login.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDirectorDto } from './dto/register-director.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
@@ -27,6 +28,11 @@ export class AuthController {
   @Post('login')
   login(@Body() body: LoginDto) {
     return this.authService.login(body);
+  }
+
+  @Post('google/login')
+  loginWithGoogle(@Body() body: GoogleLoginDto) {
+    return this.authService.loginWithGoogle(body);
   }
 
   @Get('invite-details')

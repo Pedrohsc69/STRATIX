@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import {
   BadRequestException,
   ConflictException,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { UserRole, UserStatus } from '@prisma/client';
@@ -228,6 +229,193 @@ void test('AuthService updates lastAccessAt on successful login', async () => {
 
   assert.equal(response.accessToken, 'token-login');
   assert.equal(updatedLastAccessAt instanceof Date, true);
+});
+
+void test('AuthService logs in with Google for an active existing user without creating a new account', async () => {
+  let updatedLastAccessAt: Date | undefined;
+  let createdUser = false;
+
+  const prisma = {
+    user: {
+      findUnique: async ({ where }: { where: { email?: string; id?: string } }) => {
+        if (where.email === 'diretor@empresa.com') {
+          return {
+            id: 'user-google',
+            name: 'Diretor Google',
+            email: 'diretor@empresa.com',
+            password: 'hashed-password',
+            role: UserRole.DIRECTOR,
+            status: UserStatus.ACTIVE,
+            isActive: true,
+            companyId: null,
+            departmentId: null,
+          };
+        }
+
+        if (where.id === 'user-google') {
+          return {
+            id: 'user-google',
+            name: 'Diretor Google',
+            email: 'diretor@empresa.com',
+            password: 'hashed-password',
+            role: UserRole.DIRECTOR,
+            status: UserStatus.ACTIVE,
+            isActive: true,
+            companyId: null,
+            departmentId: null,
+            company: null,
+          };
+        }
+
+        return null;
+      },
+      update: async ({ data }: { data: { lastAccessAt: Date } }) => {
+        updatedLastAccessAt = data.lastAccessAt;
+      },
+      create: async () => {
+        createdUser = true;
+      },
+    },
+  };
+
+  const service = new AuthService(
+    prisma as never,
+    { signAsync: async () => 'token-google' } as never,
+    { log: async () => undefined } as never,
+    { sendPasswordResetEmail: async () => undefined } as never,
+    {
+      verifyCredential: async () => ({
+        email: 'Diretor@Empresa.com',
+        emailVerified: true,
+        name: 'Diretor Google',
+        subject: 'google-sub-1',
+      }),
+    } as never,
+  );
+
+  const response = await service.loginWithGoogle({ credential: 'google-credential' });
+
+  assert.equal(response.accessToken, 'token-google');
+  assert.equal(response.user.email, 'diretor@empresa.com');
+  assert.equal(createdUser, false);
+  assert.equal(updatedLastAccessAt instanceof Date, true);
+});
+
+void test('AuthService rejects invalid Google credentials', async () => {
+  const service = new AuthService(
+    {
+      user: {
+        findUnique: async () => null,
+      },
+    } as never,
+    { signAsync: async () => 'token' } as never,
+    { log: async () => undefined } as never,
+    { sendPasswordResetEmail: async () => undefined } as never,
+    {
+      verifyCredential: async () => {
+        throw new UnauthorizedException('Credencial do Google inválida.');
+      },
+    } as never,
+  );
+
+  await assert.rejects(
+    () => service.loginWithGoogle({ credential: 'invalid-google-token' }),
+    UnauthorizedException,
+  );
+});
+
+void test('AuthService rejects Google login when the e-mail is not verified', async () => {
+  const service = new AuthService(
+    {
+      user: {
+        findUnique: async () => null,
+      },
+    } as never,
+    { signAsync: async () => 'token' } as never,
+    { log: async () => undefined } as never,
+    { sendPasswordResetEmail: async () => undefined } as never,
+    {
+      verifyCredential: async () => ({
+        email: 'diretor@empresa.com',
+        emailVerified: false,
+        name: 'Diretor',
+        subject: 'google-sub-2',
+      }),
+    } as never,
+  );
+
+  await assert.rejects(
+    () => service.loginWithGoogle({ credential: 'google-credential' }),
+    UnauthorizedException,
+  );
+});
+
+void test('AuthService rejects Google login when the local account does not exist', async () => {
+  const service = new AuthService(
+    {
+      user: {
+        findUnique: async () => null,
+      },
+    } as never,
+    { signAsync: async () => 'token' } as never,
+    { log: async () => undefined } as never,
+    { sendPasswordResetEmail: async () => undefined } as never,
+    {
+      verifyCredential: async () => ({
+        email: 'novo@empresa.com',
+        emailVerified: true,
+        name: 'Novo Usuário',
+        subject: 'google-sub-3',
+      }),
+    } as never,
+  );
+
+  await assert.rejects(async () => {
+    await service.loginWithGoogle({ credential: 'google-credential' });
+  }, (error: unknown) => {
+    assert.equal(error instanceof NotFoundException, true);
+    assert.equal(
+      error instanceof NotFoundException ? error.message : '',
+      'Conta não encontrada. Cadastre-se ou aceite um convite antes de entrar com Google.',
+    );
+    return true;
+  });
+});
+
+void test('AuthService rejects Google login for inactive users', async () => {
+  const service = new AuthService(
+    {
+      user: {
+        findUnique: async () => ({
+          id: 'user-inactive',
+          name: 'Usuário Inativo',
+          email: 'inativo@empresa.com',
+          password: 'hashed-password',
+          role: UserRole.MANAGER,
+          status: UserStatus.DISABLED,
+          isActive: false,
+          companyId: 'company-1',
+          departmentId: 'department-1',
+        }),
+      },
+    } as never,
+    { signAsync: async () => 'token' } as never,
+    { log: async () => undefined } as never,
+    { sendPasswordResetEmail: async () => undefined } as never,
+    {
+      verifyCredential: async () => ({
+        email: 'inativo@empresa.com',
+        emailVerified: true,
+        name: 'Usuário Inativo',
+        subject: 'google-sub-4',
+      }),
+    } as never,
+  );
+
+  await assert.rejects(
+    () => service.loginWithGoogle({ credential: 'google-credential' }),
+    UnauthorizedException,
+  );
 });
 
 void test('AuthService accepts a valid invite and activates the account', async () => {

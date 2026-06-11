@@ -1,4 +1,5 @@
 import {
+  Optional,
   BadRequestException,
   ConflictException,
   Injectable,
@@ -18,9 +19,11 @@ import type { AuthResponse, AuthenticatedUser } from './auth.types';
 import { AcceptInviteDto } from './dto/accept-invite.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { GoogleLoginDto } from './dto/google-login.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDirectorDto } from './dto/register-director.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { GoogleTokenService } from './google-token.service';
 
 @Injectable()
 export class AuthService {
@@ -29,6 +32,8 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly auditService: AuditService,
     private readonly emailService: EmailService,
+    @Optional()
+    private readonly googleTokenService?: Pick<GoogleTokenService, 'verifyCredential'>,
   ) {}
 
   async registerDirector(input: RegisterDirectorDto): Promise<AuthResponse> {
@@ -72,6 +77,35 @@ export class AuthService {
 
     if (!passwordMatches) {
       throw new UnauthorizedException('Invalid credentials');
+    }
+
+    return this.buildAuthResponse(user);
+  }
+
+  async loginWithGoogle(input: GoogleLoginDto): Promise<AuthResponse> {
+    if (!this.googleTokenService) {
+      throw new UnauthorizedException('Login com Google indisponível.');
+    }
+
+    const googleIdentity = await this.googleTokenService.verifyCredential(input.credential);
+
+    if (!googleIdentity.emailVerified) {
+      throw new UnauthorizedException('A conta Google precisa ter um e-mail verificado.');
+    }
+
+    const normalizedEmail = googleIdentity.email.toLowerCase();
+    const user = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    if (!user) {
+      throw new NotFoundException(
+        'Conta não encontrada. Cadastre-se ou aceite um convite antes de entrar com Google.',
+      );
+    }
+
+    if (!user.isActive || user.status !== UserStatus.ACTIVE) {
+      throw new UnauthorizedException('Conta inativa. Entre em contato com o administrador.');
     }
 
     return this.buildAuthResponse(user);

@@ -2,12 +2,36 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import { Link, useNavigate } from "react-router-dom";
 import { Lock, Mail, Eye, EyeOff, Shield } from "lucide-react";
-import { login } from "../services/auth-service";
+import { GoogleLoginButton } from "../components/google-login-button";
+import { login, loginWithGoogle } from "../services/auth-service";
 import { saveSession } from "../../../store/app-store";
 import { StratixLogo } from "../../../shared/components/brand/StratixLogo";
 
+function getRequestErrorMessage(error: unknown, fallback: string) {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "response" in error &&
+    typeof error.response === "object" &&
+    error.response !== null &&
+    "data" in error.response &&
+    typeof error.response.data === "object" &&
+    error.response.data !== null &&
+    "message" in error.response.data
+  ) {
+    const { message } = error.response.data as { message?: string | string[] };
 
+    if (typeof message === "string") {
+      return message;
+    }
 
+    if (Array.isArray(message) && typeof message[0] === "string") {
+      return message[0];
+    }
+  }
+
+  return fallback;
+}
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -15,7 +39,8 @@ export function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,16 +51,36 @@ export function LoginPage() {
       return;
     }
 
-    setLoading(true);
+    setPasswordLoading(true);
 
     try {
       const session = await login({ email, password });
       saveSession(session);
       navigate("/dashboard");
-    } catch {
-      setError("Credenciais inválidas");
+    } catch (requestError) {
+      setError(getRequestErrorMessage(requestError, "Credenciais inválidas"));
     } finally {
-      setLoading(false);
+      setPasswordLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async (credential: string) => {
+    setError("");
+    setGoogleLoading(true);
+
+    try {
+      const session = await loginWithGoogle({ credential });
+      saveSession(session);
+      navigate("/dashboard");
+    } catch (requestError) {
+      setError(
+        getRequestErrorMessage(
+          requestError,
+          "Não foi possível entrar com Google no momento.",
+        ),
+      );
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -139,6 +184,20 @@ export function LoginPage() {
               </motion.div>
             )}
 
+            <GoogleLoginButton
+              disabled={passwordLoading || googleLoading}
+              onCredential={handleGoogleLogin}
+              onError={setError}
+            />
+
+            <div className="my-6 flex items-center gap-3">
+              <div className="h-px flex-1 bg-border" />
+              <span className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                ou continue com e-mail
+              </span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Email Input */}
@@ -197,10 +256,10 @@ export function LoginPage() {
                   type="submit"
                   whileHover={{ scale: 1.01 }}
                   whileTap={{ scale: 0.99 }}
-                  disabled={loading}
+                  disabled={passwordLoading || googleLoading}
                   className="w-full py-3.5 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 disabled:opacity-70"
                 >
-                  {loading ? "Entrando..." : "Entrar"}
+                  {passwordLoading ? "Entrando..." : "Entrar"}
                 </motion.button>
               
             </form>

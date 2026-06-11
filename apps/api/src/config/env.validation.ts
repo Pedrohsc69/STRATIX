@@ -43,6 +43,7 @@ export function validateEnv(env: EnvRecord) {
     MONGODB_DATABASE: mongoDb,
     JWT_SECRET: ensureRequired(env, 'JWT_SECRET'),
     JWT_EXPIRES_IN: ensureRequired(env, 'JWT_EXPIRES_IN'),
+    GOOGLE_CLIENT_ID: env.GOOGLE_CLIENT_ID?.trim() || '',
     FRONTEND_URL: ensureRequired(env, 'FRONTEND_URL'),
     EMAIL_FROM: ensureRequired(env, 'EMAIL_FROM'),
     EMAIL_DEMO_MODE: emailDemoMode,
