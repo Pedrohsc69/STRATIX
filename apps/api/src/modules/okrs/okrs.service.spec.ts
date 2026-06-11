@@ -827,6 +827,7 @@ void test('OkrsService blocks changing the responsible when the cycle is closed'
 
 void test('OkrsService creates a ProgressOKR record when progress is updated', async () => {
   let createdProgressOkrId: string | undefined;
+  let createdProgressActorId: string | undefined;
   let createdProgressValue: number | undefined;
   let createdProgressId: string | undefined;
   const auditCommands: Array<Record<string, unknown>> = [];
@@ -834,6 +835,7 @@ void test('OkrsService creates a ProgressOKR record when progress is updated', a
     progressOKR: {
       create: async ({ data }: { data: Record<string, unknown> }) => {
         createdProgressOkrId = data.okrId as string | undefined;
+        createdProgressActorId = data.actorId as string | undefined;
         createdProgressValue = data.value as number | undefined;
         createdProgressId = 'progress-1';
         return {
@@ -878,6 +880,13 @@ void test('OkrsService creates a ProgressOKR record when progress is updated', a
             date: new Date('2026-05-10T00:00:00Z'),
             comment: 'Atualizacao',
             createdAt: new Date('2026-05-10T00:00:00Z'),
+            actorId: 'manager-1',
+            actor: {
+              id: 'manager-1',
+              name: 'Gestora',
+              email: 'gestora@empresa.com',
+              role: UserRole.MANAGER,
+            },
           },
         ],
       }),
@@ -942,6 +951,7 @@ void test('OkrsService creates a ProgressOKR record when progress is updated', a
   );
 
   assert.equal(createdProgressOkrId, 'okr-1');
+  assert.equal(createdProgressActorId, 'manager-1');
   assert.equal(createdProgressValue, 30.13);
   assert.equal(updated.currentValue, 30.13);
   assert.equal(auditCommands[0]?.action, 'OKR_PROGRESS_UPDATED');
@@ -1342,6 +1352,13 @@ void test('OkrsService returns paginated progress history ordered by date desc',
             comment: 'Segunda atualização',
             date: new Date('2026-05-11T00:00:00Z'),
             createdAt: new Date('2026-05-11T00:00:00Z'),
+            actorId: 'director-1',
+            actor: {
+              id: 'director-1',
+              name: 'Diretora',
+              email: 'diretora@empresa.com',
+              role: UserRole.DIRECTOR,
+            },
           },
           {
             id: 'progress-1',
@@ -1349,6 +1366,8 @@ void test('OkrsService returns paginated progress history ordered by date desc',
             comment: 'Primeira atualização',
             date: new Date('2026-05-10T00:00:00Z'),
             createdAt: new Date('2026-05-10T00:00:00Z'),
+            actorId: null,
+            actor: null,
           },
         ];
       },
@@ -1364,10 +1383,15 @@ void test('OkrsService returns paginated progress history ordered by date desc',
 
   assert.equal(response.items.length, 2);
   assert.equal(response.items[0]?.id, 'progress-2');
+  assert.equal(response.items[0]?.actorName, 'Diretora');
+  assert.equal(response.items[0]?.actorEmail, 'diretora@empresa.com');
+  assert.equal(response.items[0]?.actorRole, UserRole.DIRECTOR);
   assert.equal(response.page, 1);
   assert.equal(response.limit, 2);
   assert.equal(response.total, 3);
   assert.equal(response.totalPages, 2);
+  assert.equal(response.items[1]?.actorId, null);
+  assert.equal(response.items[1]?.actorName, null);
 });
 
 void test('OkrsService progress history is readable for closed cycles', async () => {
@@ -1392,6 +1416,8 @@ void test('OkrsService progress history is readable for closed cycles', async ()
           comment: 'Fechamento',
           date: new Date('2026-02-01T00:00:00Z'),
           createdAt: new Date('2026-02-01T00:00:00Z'),
+          actorId: null,
+          actor: null,
         },
       ],
       count: async () => 1,
@@ -1406,6 +1432,7 @@ void test('OkrsService progress history is readable for closed cycles', async ()
 
   assert.equal(response.items.length, 1);
   assert.equal(response.items[0]?.id, 'progress-1');
+  assert.equal(response.items[0]?.actorName, null);
 });
 
 void test('OkrsService blocks managers from reading progress history outside their department', async () => {

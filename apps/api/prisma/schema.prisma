@@ -72,6 +72,7 @@ model User {
   okrs OKR[]
   passwordResetTokens PasswordResetToken[]
   settings UserSettings?
+  progressUpdates ProgressOKR[] @relation("ProgressActor")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -220,6 +221,9 @@ model ProgressOKR {
 
   okrId String
   okr   OKR @relation(fields: [okrId], references: [id])
+
+  actorId String?
+  actor   User?   @relation("ProgressActor", fields: [actorId], references: [id])
 
   createdAt DateTime @default(now())
 }

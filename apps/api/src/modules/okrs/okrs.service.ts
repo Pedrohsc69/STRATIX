@@ -76,6 +76,13 @@ type OkrRecord = {
     date: Date;
     comment: string;
     createdAt: Date;
+    actorId?: string | null;
+    actor?: {
+      id: string;
+      name: string;
+      email: string;
+      role: UserRole;
+    } | null;
   }>;
 };
 
@@ -443,6 +450,7 @@ export class OkrsService {
       const createdProgress = await tx.progressOKR.create({
         data: {
           okrId: okr.id,
+          actorId: actor.sub,
           value: normalizedValue,
           date: new Date(),
           comment: input.comment?.trim() || 'Atualização de progresso',
@@ -533,6 +541,15 @@ export class OkrsService {
           comment: true,
           date: true,
           createdAt: true,
+          actorId: true,
+          actor: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              role: true,
+            },
+          },
         },
       }),
       this.prisma.progressOKR.count({
@@ -963,13 +980,12 @@ export class OkrsService {
       }),
       lastUpdatedAt: lastUpdatedAt.toISOString(),
       isOwnedByCurrentUser: okr.responsibleId === actorId,
-      progressHistory: okr.progress.map((progressItem) => ({
-        id: progressItem.id,
-        value: normalizeOkrValue(progressItem.value, metricType),
-        date: progressItem.date.toISOString(),
-        comment: progressItem.comment,
-        createdAt: progressItem.createdAt.toISOString(),
-      })),
+      progressHistory: okr.progress.map((progressItem) =>
+        this.mapProgressHistoryItem({
+          ...progressItem,
+          value: normalizeOkrValue(progressItem.value, metricType),
+        }),
+      ),
     };
   }
 
@@ -1053,6 +1069,15 @@ export class OkrsService {
           date: true,
           comment: true,
           createdAt: true,
+          actorId: true,
+          actor: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              role: true,
+            },
+          },
         },
       },
     } satisfies Prisma.OKRInclude;
@@ -1064,6 +1089,13 @@ export class OkrsService {
     comment: string;
     date: Date;
     createdAt: Date;
+    actorId?: string | null;
+    actor?: {
+      id: string;
+      name: string;
+      email: string;
+      role: UserRole;
+    } | null;
   }): OkrProgressHistoryItem {
     return {
       id: item.id,
@@ -1071,6 +1103,10 @@ export class OkrsService {
       comment: item.comment,
       date: item.date.toISOString(),
       createdAt: item.createdAt.toISOString(),
+      actorId: item.actorId ?? item.actor?.id ?? null,
+      actorName: item.actor?.name ?? null,
+      actorEmail: item.actor?.email ?? null,
+      actorRole: item.actor?.role ?? null,
     };
   }
 

@@ -15,6 +15,18 @@ function formatDate(value: string) {
   return new Date(value).toLocaleDateString('pt-BR');
 }
 
+function getActorLabel(historyItem: OkrProgressHistoryItem) {
+  if (!historyItem.actorId) {
+    return 'Usuario nao identificado';
+  }
+
+  if (historyItem.actorEmail) {
+    return `${historyItem.actorName ?? 'Usuario nao identificado'} (${historyItem.actorEmail})`;
+  }
+
+  return historyItem.actorName ?? 'Usuario nao identificado';
+}
+
 export function OKRDetailsModal({ okr, onClose }: OKRDetailsModalProps) {
   const [historyItems, setHistoryItems] = useState<OkrProgressHistoryItem[]>(okr.progressHistory);
   const [historyPage, setHistoryPage] = useState(1);
@@ -186,13 +198,18 @@ export function OKRDetailsModal({ okr, onClose }: OKRDetailsModalProps) {
                   className="rounded-2xl border border-gray-200 bg-[#F8FAFC] px-4 py-3"
                 >
                   <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                    <div>
+                    <div className="min-w-0">
                       <p className="font-medium text-[#1F2937]">
                         Valor registrado: {formatOkrValue(historyItem.value, okr.metricType)}
                       </p>
-                      <p className="mt-1 break-words text-sm text-[#6B7280]">{historyItem.comment}</p>
+                      <p className="mt-1 break-words text-sm text-[#6B7280]">
+                        {historyItem.comment}
+                      </p>
+                      <p className="mt-2 break-words text-sm text-[#4B5563]">
+                        Atualizado por: {getActorLabel(historyItem)}
+                      </p>
                     </div>
-                    <p className="text-sm text-[#6B7280]">{formatDate(historyItem.date)}</p>
+                    <p className="shrink-0 text-sm text-[#6B7280]">{formatDate(historyItem.date)}</p>
                   </div>
                 </div>
               ))

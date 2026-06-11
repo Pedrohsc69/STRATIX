@@ -51,6 +51,10 @@ export type OkrProgressHistoryItem = {
   date: string;
   comment: string;
   createdAt: string;
+  actorId: string | null;
+  actorName: string | null;
+  actorEmail: string | null;
+  actorRole: UserRole | null;
 };
 
 export type PaginatedOkrProgressHistoryResponse = {
