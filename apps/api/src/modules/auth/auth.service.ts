@@ -20,6 +20,7 @@ import { AcceptInviteDto } from './dto/accept-invite.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { GoogleLoginDto } from './dto/google-login.dto';
+import { GoogleRegisterDirectorDto } from './dto/google-register-director.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDirectorDto } from './dto/register-director.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
@@ -117,6 +118,46 @@ export class AuthService {
     return this.buildAuthResponse(user);
   }
 
+  async registerDirectorWithGoogle(input: GoogleRegisterDirectorDto): Promise<AuthResponse> {
+    const googleIdentity = await this.googleTokenService.verifyCredential(input.credential);
+    const normalizedEmail = googleIdentity.email.trim().toLowerCase();
+
+    if (!googleIdentity.emailVerified) {
+      this.logger.warn(
+        `Google director registration rejected: email_not_verified email=${this.maskEmail(normalizedEmail)}`,
+      );
+      throw new UnauthorizedException('A conta Google precisa ter um e-mail verificado.');
+    }
+
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    if (existingUser) {
+      this.logger.warn(
+        `Google director registration rejected: local_user_already_exists email=${this.maskEmail(normalizedEmail)}`,
+      );
+      throw new ConflictException(
+        'Já existe uma conta com este e-mail. Faça login ou use outro e-mail.',
+      );
+    }
+
+    const internalPassword = randomBytes(32).toString('hex');
+    const hashedPassword = await bcrypt.hash(internalPassword, 10);
+    const user = await this.prisma.user.create({
+      data: {
+        name: this.resolveGoogleDisplayName(googleIdentity.name, normalizedEmail),
+        email: normalizedEmail,
+        password: hashedPassword,
+        role: UserRole.DIRECTOR,
+        status: UserStatus.ACTIVE,
+        isActive: true,
+      },
+    });
+
+    return this.buildAuthResponse(user);
+  }
+
   private maskEmail(email: string) {
     const [localPart, domainPart] = email.split('@');
 
@@ -127,6 +168,16 @@ export class AuthService {
     const visibleLocal = localPart.length <= 2 ? localPart[0] ?? '*' : localPart.slice(0, 2);
 
     return `${visibleLocal}***@${domainPart}`;
+  }
+
+  private resolveGoogleDisplayName(name: string | null, email: string) {
+    const trimmedName = name?.trim();
+
+    if (trimmedName) {
+      return trimmedName;
+    }
+
+    return email.split('@')[0] ?? email;
   }
 
   async getInviteDetails(token: string) {

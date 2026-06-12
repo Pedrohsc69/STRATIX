@@ -429,6 +429,150 @@ void test('AuthService rejects Google login for inactive users', async () => {
   );
 });
 
+void test('AuthService registers a director with Google and returns auth response', async () => {
+  let createdData: Record<string, unknown> | null = null;
+  let updatedLastAccessAt: Date | undefined;
+
+  const prisma = {
+    user: {
+      findUnique: async ({ where }: { where: { email?: string; id?: string } }) => {
+        if (where.email === 'diretor.google@empresa.com') {
+          return null;
+        }
+
+        if (where.id === 'user-google-register') {
+          return {
+            id: 'user-google-register',
+            name: 'Diretora Google',
+            email: 'diretor.google@empresa.com',
+            password: String(createdData?.password),
+            role: UserRole.DIRECTOR,
+            status: UserStatus.ACTIVE,
+            isActive: true,
+            companyId: null,
+            departmentId: null,
+            company: null,
+          };
+        }
+
+        return null;
+      },
+      create: async ({ data }: { data: Record<string, unknown> }) => {
+        createdData = data;
+
+        return {
+          id: 'user-google-register',
+          name: data.name,
+          email: data.email,
+          password: data.password,
+          role: data.role,
+          status: data.status,
+          isActive: data.isActive,
+          companyId: null,
+          departmentId: null,
+        };
+      },
+      update: async ({ data }: { data: { lastAccessAt: Date } }) => {
+        updatedLastAccessAt = data.lastAccessAt;
+      },
+    },
+  };
+
+  const service = new AuthService(
+    prisma as never,
+    { signAsync: async () => 'token-google-register' } as never,
+    { log: async () => undefined } as never,
+    { sendPasswordResetEmail: async () => undefined } as never,
+    {
+      verifyCredential: async () => ({
+        email: ' Diretor.Google@Empresa.com ',
+        emailVerified: true,
+        name: 'Diretora Google',
+        subject: 'google-sub-register',
+      }),
+    } as never,
+  );
+
+  const response = await service.registerDirectorWithGoogle({ credential: 'google-credential' });
+
+  assert.equal(response.accessToken, 'token-google-register');
+  assert.equal(response.user.email, 'diretor.google@empresa.com');
+  assert.equal(response.user.name, 'Diretora Google');
+  assert.equal(response.user.role, UserRole.DIRECTOR);
+  assert.notEqual(createdData, null);
+  const createdUserData = createdData as unknown as Record<string, unknown>;
+  assert.equal(createdUserData.role, UserRole.DIRECTOR);
+  assert.equal(createdUserData.status, UserStatus.ACTIVE);
+  assert.equal(createdUserData.isActive, true);
+  assert.equal(createdUserData.email, 'diretor.google@empresa.com');
+  assert.notEqual(typeof createdUserData.password === 'string' ? createdUserData.password : '', '');
+  assert.notEqual(createdUserData.password, 'google-credential');
+  assert.equal(updatedLastAccessAt instanceof Date, true);
+});
+
+void test('AuthService rejects Google director registration when e-mail already exists', async () => {
+  let createdUser = false;
+  const service = new AuthService(
+    {
+      user: {
+        findUnique: async ({ where }: { where: { email?: string } }) =>
+          where.email === 'existente@empresa.com' ? { id: 'existing-user' } : null,
+        create: async () => {
+          createdUser = true;
+        },
+      },
+    } as never,
+    { signAsync: async () => 'token' } as never,
+    { log: async () => undefined } as never,
+    { sendPasswordResetEmail: async () => undefined } as never,
+    {
+      verifyCredential: async () => ({
+        email: 'existente@empresa.com',
+        emailVerified: true,
+        name: 'Diretor Existente',
+        subject: 'google-sub-existing',
+      }),
+    } as never,
+  );
+
+  await assert.rejects(
+    () => service.registerDirectorWithGoogle({ credential: 'google-credential' }),
+    ConflictException,
+  );
+  assert.equal(createdUser, false);
+});
+
+void test('AuthService rejects Google director registration when e-mail is not verified', async () => {
+  let userLookup = false;
+  const service = new AuthService(
+    {
+      user: {
+        findUnique: async () => {
+          userLookup = true;
+          return null;
+        },
+      },
+    } as never,
+    { signAsync: async () => 'token' } as never,
+    { log: async () => undefined } as never,
+    { sendPasswordResetEmail: async () => undefined } as never,
+    {
+      verifyCredential: async () => ({
+        email: 'novo@empresa.com',
+        emailVerified: false,
+        name: 'Novo Diretor',
+        subject: 'google-sub-unverified',
+      }),
+    } as never,
+  );
+
+  await assert.rejects(
+    () => service.registerDirectorWithGoogle({ credential: 'google-credential' }),
+    UnauthorizedException,
+  );
+  assert.equal(userLookup, false);
+});
+
 void test('AuthService accepts a valid invite and activates the account', async () => {
   let createdPassword = '';
   const updatedDepartmentIds: string[] = [];

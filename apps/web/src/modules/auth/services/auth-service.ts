@@ -105,6 +105,11 @@ export async function loginWithGoogle(input: GoogleLoginInput) {
   return enrichSessionWithCompany(response.data);
 }
 
+export async function registerDirectorWithGoogle(input: GoogleLoginInput) {
+  const response = await api.post<SessionState>('/auth/google/register-director', input);
+  return response.data;
+}
+
 export async function createCompany(input: CreateCompanyInput) {
   const response = await api.post('/companies', input);
   return response.data as {

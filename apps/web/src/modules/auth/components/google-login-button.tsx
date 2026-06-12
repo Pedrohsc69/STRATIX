@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 type GoogleLoginButtonProps = {
   disabled?: boolean;
+  text?: GoogleButtonConfiguration["text"];
   onCredential: (credential: string) => void | Promise<void>;
   onError: (message: string) => void;
 };
@@ -50,6 +51,7 @@ function loadGoogleIdentityScript() {
 
 export function GoogleLoginButton({
   disabled = false,
+  text = "continue_with",
   onCredential,
   onError,
 }: GoogleLoginButtonProps) {
@@ -93,7 +95,7 @@ export function GoogleLoginButton({
         window.google.accounts.id.renderButton(containerRef.current, {
           theme: "outline",
           size: "large",
-          text: "continue_with",
+          text,
           shape: "pill",
           width: containerRef.current.offsetWidth || 360,
           logo_alignment: "left",
@@ -108,7 +110,7 @@ export function GoogleLoginButton({
     return () => {
       cancelled = true;
     };
-  }, [clientId]);
+  }, [clientId, text]);
 
   if (!clientId) {
     return (

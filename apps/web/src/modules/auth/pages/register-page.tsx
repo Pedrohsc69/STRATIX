@@ -29,9 +29,11 @@ import {
   createDepartment,
   createInvite,
   registerDirector,
+  registerDirectorWithGoogle,
 } from "../services/auth-service";
 import { getSession, saveSession } from "../../../store/app-store";
 import { StratixLogo } from "../../../shared/components/brand/StratixLogo";
+import { GoogleLoginButton } from "../components/google-login-button";
 
 
 
@@ -110,6 +112,7 @@ export  function RegisterPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [googleSubmitting, setGoogleSubmitting] = useState(false);
   const [demoInviteLinks, setDemoInviteLinks] = useState<DemoInviteLink[]>([]);
 
   const steps = [
@@ -245,6 +248,47 @@ export  function RegisterPage() {
       setSubmitError("Não foi possível concluir esta etapa. Revise os dados e tente novamente.");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const getRequestErrorMessage = (error: unknown) => {
+    const maybeError = error as {
+      response?: {
+        data?: {
+          message?: string | string[];
+        };
+      };
+    };
+
+    if (typeof maybeError.response?.data?.message === "string") {
+      return maybeError.response.data.message;
+    }
+
+    if (Array.isArray(maybeError.response?.data?.message)) {
+      return maybeError.response.data.message.join(", ");
+    }
+
+    return "Não foi possível concluir o cadastro com Google.";
+  };
+
+  const handleGoogleRegister = async (credential: string) => {
+    setSubmitError("");
+    setErrors({});
+    setGoogleSubmitting(true);
+
+    try {
+      const session = await registerDirectorWithGoogle({ credential });
+      saveSession(session);
+      setFormData((current) => ({
+        ...current,
+        fullName: session.user.name,
+        email: session.user.email,
+      }));
+      setCurrentStep(2);
+    } catch (requestError) {
+      setSubmitError(getRequestErrorMessage(requestError));
+    } finally {
+      setGoogleSubmitting(false);
     }
   };
 
@@ -534,6 +578,21 @@ export  function RegisterPage() {
                     <p className="text-muted-foreground">Você terá controle total sobre a estrutura organizacional</p>
                   </div>
 
+                  <GoogleLoginButton
+                    disabled={submitting || googleSubmitting}
+                    text="signup_with"
+                    onCredential={handleGoogleRegister}
+                    onError={setSubmitError}
+                  />
+
+                  <div className="my-6 flex items-center gap-3">
+                    <div className="h-px flex-1 bg-border" />
+                    <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      ou cadastre-se com e-mail
+                    </span>
+                    <div className="h-px flex-1 bg-border" />
+                  </div>
+
                   <div className="space-y-4">
                     {/* Nome Completo */}
                     <div>
@@ -648,7 +707,7 @@ export  function RegisterPage() {
                   <button
                     onClick={handleNext}
                     type="button"
-                    disabled={submitting}
+                    disabled={submitting || googleSubmitting}
                     className="w-full mt-6 py-3.5 bg-primary text-white font-medium rounded-lg hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 disabled:opacity-70"
                   >
                     {submitting ? "Salvando..." : "Continuar"}
