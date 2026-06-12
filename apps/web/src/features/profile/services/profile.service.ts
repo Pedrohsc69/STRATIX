@@ -2,7 +2,6 @@ import { api } from "../../../services/api";
 import type {
   ChangePasswordPayload,
   ProfileResponse,
-  UpdateAvatarPayload,
 } from "../types/profile.types";
 
 export async function fetchProfile() {
@@ -27,7 +26,15 @@ export async function requestOwnPasswordRecovery(email: string) {
   return response.data;
 }
 
-export async function updateAvatar(payload: UpdateAvatarPayload) {
-  const response = await api.patch<ProfileResponse>("/users/me/avatar", payload);
+export async function uploadAvatar(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await api.patch<ProfileResponse>("/users/me/avatar-upload", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+
   return response.data;
 }

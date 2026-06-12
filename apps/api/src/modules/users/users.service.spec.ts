@@ -1,18 +1,22 @@
 import 'reflect-metadata';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { UserRole, UserStatus } from '@prisma/client';
 import { ROLES_KEY } from '../auth/decorators/roles.decorator';
 import { DashboardDomainService } from '../dashboard/domain/services/dashboard-domain.service';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 
-function createService(prisma: Record<string, unknown>) {
+function createService(
+  prisma: Record<string, unknown>,
+  avatarStorage: Record<string, unknown> | null = null,
+) {
   return new UsersService(
     prisma as never,
     new DashboardDomainService(),
     { log: async () => undefined } as never,
+    avatarStorage as never,
   );
 }
 
@@ -364,6 +368,88 @@ void test('UsersService updates only the authenticated user avatar', async () =>
   );
 
   assert.equal(updatedAvatarUrl, 'https://cdn.stratix.test/new-avatar.png');
+  assert.equal(response.profile.email, 'diretora@empresa.com');
+});
+
+void test('UsersService rejects avatar upload with invalid image format', async () => {
+  const service = createService({
+    user: {
+      findUnique: async () => ({
+        id: 'user-1',
+        email: 'diretora@empresa.com',
+        avatarUrl: null,
+        companyId: 'company-1',
+        departmentId: null,
+      }),
+    },
+  });
+
+  await assert.rejects(
+    () =>
+      service.uploadMyAvatar(
+        { sub: 'user-1', email: 'diretora@empresa.com', role: UserRole.DIRECTOR },
+        {
+          mimetype: 'application/pdf',
+          size: 1024,
+          buffer: Buffer.from('pdf'),
+        } as Express.Multer.File,
+      ),
+    BadRequestException,
+  );
+});
+
+void test('UsersService uploads avatar and updates the authenticated user avatarUrl', async () => {
+  let updatedAvatarUrl = '';
+  const service = createService(
+    {
+      user: {
+        findUnique: async ({ where }: { where: { id: string } }) => {
+          if (where.id === 'user-1') {
+            return {
+              id: 'user-1',
+              name: 'Diretora',
+              email: 'diretora@empresa.com',
+              avatarUrl: null,
+              role: UserRole.DIRECTOR,
+              status: UserStatus.ACTIVE,
+              lastAccessAt: new Date('2026-06-01T10:00:00.000Z'),
+              companyId: 'company-1',
+              departmentId: null,
+              company: { id: 'company-1', name: 'Empresa 1', businessArea: 'Tecnologia' },
+              department: null,
+            };
+          }
+
+          return null;
+        },
+        update: async ({ data }: { data: { avatarUrl: string | null } }) => {
+          updatedAvatarUrl = data.avatarUrl ?? '';
+        },
+        count: async () => 10,
+      },
+      department: {
+        count: async () => 3,
+        findFirst: async () => null,
+      },
+      strategicCycle: {
+        count: async () => 4,
+      },
+    },
+    {
+      uploadAvatar: async () => 'https://res.cloudinary.com/demo/avatar.webp',
+    },
+  );
+
+  const response = await service.uploadMyAvatar(
+    { sub: 'user-1', email: 'diretora@empresa.com', role: UserRole.DIRECTOR },
+    {
+      mimetype: 'image/webp',
+      size: 1024,
+      buffer: Buffer.from('webp'),
+    } as Express.Multer.File,
+  );
+
+  assert.equal(updatedAvatarUrl, 'https://res.cloudinary.com/demo/avatar.webp');
   assert.equal(response.profile.email, 'diretora@empresa.com');
 });
 

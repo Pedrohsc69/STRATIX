@@ -115,6 +115,15 @@ export class AuthService {
       throw new UnauthorizedException('Conta inativa. Entre em contato com o administrador.');
     }
 
+    if (!user.avatarUrl && googleIdentity.picture) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          avatarUrl: googleIdentity.picture,
+        },
+      });
+    }
+
     return this.buildAuthResponse(user);
   }
 
@@ -149,6 +158,7 @@ export class AuthService {
         name: this.resolveGoogleDisplayName(googleIdentity.name, normalizedEmail),
         email: normalizedEmail,
         password: hashedPassword,
+        avatarUrl: googleIdentity.picture,
         role: UserRole.DIRECTOR,
         status: UserStatus.ACTIVE,
         isActive: true,
@@ -570,6 +580,7 @@ export class AuthService {
         role: currentUser.role,
         status: currentUser.status,
         isActive: currentUser.isActive,
+        avatarUrl: currentUser.avatarUrl ?? null,
         companyId: currentUser.companyId ?? null,
         departmentId: currentUser.departmentId ?? null,
       },

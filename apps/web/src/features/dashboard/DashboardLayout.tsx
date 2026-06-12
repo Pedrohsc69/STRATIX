@@ -206,9 +206,17 @@ export function DashboardLayout({
 
           <div className="flex items-center justify-between gap-3">
             <Link to="/profile" className="flex min-w-0 items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#1E4E79] text-white dark:bg-cyan-600 dark:text-slate-950">
-                {getInitials(context.user.name)}
-              </div>
+              {context.user.avatarUrl ? (
+                <img
+                  src={context.user.avatarUrl}
+                  alt={context.user.name}
+                  className="h-11 w-11 rounded-full border border-gray-200 object-cover dark:border-slate-700"
+                />
+              ) : (
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#1E4E79] text-white dark:bg-cyan-600 dark:text-slate-950">
+                  {getInitials(context.user.name)}
+                </div>
+              )}
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium text-[#1F2937] dark:text-slate-100">{context.user.name}</p>
                 <p className="text-xs text-[#6B7280] dark:text-slate-400">{context.user.role}</p>

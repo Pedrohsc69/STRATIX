@@ -34,6 +34,7 @@ void test('GoogleTokenService accepts both Google issuers and normalizes the e-m
           email_verified: true,
           iss: 'https://accounts.google.com',
           name: 'STRATIX',
+          picture: 'https://lh3.googleusercontent.com/avatar.png',
           sub: 'google-subject-1',
         }),
       }),
@@ -46,6 +47,7 @@ void test('GoogleTokenService accepts both Google issuers and normalizes the e-m
     email: 'stratix05@gmail.com',
     emailVerified: true,
     name: 'STRATIX',
+    picture: 'https://lh3.googleusercontent.com/avatar.png',
     subject: 'google-subject-1',
   });
 });

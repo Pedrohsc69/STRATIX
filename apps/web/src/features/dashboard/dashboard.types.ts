@@ -39,6 +39,7 @@ export type DashboardContext = {
   user: {
     id: string;
     name: string;
+    avatarUrl?: string | null;
     role: DashboardRole;
     status: "PENDING" | "ACTIVE" | "DISABLED";
   };

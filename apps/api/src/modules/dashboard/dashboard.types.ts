@@ -54,6 +54,7 @@ export type DashboardDepartmentContext = {
 export type DashboardUserContext = {
   id: string;
   name: string;
+  avatarUrl?: string | null;
   role: UserRole;
   status: UserStatus;
 };

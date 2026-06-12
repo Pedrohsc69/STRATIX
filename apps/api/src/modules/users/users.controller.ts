@@ -1,4 +1,6 @@
-import { Body, Controller, Get, Param, Patch, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Query, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import {
   type AuditRequestLike,
   extractAuditRequestContext,
@@ -30,6 +32,23 @@ export class UsersController {
     @Req() request: AuditRequestLike,
   ) {
     return this.usersService.updateMyAvatar(user, body, extractAuditRequestContext(request));
+  }
+
+  @Patch('me/avatar-upload')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: {
+        fileSize: 2 * 1024 * 1024,
+      },
+    }),
+  )
+  uploadMyAvatar(
+    @CurrentUser() user: AuthenticatedUser,
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Req() request: AuditRequestLike,
+  ) {
+    return this.usersService.uploadMyAvatar(user, file, extractAuditRequestContext(request));
   }
 
   @Get()

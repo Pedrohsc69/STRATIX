@@ -15,6 +15,7 @@ export type AuthResponse = {
     role: UserRole;
     status: UserStatus;
     isActive: boolean;
+    avatarUrl: string | null;
     companyId: string | null;
     departmentId: string | null;
   };

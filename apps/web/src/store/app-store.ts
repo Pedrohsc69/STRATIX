@@ -7,6 +7,7 @@ export type SessionUser = {
   role: UserRole;
   status: 'PENDING' | 'ACTIVE' | 'DISABLED';
   isActive: boolean;
+  avatarUrl?: string | null;
   companyId: string | null;
   departmentId: string | null;
 };

@@ -80,6 +80,7 @@ export class GetDashboardUseCase {
         user: {
           id: user.id,
           name: user.name,
+          avatarUrl: user.avatarUrl,
           role: user.role,
           status: user.status,
         },
@@ -366,7 +367,7 @@ export class GetDashboardUseCase {
     departments: Array<{
       id: string;
       name: string;
-      users: Array<{ id: string; name: string; role: UserRole; status: UserStatus }>;
+      users: Array<{ id: string; name: string; role: UserRole; status: UserStatus; avatarUrl?: string | null }>;
       cycles: Array<{
         id: string;
         name: string;
@@ -548,6 +549,7 @@ export class GetDashboardUseCase {
       | {
           id: string;
           name: string;
+          avatarUrl?: string | null;
           role: UserRole;
           status: UserStatus;
         }
@@ -561,6 +563,7 @@ export class GetDashboardUseCase {
     return {
       id: user.id,
       name: user.name,
+      avatarUrl: user.avatarUrl ?? null,
       role: user.role,
       status: user.status,
     };

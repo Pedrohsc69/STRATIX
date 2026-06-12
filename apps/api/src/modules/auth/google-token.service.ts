@@ -6,6 +6,7 @@ type GoogleIdentity = {
   email: string;
   emailVerified: boolean;
   name: string | null;
+  picture: string | null;
   subject: string;
 };
 
@@ -55,6 +56,7 @@ export class GoogleTokenService {
         email: payload.email.trim().toLowerCase(),
         emailVerified: payload.email_verified === true,
         name: payload.name ?? null,
+        picture: payload.picture ?? null,
         subject: payload.sub,
       };
     } catch (error) {

@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { Prisma, UserRole, UserStatus } from '@prisma/client';
 import { PrismaService } from '../../core/shared/prisma.service';
@@ -11,6 +12,7 @@ import { AuditService } from '../audit/audit.service';
 import type { AuditRequestContext } from '../audit/audit.types';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { DashboardDomainService } from '../dashboard/domain/services/dashboard-domain.service';
+import { CloudinaryAvatarService } from './cloudinary-avatar.service';
 import { ListUsersDto } from './dto/list-users.dto';
 import { UpdateAvatarDto } from './dto/update-avatar.dto';
 import type {
@@ -93,6 +95,7 @@ export class UsersService {
     private readonly prisma: PrismaService,
     private readonly dashboardDomainService: DashboardDomainService,
     private readonly auditService: AuditService,
+    @Optional() private readonly cloudinaryAvatarService?: CloudinaryAvatarService,
   ) {}
 
   async list(actor: AuthenticatedUser, filters: ListUsersDto): Promise<EmployeesResponse> {
@@ -319,6 +322,74 @@ export class UsersService {
     });
 
     return this.getMe(actor);
+  }
+
+  async uploadMyAvatar(
+    actor: AuthenticatedUser,
+    file: Express.Multer.File | undefined,
+    requestContext?: AuditRequestContext,
+  ): Promise<ProfileResponse> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: actor.sub },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    this.assertValidAvatarFile(file);
+
+    if (!this.cloudinaryAvatarService) {
+      throw new BadRequestException('Avatar upload service is not available');
+    }
+
+    const nextAvatarUrl = await this.cloudinaryAvatarService.uploadAvatar(file, user.id);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        avatarUrl: nextAvatarUrl,
+      },
+    });
+
+    await this.auditService.log({
+      actor: {
+        id: actor.sub,
+        email: actor.email,
+        role: actor.role,
+      },
+      action: AUDIT_ACTIONS.AVATAR_UPDATED,
+      entity: AUDIT_ENTITIES.USER,
+      entityId: user.id,
+      companyId: user.companyId ?? null,
+      departmentId: user.departmentId ?? null,
+      oldValue: {
+        avatarUrl: user.avatarUrl,
+      },
+      newValue: {
+        avatarUrl: nextAvatarUrl,
+        source: 'upload',
+      },
+      requestContext,
+    });
+
+    return this.getMe(actor);
+  }
+
+  private assertValidAvatarFile(file: Express.Multer.File | undefined): asserts file is Express.Multer.File {
+    if (!file) {
+      throw new BadRequestException('Avatar image file is required');
+    }
+
+    const allowedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
+    if (!allowedMimeTypes.has(file.mimetype)) {
+      throw new BadRequestException('Avatar image must be JPG, PNG or WEBP');
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      throw new BadRequestException('Avatar image must be up to 2MB');
+    }
   }
 
   private async getActorContext(userId: string): Promise<UsersContextActor> {
@@ -698,6 +769,7 @@ export class UsersService {
       user: {
         id: user.id,
         name: user.name,
+        avatarUrl: user.avatarUrl,
         role: user.role,
         status: user.status,
       },

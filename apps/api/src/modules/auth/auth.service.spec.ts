@@ -244,6 +244,7 @@ void test('AuthService updates lastAccessAt on successful login', async () => {
 
 void test('AuthService logs in with Google for an active existing user without creating a new account', async () => {
   let updatedLastAccessAt: Date | undefined;
+  let updatedAvatarUrl: string | undefined;
   let createdUser = false;
 
   const prisma = {
@@ -258,6 +259,7 @@ void test('AuthService logs in with Google for an active existing user without c
             role: UserRole.DIRECTOR,
             status: UserStatus.ACTIVE,
             isActive: true,
+            avatarUrl: null,
             companyId: null,
             departmentId: null,
           };
@@ -272,6 +274,7 @@ void test('AuthService logs in with Google for an active existing user without c
             role: UserRole.DIRECTOR,
             status: UserStatus.ACTIVE,
             isActive: true,
+            avatarUrl: updatedAvatarUrl ?? null,
             companyId: null,
             departmentId: null,
             company: null,
@@ -280,8 +283,14 @@ void test('AuthService logs in with Google for an active existing user without c
 
         return null;
       },
-      update: async ({ data }: { data: { lastAccessAt: Date } }) => {
-        updatedLastAccessAt = data.lastAccessAt;
+      update: async ({ data }: { data: { lastAccessAt?: Date; avatarUrl?: string } }) => {
+        if (data.lastAccessAt) {
+          updatedLastAccessAt = data.lastAccessAt;
+        }
+
+        if (data.avatarUrl) {
+          updatedAvatarUrl = data.avatarUrl;
+        }
       },
       create: async () => {
         createdUser = true;
@@ -299,6 +308,7 @@ void test('AuthService logs in with Google for an active existing user without c
         email: 'Diretor@Empresa.com',
         emailVerified: true,
         name: 'Diretor Google',
+        picture: 'https://lh3.googleusercontent.com/director.png',
         subject: 'google-sub-1',
       }),
     } as never,
@@ -308,6 +318,7 @@ void test('AuthService logs in with Google for an active existing user without c
 
   assert.equal(response.accessToken, 'token-google');
   assert.equal(response.user.email, 'diretor@empresa.com');
+  assert.equal(response.user.avatarUrl, 'https://lh3.googleusercontent.com/director.png');
   assert.equal(createdUser, false);
   assert.equal(updatedLastAccessAt instanceof Date, true);
 });
@@ -350,6 +361,7 @@ void test('AuthService rejects Google login when the e-mail is not verified', as
         email: 'diretor@empresa.com',
         emailVerified: false,
         name: 'Diretor',
+        picture: null,
         subject: 'google-sub-2',
       }),
     } as never,
@@ -376,6 +388,7 @@ void test('AuthService rejects Google login when the local account does not exis
         email: 'novo@empresa.com',
         emailVerified: true,
         name: 'Novo Usuário',
+        picture: null,
         subject: 'google-sub-3',
       }),
     } as never,
@@ -418,6 +431,7 @@ void test('AuthService rejects Google login for inactive users', async () => {
         email: 'inativo@empresa.com',
         emailVerified: true,
         name: 'Usuário Inativo',
+        picture: null,
         subject: 'google-sub-4',
       }),
     } as never,
@@ -488,6 +502,7 @@ void test('AuthService registers a director with Google and returns auth respons
         email: ' Diretor.Google@Empresa.com ',
         emailVerified: true,
         name: 'Diretora Google',
+        picture: 'https://lh3.googleusercontent.com/register.png',
         subject: 'google-sub-register',
       }),
     } as never,
@@ -505,6 +520,7 @@ void test('AuthService registers a director with Google and returns auth respons
   assert.equal(createdUserData.status, UserStatus.ACTIVE);
   assert.equal(createdUserData.isActive, true);
   assert.equal(createdUserData.email, 'diretor.google@empresa.com');
+  assert.equal(createdUserData.avatarUrl, 'https://lh3.googleusercontent.com/register.png');
   assert.notEqual(typeof createdUserData.password === 'string' ? createdUserData.password : '', '');
   assert.notEqual(createdUserData.password, 'google-credential');
   assert.equal(updatedLastAccessAt instanceof Date, true);
@@ -530,6 +546,7 @@ void test('AuthService rejects Google director registration when e-mail already 
         email: 'existente@empresa.com',
         emailVerified: true,
         name: 'Diretor Existente',
+        picture: null,
         subject: 'google-sub-existing',
       }),
     } as never,
@@ -561,6 +578,7 @@ void test('AuthService rejects Google director registration when e-mail is not v
         email: 'novo@empresa.com',
         emailVerified: false,
         name: 'Novo Diretor',
+        picture: null,
         subject: 'google-sub-unverified',
       }),
     } as never,

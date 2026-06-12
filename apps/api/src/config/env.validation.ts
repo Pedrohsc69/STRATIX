@@ -55,5 +55,10 @@ export function validateEnv(env: EnvRecord) {
     RABBITMQ_URL: rabbitmqUrl,
     RABBITMQ_ENABLED: rabbitmqEnabled,
     RABBITMQ_INVITE_EMAIL_QUEUE: rabbitmqInviteEmailQueue,
+    CLOUDINARY_CLOUD_NAME: env.CLOUDINARY_CLOUD_NAME?.trim() || '',
+    CLOUDINARY_API_KEY: env.CLOUDINARY_API_KEY?.trim() || '',
+    CLOUDINARY_API_SECRET: env.CLOUDINARY_API_SECRET?.trim() || '',
+    CLOUDINARY_AVATAR_FOLDER:
+      env.CLOUDINARY_AVATAR_FOLDER?.trim() || 'stratix/avatars',
   };
 }

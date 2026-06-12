@@ -11,7 +11,7 @@ import { useProfile } from "../hooks/useProfile";
 import {
   changePassword,
   requestOwnPasswordRecovery,
-  updateAvatar,
+  uploadAvatar,
 } from "../services/profile.service";
 
 function LoadingState() {
@@ -62,8 +62,8 @@ export function ProfilePage() {
       <div className="space-y-6">
         <ProfileHeaderCard
           profile={data.profile}
-          onUpdateAvatar={async (avatarUrl) => {
-            await updateAvatar({ avatarUrl });
+          onUpdateAvatar={async (file) => {
+            await uploadAvatar(file);
             reload();
           }}
         />
