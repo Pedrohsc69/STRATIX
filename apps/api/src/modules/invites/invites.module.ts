@@ -3,11 +3,12 @@ import { PrismaService } from '../../core/shared/prisma.service';
 import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
 import { EmailModule } from '../email/email.module';
+import { MessagingModule } from '../messaging/messaging.module';
 import { InvitesController } from './invites.controller';
 import { InvitesService } from './invites.service';
 
 @Module({
-  imports: [AuthModule, EmailModule, AuditModule],
+  imports: [AuthModule, EmailModule, AuditModule, MessagingModule],
   controllers: [InvitesController],
   providers: [InvitesService, PrismaService],
 })

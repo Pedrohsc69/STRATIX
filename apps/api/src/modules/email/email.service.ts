@@ -1,18 +1,9 @@
 import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { UserRole } from '@prisma/client';
 import { Resend } from 'resend';
+import type { InviteEmailPayload } from '../messaging/messaging.types';
 import { buildInviteTemplate } from './templates/invite.template';
 import { buildPasswordResetTemplate } from './templates/password-reset.template';
-
-type SendInviteEmailInput = {
-  companyName: string;
-  departmentName: string | null;
-  email: string;
-  inviteeName?: string | null;
-  role: UserRole;
-  token: string;
-};
 
 type SendPasswordResetEmailInput = {
   companyName: string;
@@ -30,10 +21,8 @@ export class EmailService {
     this.resend = new Resend(this.configService.getOrThrow<string>('RESEND_API_KEY'));
   }
 
-  async sendInviteEmail(input: SendInviteEmailInput) {
-    const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
+  async sendInviteEmail(input: InviteEmailPayload) {
     const emailFrom = this.configService.getOrThrow<string>('EMAIL_FROM');
-    const acceptUrl = `${frontendUrl}/accept-invite?token=${encodeURIComponent(input.token)}`;
 
     try {
       await this.resend.emails.send({
@@ -41,10 +30,9 @@ export class EmailService {
         to: input.email,
         subject: `Convite STRATIX - ${input.companyName}`,
         html: buildInviteTemplate({
-          acceptUrl,
+          acceptUrl: input.inviteUrl,
           companyName: input.companyName,
           departmentName: input.departmentName,
-          inviteeName: input.inviteeName,
           role: input.role,
         }),
       });

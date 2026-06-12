@@ -11,7 +11,6 @@ void test('EmailService sends invite emails with the configured frontend URL', a
     getOrThrow: (key: string) => {
       const values: Record<string, string> = {
         RESEND_API_KEY: 'resend-key',
-        FRONTEND_URL: 'http://localhost:5173',
         EMAIL_FROM: 'no-reply@stratix.test',
       };
 
@@ -29,11 +28,13 @@ void test('EmailService sends invite emails with the configured frontend URL', a
   };
 
   await service.sendInviteEmail({
+    inviteId: 'invite-1',
     companyName: 'Empresa X',
     departmentName: 'Comercial',
     email: 'gestor@empresa.com',
     role: UserRole.MANAGER,
-    token: 'token-123',
+    inviteUrl: 'http://localhost:5173/accept-invite?token=token-123',
+    createdAt: new Date('2026-06-12T10:00:00.000Z').toISOString(),
   });
 
   assert.equal(sentMessages.length, 1);
@@ -47,7 +48,6 @@ void test('EmailService masks provider failures with a generic exception', async
     getOrThrow: (key: string) => {
       const values: Record<string, string> = {
         RESEND_API_KEY: 'resend-key',
-        FRONTEND_URL: 'http://localhost:5173',
         EMAIL_FROM: 'no-reply@stratix.test',
       };
 
@@ -67,11 +67,13 @@ void test('EmailService masks provider failures with a generic exception', async
   await assert.rejects(
     () =>
       service.sendInviteEmail({
+        inviteId: 'invite-1',
         companyName: 'Empresa X',
         departmentName: null,
         email: 'colaborador@empresa.com',
         role: UserRole.EMPLOYEE,
-        token: 'token-123',
+        inviteUrl: 'http://localhost:5173/accept-invite?token=token-123',
+        createdAt: new Date('2026-06-12T10:00:00.000Z').toISOString(),
       }),
     InternalServerErrorException,
   );

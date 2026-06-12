@@ -25,6 +25,10 @@ export function validateEnv(env: EnvRecord) {
   const mongoUrl = env.MONGO_URL?.trim() || env.MONGODB_URI?.trim();
   const mongoDb = env.MONGO_DB?.trim() || env.MONGODB_DATABASE?.trim();
   const emailDemoMode = env.EMAIL_DEMO_MODE?.trim() === 'true' ? 'true' : 'false';
+  const rabbitmqEnabled = env.RABBITMQ_ENABLED?.trim() === 'true' ? 'true' : 'false';
+  const rabbitmqUrl = env.RABBITMQ_URL?.trim() || 'amqp://guest:guest@localhost:5672';
+  const rabbitmqInviteEmailQueue =
+    env.RABBITMQ_INVITE_EMAIL_QUEUE?.trim() || 'stratix.invites.email';
 
   if (!mongoUrl) {
     throw new Error('MONGO_URL or MONGODB_URI is not defined');
@@ -48,5 +52,8 @@ export function validateEnv(env: EnvRecord) {
     EMAIL_FROM: ensureRequired(env, 'EMAIL_FROM'),
     EMAIL_DEMO_MODE: emailDemoMode,
     RESEND_API_KEY: ensureRequired(env, 'RESEND_API_KEY'),
+    RABBITMQ_URL: rabbitmqUrl,
+    RABBITMQ_ENABLED: rabbitmqEnabled,
+    RABBITMQ_INVITE_EMAIL_QUEUE: rabbitmqInviteEmailQueue,
   };
 }

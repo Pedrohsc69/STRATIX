@@ -10,6 +10,7 @@ import { UserRole } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { ROLES_KEY } from '../auth/decorators/roles.decorator';
+import type { InviteEmailPayload } from '../messaging/messaging.types';
 import { CreateInviteDto } from './dto/create-invite.dto';
 import { InvitesController } from './invites.controller';
 import { InvitesService } from './invites.service';
@@ -18,6 +19,7 @@ function createInviteConfigService(overrides?: Record<string, string>) {
   const values = {
     EMAIL_DEMO_MODE: 'false',
     FRONTEND_URL: 'http://localhost:5173',
+    RABBITMQ_ENABLED: 'false',
     ...overrides,
   };
 
@@ -60,6 +62,7 @@ void test('InvitesService requires at least one department before creating invit
     prisma as never,
     { sendInviteEmail: async () => undefined } as never,
     { log: async () => undefined } as never,
+    undefined,
     createInviteConfigService() as never,
   );
 
@@ -94,6 +97,7 @@ void test('InvitesService rejects director invites', async () => {
     prisma as never,
     { sendInviteEmail: async () => undefined } as never,
     { log: async () => undefined } as never,
+    undefined,
     createInviteConfigService() as never,
   );
 
@@ -144,6 +148,7 @@ void test('InvitesService rejects duplicate invite e-mail', async () => {
     prisma as never,
     { sendInviteEmail: async () => undefined } as never,
     { log: async () => undefined } as never,
+    undefined,
     createInviteConfigService() as never,
   );
 
@@ -164,7 +169,7 @@ void test('InvitesService rejects duplicate invite e-mail', async () => {
 void test('InvitesService replaces expired invites and audits INVITE_SENT without token data', async () => {
   const deletedInviteIds: string[] = [];
   const auditCommands: Array<Record<string, unknown>> = [];
-  const sentMessages: Array<Record<string, unknown>> = [];
+  const sentMessages: InviteEmailPayload[] = [];
 
   const prisma = {
     user: {
@@ -214,7 +219,7 @@ void test('InvitesService replaces expired invites and audits INVITE_SENT withou
   const service = new InvitesService(
     prisma as never,
     {
-      sendInviteEmail: async (message: Record<string, unknown>) => {
+      sendInviteEmail: async (message: InviteEmailPayload) => {
         sentMessages.push(message);
       },
     } as never,
@@ -223,6 +228,7 @@ void test('InvitesService replaces expired invites and audits INVITE_SENT withou
         auditCommands.push(command);
       },
     } as never,
+    undefined,
     createInviteConfigService() as never,
   );
 
@@ -242,8 +248,7 @@ void test('InvitesService replaces expired invites and audits INVITE_SENT withou
   assert.equal(JSON.stringify(auditCommands[0]).includes('tokenHash'), false);
   assert.equal(JSON.stringify(auditCommands[0]).includes('"token"'), false);
   assert.equal(sentMessages.length, 1);
-  assert.equal(sentMessages[0]?.token, 'new-token');
-  assert.equal('inviteeName' in sentMessages[0]!, false);
+  assert.match(sentMessages[0]?.inviteUrl ?? '', /accept-invite\?token=new-token/);
   assert.equal(invite.inviteUrl, undefined);
 });
 
@@ -296,6 +301,7 @@ void test('InvitesService skips Resend and returns inviteUrl when EMAIL_DEMO_MOD
         auditCommands.push(command);
       },
     } as never,
+    undefined,
     createInviteConfigService({ EMAIL_DEMO_MODE: 'true' }) as never,
   );
 
@@ -370,6 +376,7 @@ void test('InvitesService deletes the invite when e-mail delivery fails', async 
         auditCommands.push(command);
       },
     } as never,
+    undefined,
     createInviteConfigService() as never,
   );
 
@@ -414,6 +421,7 @@ void test('InvitesService rejects invites for departments outside the director c
     prisma as never,
     { sendInviteEmail: async () => undefined } as never,
     { log: async () => undefined } as never,
+    undefined,
     createInviteConfigService() as never,
   );
 
@@ -459,6 +467,7 @@ void test('InvitesService rejects manager invites when the department already ha
     prisma as never,
     { sendInviteEmail: async () => undefined } as never,
     { log: async () => undefined } as never,
+    undefined,
     createInviteConfigService() as never,
   );
 
@@ -510,6 +519,7 @@ void test('InvitesService rejects a second active manager invite for the same de
     prisma as never,
     { sendInviteEmail: async () => undefined } as never,
     { log: async () => undefined } as never,
+    undefined,
     createInviteConfigService() as never,
   );
 
@@ -528,7 +538,7 @@ void test('InvitesService rejects a second active manager invite for the same de
 });
 
 void test('InvitesService resends an active invite without changing the token', async () => {
-  const sentMessages: Array<Record<string, unknown>> = [];
+  const sentMessages: InviteEmailPayload[] = [];
   const auditCommands: Array<Record<string, unknown>> = [];
 
   const expiresAt = new Date(Date.now() + 1000 * 60 * 60);
@@ -589,7 +599,7 @@ void test('InvitesService resends an active invite without changing the token', 
   const service = new InvitesService(
     prisma as never,
     {
-      sendInviteEmail: async (message: Record<string, unknown>) => {
+      sendInviteEmail: async (message: InviteEmailPayload) => {
         sentMessages.push(message);
       },
     } as never,
@@ -598,6 +608,7 @@ void test('InvitesService resends an active invite without changing the token', 
         auditCommands.push(command);
       },
     } as never,
+    undefined,
     createInviteConfigService() as never,
   );
 
@@ -607,14 +618,14 @@ void test('InvitesService resends an active invite without changing the token', 
   );
 
   assert.equal(invite.status, 'PENDING');
-  assert.equal(sentMessages[0]?.token, 'active-token');
+  assert.match(sentMessages[0]?.inviteUrl ?? '', /accept-invite\?token=active-token/);
   assert.equal(auditCommands[0]?.action, 'INVITE_RESENT');
   assert.equal(JSON.stringify(auditCommands[0]).includes('tokenHash'), false);
   assert.equal(JSON.stringify(auditCommands[0]).includes('"token"'), false);
 });
 
 void test('InvitesService renews the token when resending an expired invite', async () => {
-  const sentMessages: Array<Record<string, unknown>> = [];
+  const sentMessages: InviteEmailPayload[] = [];
 
   const prisma = {
     user: {
@@ -667,11 +678,12 @@ void test('InvitesService renews the token when resending an expired invite', as
   const service = new InvitesService(
     prisma as never,
     {
-      sendInviteEmail: async (message: Record<string, unknown>) => {
+      sendInviteEmail: async (message: InviteEmailPayload) => {
         sentMessages.push(message);
       },
     } as never,
     { log: async () => undefined } as never,
+    undefined,
     createInviteConfigService() as never,
   );
 
@@ -680,7 +692,7 @@ void test('InvitesService renews the token when resending an expired invite', as
     'invite-1',
   );
 
-  assert.notEqual(sentMessages[0]?.token, 'expired-token');
+  assert.equal(sentMessages[0]?.inviteUrl.includes('expired-token'), false);
 });
 
 void test('InvitesService does not resend an accepted invite', async () => {
@@ -718,6 +730,7 @@ void test('InvitesService does not resend an accepted invite', async () => {
     prisma as never,
     { sendInviteEmail: async () => undefined } as never,
     { log: async () => undefined } as never,
+    undefined,
     createInviteConfigService() as never,
   );
 
@@ -729,6 +742,147 @@ void test('InvitesService does not resend an accepted invite', async () => {
       ),
     ConflictException,
   );
+});
+
+void test('InvitesService publishes invite e-mails to RabbitMQ when enabled', async () => {
+  const publishedMessages: InviteEmailPayload[] = [];
+  let emailSendAttempts = 0;
+
+  const prisma = {
+    user: {
+      findUnique: async ({ where }: { where?: { id?: string; email?: string } }) => {
+        if (where?.id) {
+          return {
+            companyId: 'company-1',
+            company: { name: 'Empresa X' },
+          };
+        }
+
+        return null;
+      },
+    },
+    department: {
+      count: async () => 1,
+      findFirst: async () => ({ id: 'department-1', name: 'Comercial', managerId: null }),
+    },
+    invite: {
+      findFirst: async () => null,
+      findUnique: async () => null,
+      create: async () => ({
+        id: 'invite-rabbit',
+        email: 'colaborador@empresa.com',
+        role: UserRole.EMPLOYEE,
+        departmentId: 'department-1',
+        companyId: 'company-1',
+        accepted: false,
+        expiresAt: new Date(Date.now() + 1000),
+        createdAt: new Date('2026-06-12T10:00:00.000Z'),
+        token: 'rabbit-token',
+      }),
+    },
+  };
+
+  const service = new InvitesService(
+    prisma as never,
+    {
+      sendInviteEmail: async () => {
+        emailSendAttempts += 1;
+      },
+    } as never,
+    { log: async () => undefined } as never,
+    {
+      publish: async (payload: InviteEmailPayload) => {
+        publishedMessages.push(payload);
+      },
+    } as never,
+    createInviteConfigService({ RABBITMQ_ENABLED: 'true' }) as never,
+  );
+
+  await service.create(
+    { sub: 'user-1', email: 'diretor@empresa.com', role: UserRole.DIRECTOR },
+    {
+      email: 'colaborador@empresa.com',
+      role: UserRole.EMPLOYEE,
+      departmentId: 'department-1',
+    },
+  );
+
+  assert.equal(emailSendAttempts, 0);
+  assert.equal(publishedMessages.length, 1);
+  assert.equal(publishedMessages[0]?.inviteId, 'invite-rabbit');
+  assert.equal(publishedMessages[0]?.inviteUrl.includes('rabbit-token'), true);
+  assert.equal(JSON.stringify(publishedMessages[0]).includes('"token"'), false);
+});
+
+void test('InvitesService falls back to synchronous e-mail delivery when RabbitMQ publish fails without deleting the invite', async () => {
+  const deletedInviteIds: string[] = [];
+  const sentMessages: InviteEmailPayload[] = [];
+
+  const prisma = {
+    user: {
+      findUnique: async ({ where }: { where?: { id?: string; email?: string } }) => {
+        if (where?.id) {
+          return {
+            companyId: 'company-1',
+            company: { name: 'Empresa X' },
+          };
+        }
+
+        return null;
+      },
+    },
+    department: {
+      count: async () => 1,
+      findFirst: async () => ({ id: 'department-1', name: 'Comercial', managerId: null }),
+    },
+    invite: {
+      findFirst: async () => null,
+      findUnique: async () => null,
+      create: async () => ({
+        id: 'invite-fallback',
+        email: 'colaborador@empresa.com',
+        role: UserRole.EMPLOYEE,
+        departmentId: 'department-1',
+        companyId: 'company-1',
+        accepted: false,
+        expiresAt: new Date(Date.now() + 1000),
+        createdAt: new Date('2026-06-12T10:00:00.000Z'),
+        token: 'fallback-token',
+      }),
+      delete: async ({ where }: { where: { id: string } }) => {
+        deletedInviteIds.push(where.id);
+      },
+    },
+  };
+
+  const service = new InvitesService(
+    prisma as never,
+    {
+      sendInviteEmail: async (payload: InviteEmailPayload) => {
+        sentMessages.push(payload);
+      },
+    } as never,
+    { log: async () => undefined } as never,
+    {
+      publish: async () => {
+        throw new Error('rabbit down');
+      },
+    } as never,
+    createInviteConfigService({ RABBITMQ_ENABLED: 'true' }) as never,
+  );
+
+  await service.create(
+    { sub: 'user-1', email: 'diretor@empresa.com', role: UserRole.DIRECTOR },
+    {
+      email: 'colaborador@empresa.com',
+      role: UserRole.EMPLOYEE,
+      departmentId: 'department-1',
+    },
+  );
+
+  assert.deepEqual(deletedInviteIds, []);
+  assert.equal(sentMessages.length, 1);
+  assert.equal(sentMessages[0]?.inviteId, 'invite-fallback');
 });
 
 void test('InvitesController protects create, list, details and resend for directors only', () => {

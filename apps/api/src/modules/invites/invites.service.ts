@@ -3,6 +3,7 @@ import {
   ConflictException,
   Injectable,
   InternalServerErrorException,
+  Logger,
   NotFoundException,
   Optional,
 } from '@nestjs/common';
@@ -15,15 +16,20 @@ import { AuditService } from '../audit/audit.service';
 import type { AuditRequestContext } from '../audit/audit.types';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { EmailService } from '../email/email.service';
+import { InviteEmailPublisher } from '../messaging/invite-email.publisher';
+import type { InviteEmailPayload } from '../messaging/messaging.types';
 import { CreateInviteDto } from './dto/create-invite.dto';
 import type { InviteResponseItem, InviteViewStatus } from './invites.types';
 
 @Injectable()
 export class InvitesService {
+  private readonly logger = new Logger(InvitesService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
     private readonly auditService: AuditService,
+    @Optional() private readonly inviteEmailPublisher?: InviteEmailPublisher,
     @Optional() private readonly configService?: ConfigService,
   ) {}
 
@@ -82,21 +88,26 @@ export class InvitesService {
       },
     });
 
-    const inviteUrl = this.isEmailDemoModeEnabled() ? this.buildInviteUrl(invite.token) : undefined;
+    const inviteUrl = this.buildInviteUrl(invite.token);
+    const demoInviteUrl = this.isEmailDemoModeEnabled() ? inviteUrl : undefined;
 
-    if (!inviteUrl) {
+    if (!this.isEmailDemoModeEnabled()) {
       try {
-        await this.sendInviteMessage({
+        await this.sendInviteMessage(this.buildInviteEmailPayload({
+          inviteId: invite.id,
           companyName: companyContext.companyName,
           departmentName: department.name ?? null,
           email: invite.email,
           role: invite.role,
-          token: invite.token,
-        });
+          inviteUrl,
+          createdAt: invite.createdAt,
+        }));
       } catch {
-        await this.prisma.invite.delete({
-          where: { id: invite.id },
-        });
+        if (!this.isRabbitMqEnabled()) {
+          await this.prisma.invite.delete({
+            where: { id: invite.id },
+          });
+        }
 
         throw new InternalServerErrorException('Unable to complete request');
       }
@@ -130,7 +141,7 @@ export class InvitesService {
         id: department.id,
         name: department.name,
       },
-    }, inviteUrl);
+    }, demoInviteUrl);
   }
 
   async list(actor: AuthenticatedUser): Promise<InviteResponseItem[]> {
@@ -270,16 +281,23 @@ export class InvitesService {
       },
     });
 
-    try {
-      await this.sendInviteMessage({
-        companyName: companyContext.companyName,
-        departmentName: updatedInvite.department?.name ?? null,
-        email: updatedInvite.email,
-        role: updatedInvite.role,
-        token: updatedInvite.token,
-      });
-    } catch {
-      throw new InternalServerErrorException('Unable to complete request');
+    const inviteUrl = this.buildInviteUrl(updatedInvite.token);
+    const demoInviteUrl = this.isEmailDemoModeEnabled() ? inviteUrl : undefined;
+
+    if (!this.isEmailDemoModeEnabled()) {
+      try {
+        await this.sendInviteMessage(this.buildInviteEmailPayload({
+          inviteId: updatedInvite.id,
+          companyName: companyContext.companyName,
+          departmentName: updatedInvite.department?.name ?? null,
+          email: updatedInvite.email,
+          role: updatedInvite.role,
+          inviteUrl,
+          createdAt: updatedInvite.createdAt,
+        }));
+      } catch {
+        throw new InternalServerErrorException('Unable to complete request');
+      }
     }
 
     await this.auditService.log({
@@ -310,7 +328,7 @@ export class InvitesService {
       requestContext,
     });
 
-    return this.mapInviteResponse(updatedInvite);
+    return this.mapInviteResponse(updatedInvite, demoInviteUrl);
   }
 
   private async getActorCompanyContext(actorId: string) {
@@ -398,15 +416,29 @@ export class InvitesService {
     return department;
   }
 
-  private async sendInviteMessage(input: {
-    companyName: string;
-    departmentName: string | null;
-    email: string;
-    inviteeName?: string | null;
-    role: UserRole;
-    token: string;
-  }) {
-    await this.emailService.sendInviteEmail(input);
+  private async sendInviteMessage(payload: InviteEmailPayload) {
+    if (!this.isRabbitMqEnabled()) {
+      await this.emailService.sendInviteEmail(payload);
+      return;
+    }
+
+    try {
+      if (!this.inviteEmailPublisher) {
+        throw new Error('Invite e-mail publisher is not available');
+      }
+
+      await this.inviteEmailPublisher.publish(payload);
+    } catch (error) {
+      this.logger.warn(
+        `RabbitMQ invite e-mail publish failed for invite ${payload.inviteId}; falling back to synchronous delivery`,
+      );
+
+      await this.emailService.sendInviteEmail(payload);
+
+      if (error instanceof Error) {
+        this.logger.warn(error.message);
+      }
+    }
   }
 
   private createInviteToken() {
@@ -421,6 +453,10 @@ export class InvitesService {
     return this.configService?.get<string>('EMAIL_DEMO_MODE') === 'true';
   }
 
+  private isRabbitMqEnabled() {
+    return this.configService?.get<string>('RABBITMQ_ENABLED') === 'true';
+  }
+
   private buildInviteUrl(token: string) {
     const frontendUrl = this.configService?.get<string>('FRONTEND_URL')?.trim();
 
@@ -429,6 +465,26 @@ export class InvitesService {
     }
 
     return `${frontendUrl}/accept-invite?token=${encodeURIComponent(token)}`;
+  }
+
+  private buildInviteEmailPayload(input: {
+    inviteId: string;
+    companyName: string;
+    departmentName: string | null;
+    email: string;
+    role: UserRole;
+    inviteUrl: string;
+    createdAt: Date;
+  }): InviteEmailPayload {
+    return {
+      inviteId: input.inviteId,
+      email: input.email,
+      role: input.role,
+      companyName: input.companyName,
+      departmentName: input.departmentName,
+      inviteUrl: input.inviteUrl,
+      createdAt: input.createdAt.toISOString(),
+    };
   }
 
   private getInviteStatus(expiresAt: Date): InviteViewStatus {
