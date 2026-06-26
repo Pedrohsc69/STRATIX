@@ -57,6 +57,7 @@ export class AuthService {
         name: input.name.trim(),
         email: input.email.toLowerCase(),
         password: hashedPassword,
+        hasUsablePassword: true,
         role: UserRole.DIRECTOR,
         status: UserStatus.ACTIVE,
         isActive: true,
@@ -158,6 +159,7 @@ export class AuthService {
         name: this.resolveGoogleDisplayName(googleIdentity.name, normalizedEmail),
         email: normalizedEmail,
         password: hashedPassword,
+        hasUsablePassword: false,
         avatarUrl: googleIdentity.picture,
         role: UserRole.DIRECTOR,
         status: UserStatus.ACTIVE,
@@ -263,6 +265,7 @@ export class AuthService {
           name: input.name.trim(),
           email: invite.email,
           password: hashedPassword,
+          hasUsablePassword: true,
           role: invite.role,
           status: UserStatus.ACTIVE,
           isActive: true,
@@ -347,6 +350,7 @@ export class AuthService {
       where: { id: user.id },
       data: {
         password: hashedPassword,
+        hasUsablePassword: true,
       },
     });
 
@@ -458,6 +462,7 @@ export class AuthService {
         where: { id: resetToken.userId },
         data: {
           password: hashedPassword,
+          hasUsablePassword: true,
         },
       });
 
@@ -581,6 +586,7 @@ export class AuthService {
         status: currentUser.status,
         isActive: currentUser.isActive,
         avatarUrl: currentUser.avatarUrl ?? null,
+        hasUsablePassword: currentUser.hasUsablePassword,
         companyId: currentUser.companyId ?? null,
         departmentId: currentUser.departmentId ?? null,
       },

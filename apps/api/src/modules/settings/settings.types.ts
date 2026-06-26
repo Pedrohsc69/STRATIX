@@ -1,8 +1,4 @@
-import type {
-  InterfaceDensity,
-  ThemePreference,
-  UserRole,
-} from '@prisma/client';
+import type { ThemePreference, UserRole } from '@prisma/client';
 import type {
   DashboardCompanyContext,
   DashboardDepartmentContext,
@@ -19,7 +15,6 @@ export type SettingsContext = {
 
 export type PersonalSettings = {
   theme: ThemePreference;
-  density: InterfaceDensity;
   language: string;
   emailNotifications: boolean;
   inviteNotifications: boolean;
@@ -44,6 +39,13 @@ export type SettingsMeta = {
   canManageCompany: boolean;
   dangerZoneAvailable: boolean;
   dangerZoneMessage: string | null;
+  companyDeletion:
+    | {
+        enabled: boolean;
+        requiresPasswordConfirmation: boolean;
+        requiresDirectorEmailConfirmation: boolean;
+      }
+    | null;
 };
 
 export type SettingsResponse = {
@@ -55,4 +57,9 @@ export type SettingsResponse = {
   company: CompanySettings | null;
   security: SettingsSecurityInfo;
   meta: SettingsMeta;
+};
+
+export type DeleteCompanyResponse = {
+  success: true;
+  redirectTo: string;
 };

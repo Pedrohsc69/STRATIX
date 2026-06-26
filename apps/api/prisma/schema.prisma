@@ -44,16 +44,12 @@ enum ThemePreference {
   SYSTEM
 }
 
-enum InterfaceDensity {
-  COMFORTABLE
-  COMPACT
-}
-
 model User {
   id       String   @id @default(uuid())
   name     String
   email    String   @unique
   password String
+  hasUsablePassword Boolean @default(true)
   role     UserRole
   status   UserStatus @default(PENDING)
 
@@ -115,7 +111,6 @@ model UserSettings {
   user   User   @relation(fields: [userId], references: [id])
 
   theme ThemePreference @default(SYSTEM)
-  density InterfaceDensity @default(COMFORTABLE)
   language String @default("pt-BR")
 
   emailNotifications Boolean @default(true)

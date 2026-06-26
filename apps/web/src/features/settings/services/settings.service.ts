@@ -1,6 +1,8 @@
 import { api } from "../../../services/api";
 import type {
   CompanySettings,
+  DeleteCompanyPayload,
+  DeleteCompanyResponse,
   SettingsResponse,
   UpdateCompanySettingsPayload,
   UpdatePersonalSettingsPayload,
@@ -23,5 +25,12 @@ export async function fetchCompanySettings() {
 
 export async function updateCompanySettings(payload: UpdateCompanySettingsPayload) {
   const response = await api.patch<CompanySettings>("/settings/company", payload);
+  return response.data;
+}
+
+export async function deleteCompany(payload: DeleteCompanyPayload) {
+  const response = await api.delete<DeleteCompanyResponse>("/settings/company", {
+    data: payload,
+  });
   return response.data;
 }

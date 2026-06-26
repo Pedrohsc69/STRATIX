@@ -6,11 +6,9 @@ import type {
 } from "../../dashboard/dashboard.types";
 
 export type ThemePreference = "LIGHT" | "DARK" | "SYSTEM";
-export type InterfaceDensity = "COMFORTABLE" | "COMPACT";
 
 export type PersonalSettings = {
   theme: ThemePreference;
-  density: InterfaceDensity;
   language: string;
   emailNotifications: boolean;
   inviteNotifications: boolean;
@@ -41,6 +39,11 @@ export type SettingsResponse = {
     canManageCompany: boolean;
     dangerZoneAvailable: boolean;
     dangerZoneMessage: string | null;
+    companyDeletion: {
+      enabled: boolean;
+      requiresPasswordConfirmation: boolean;
+      requiresDirectorEmailConfirmation: boolean;
+    } | null;
   };
 };
 
@@ -50,4 +53,15 @@ export type UpdateCompanySettingsPayload = {
   name?: string;
   cnpj?: string;
   businessArea?: string;
+};
+
+export type DeleteCompanyPayload = {
+  companyNameConfirmation: string;
+  currentPassword?: string;
+  directorEmailConfirmation?: string;
+};
+
+export type DeleteCompanyResponse = {
+  success: true;
+  redirectTo: string;
 };

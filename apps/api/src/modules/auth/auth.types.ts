@@ -16,6 +16,7 @@ export type AuthResponse = {
     status: UserStatus;
     isActive: boolean;
     avatarUrl: string | null;
+    hasUsablePassword: boolean;
     companyId: string | null;
     departmentId: string | null;
   };

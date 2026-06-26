@@ -3,23 +3,22 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
-import {
-  InterfaceDensity,
-  ThemePreference,
-  UserRole,
-  type UserStatus,
-} from '@prisma/client';
+import { ThemePreference, UserRole, type UserStatus } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../core/shared/prisma.service';
 import { AUDIT_ACTIONS, AUDIT_ENTITIES } from '../audit/audit.constants';
 import { AuditService } from '../audit/audit.service';
 import type { AuditRequestContext } from '../audit/audit.types';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { DashboardDomainService } from '../dashboard/domain/services/dashboard-domain.service';
+import { DeleteCompanyDto } from './dto/delete-company.dto';
 import { UpdateCompanySettingsDto } from './dto/update-company-settings.dto';
 import { UpdateMySettingsDto } from './dto/update-my-settings.dto';
 import type {
   CompanySettings,
+  DeleteCompanyResponse,
   PersonalSettings,
   SettingsContext,
   SettingsResponse,
@@ -27,7 +26,6 @@ import type {
 
 const defaultPersonalSettings: PersonalSettings = {
   theme: ThemePreference.SYSTEM,
-  density: InterfaceDensity.COMFORTABLE,
   language: 'pt-BR',
   emailNotifications: true,
   inviteNotifications: true,
@@ -66,7 +64,6 @@ export class SettingsService {
       create: {
         userId: user.id,
         theme: input.theme ?? defaultPersonalSettings.theme,
-        density: input.density ?? defaultPersonalSettings.density,
         language: nextLanguage ?? defaultPersonalSettings.language,
         emailNotifications:
           input.emailNotifications ?? defaultPersonalSettings.emailNotifications,
@@ -79,7 +76,6 @@ export class SettingsService {
       },
       update: {
         ...(input.theme ? { theme: input.theme } : {}),
-        ...(input.density ? { density: input.density } : {}),
         ...(nextLanguage ? { language: nextLanguage } : {}),
         ...(typeof input.emailNotifications === 'boolean'
           ? { emailNotifications: input.emailNotifications }
@@ -99,7 +95,6 @@ export class SettingsService {
     const newSettings = {
       ...oldSettings,
       ...(input.theme ? { theme: input.theme } : {}),
-      ...(input.density ? { density: input.density } : {}),
       ...(nextLanguage ? { language: nextLanguage } : {}),
       ...(typeof input.emailNotifications === 'boolean'
         ? { emailNotifications: input.emailNotifications }
@@ -225,6 +220,162 @@ export class SettingsService {
     return this.buildCompanySettings(company, true);
   }
 
+  async deleteCompany(
+    actor: AuthenticatedUser,
+    input: DeleteCompanyDto,
+    requestContext?: AuditRequestContext,
+  ): Promise<DeleteCompanyResponse> {
+    const user = await this.getActorSettingsContext(actor);
+    this.assertDirector(user.role);
+
+    if (!user.companyId || !user.company) {
+      throw new NotFoundException('Company not found');
+    }
+
+    const companyId = user.companyId;
+
+    const companyNameConfirmation = input.companyNameConfirmation?.trim();
+
+    if (!companyNameConfirmation || companyNameConfirmation !== user.company.name) {
+      throw new BadRequestException('Company confirmation is invalid');
+    }
+
+    if (user.hasUsablePassword) {
+      if (!input.currentPassword) {
+        throw new BadRequestException('Current password is required');
+      }
+
+      const passwordMatches = await bcrypt.compare(input.currentPassword, user.password);
+
+      if (!passwordMatches) {
+        throw new UnauthorizedException('Invalid credentials');
+      }
+    } else {
+      const normalizedEmailConfirmation =
+        input.directorEmailConfirmation?.trim().toLowerCase() ?? '';
+
+      if (normalizedEmailConfirmation !== user.email.toLowerCase()) {
+        throw new BadRequestException('Director confirmation is invalid');
+      }
+    }
+
+    const companyScope = { companyId };
+    const deletionSummary = await this.buildCompanyDeletionSummary(companyId);
+
+    await this.auditService.log({
+      actor: {
+        id: actor.sub,
+        email: actor.email,
+        role: actor.role,
+      },
+      action: AUDIT_ACTIONS.COMPANY_DELETED,
+      entity: AUDIT_ENTITIES.COMPANY,
+      entityId: companyId,
+      companyId,
+      departmentId: user.departmentId ?? null,
+      oldValue: {
+        company: this.buildCompanySettings(user.company, true),
+        deletionSummary,
+      },
+      newValue: {
+        deleted: true,
+      },
+      metadata: {
+        confirmationMethod: user.hasUsablePassword ? 'password' : 'company-name-and-email',
+      },
+      requestContext,
+    });
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.progressOKR.deleteMany({
+        where: {
+          OR: [
+            {
+              actor: {
+                companyId: companyScope.companyId,
+              },
+            },
+            {
+              okr: {
+                objective: {
+                  cycle: {
+                    department: companyScope,
+                  },
+                },
+              },
+            },
+          ],
+        },
+      });
+
+      await tx.passwordResetToken.deleteMany({
+        where: {
+          user: companyScope,
+        },
+      });
+
+      await tx.userSettings.deleteMany({
+        where: {
+          user: companyScope,
+        },
+      });
+
+      await tx.invite.deleteMany({
+        where: companyScope,
+      });
+
+      await tx.department.updateMany({
+        where: companyScope,
+        data: {
+          managerId: null,
+        },
+      });
+
+      await tx.oKR.deleteMany({
+        where: {
+          objective: {
+            cycle: {
+              department: companyScope,
+            },
+          },
+        },
+      });
+
+      await tx.objective.deleteMany({
+        where: {
+          cycle: {
+            department: companyScope,
+          },
+        },
+      });
+
+      await tx.strategicCycle.deleteMany({
+        where: {
+          department: companyScope,
+        },
+      });
+
+      await tx.user.deleteMany({
+        where: companyScope,
+      });
+
+      await tx.department.deleteMany({
+        where: companyScope,
+      });
+
+      await tx.company.delete({
+        where: {
+          id: companyId,
+        },
+      });
+    });
+
+    return {
+      success: true,
+      redirectTo: '/login',
+    };
+  }
+
   private assertDirector(role: UserRole) {
     if (role !== UserRole.DIRECTOR) {
       throw new ForbiddenException('Access denied');
@@ -259,7 +410,6 @@ export class SettingsService {
       settings: user.settings
         ? {
             theme: user.settings.theme,
-            density: user.settings.density,
             language: user.settings.language,
             emailNotifications: user.settings.emailNotifications,
             inviteNotifications: user.settings.inviteNotifications,
@@ -276,10 +426,19 @@ export class SettingsService {
       },
       meta: {
         canManageCompany: user.role === UserRole.DIRECTOR,
-        dangerZoneAvailable: false,
+        dangerZoneAvailable:
+          user.role === UserRole.DIRECTOR ? Boolean(user.companyId) : false,
         dangerZoneMessage:
           user.role === UserRole.DIRECTOR
-            ? 'Acoes administrativas criticas ainda nao estao disponiveis com seguranca.'
+            ? 'A exclusao da empresa remove permanentemente todos os dados vinculados.'
+            : 'Nenhuma acao critica disponivel para este perfil. Alteracoes de vinculo e remocao de conta devem ser realizadas pelo Diretor da empresa.',
+        companyDeletion:
+          user.role === UserRole.DIRECTOR && user.companyId
+            ? {
+                enabled: true,
+                requiresPasswordConfirmation: user.hasUsablePassword,
+                requiresDirectorEmailConfirmation: !user.hasUsablePassword,
+              }
             : null,
       },
     };
@@ -334,11 +493,80 @@ export class SettingsService {
     };
   }
 
+  private async buildCompanyDeletionSummary(companyId: string) {
+    const [users, departments, cycles, objectives, okrs, progressUpdates, invites, settings] =
+      await Promise.all([
+        this.prisma.user.count({
+          where: { companyId },
+        }),
+        this.prisma.department.count({
+          where: { companyId },
+        }),
+        this.prisma.strategicCycle.count({
+          where: {
+            department: { companyId },
+          },
+        }),
+        this.prisma.objective.count({
+          where: {
+            cycle: {
+              department: { companyId },
+            },
+          },
+        }),
+        this.prisma.oKR.count({
+          where: {
+            objective: {
+              cycle: {
+                department: { companyId },
+              },
+            },
+          },
+        }),
+        this.prisma.progressOKR.count({
+          where: {
+            OR: [
+              {
+                actor: { companyId },
+              },
+              {
+                okr: {
+                  objective: {
+                    cycle: {
+                      department: { companyId },
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        }),
+        this.prisma.invite.count({
+          where: { companyId },
+        }),
+        this.prisma.userSettings.count({
+          where: {
+            user: { companyId },
+          },
+        }),
+      ]);
+
+    return {
+      users,
+      departments,
+      cycles,
+      objectives,
+      okrs,
+      progressUpdates,
+      invites,
+      settings,
+    };
+  }
+
   private extractPersonalSettings(
     settings:
       | {
           theme: ThemePreference;
-          density: InterfaceDensity;
           language: string;
           emailNotifications: boolean;
           inviteNotifications: boolean;
@@ -350,7 +578,6 @@ export class SettingsService {
   ) {
     return {
       theme: settings?.theme ?? defaultPersonalSettings.theme,
-      density: settings?.density ?? defaultPersonalSettings.density,
       language: settings?.language ?? defaultPersonalSettings.language,
       emailNotifications: settings?.emailNotifications ?? defaultPersonalSettings.emailNotifications,
       inviteNotifications:

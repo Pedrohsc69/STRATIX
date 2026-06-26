@@ -8,6 +8,7 @@ export type SessionUser = {
   status: 'PENDING' | 'ACTIVE' | 'DISABLED';
   isActive: boolean;
   avatarUrl?: string | null;
+  hasUsablePassword: boolean;
   companyId: string | null;
   departmentId: string | null;
 };

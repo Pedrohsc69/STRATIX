@@ -2,17 +2,13 @@ import { useEffect, useState } from "react";
 import { MonitorCog } from "lucide-react";
 import { useTheme } from "../../../core/theme/theme-context";
 import { SettingsSectionCard } from "./SettingsSectionCard";
-import type {
-  InterfaceDensity,
-  PersonalSettings,
-  ThemePreference,
-} from "../types/settings.types";
+import type { PersonalSettings, ThemePreference } from "../types/settings.types";
 
 type AppearanceSettingsCardProps = {
   settings: PersonalSettings;
   onSave: (payload: {
     theme: ThemePreference;
-    density: InterfaceDensity;
+    language: string;
   }) => Promise<void>;
 };
 
@@ -33,7 +29,7 @@ function getRequestErrorMessage(requestError: unknown) {
     return maybeError.response.data.message.join(", ");
   }
 
-  return "Não foi possível salvar as preferências de aparência.";
+  return "NÃ£o foi possÃ­vel salvar as preferÃªncias de aparÃªncia.";
 }
 
 export function AppearanceSettingsCard({
@@ -42,20 +38,20 @@ export function AppearanceSettingsCard({
 }: AppearanceSettingsCardProps) {
   const { preference, resolvedTheme, setPreference } = useTheme();
   const [theme, setTheme] = useState<ThemePreference>(preference);
-  const [density, setDensity] = useState<InterfaceDensity>(settings.density);
+  const [language, setLanguage] = useState(settings.language);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setTheme(preference);
-    setDensity(settings.density);
-  }, [preference, settings.density]);
+    setLanguage(settings.language);
+  }, [preference, settings.language]);
 
   return (
     <SettingsSectionCard
-      title="Aparência"
-      subtitle="Personalize a forma como o STRATIX é apresentado para você."
+      title="AparÃªncia"
+      subtitle="Personalize a forma como o STRATIX Ã© apresentado para vocÃª."
       action={
         <MonitorCog className="h-5 w-5 text-[#1E4E79] dark:text-cyan-300" />
       }
@@ -67,9 +63,9 @@ export function AppearanceSettingsCard({
           try {
             setSaving(true);
             setError(null);
-            await onSave({ theme, density });
+            await onSave({ theme, language });
             setPreference(theme);
-            setMessage("Preferências de aparência salvas.");
+            setMessage("PreferÃªncias de aparÃªncia salvas.");
           } catch (requestError) {
             setMessage(null);
             setError(getRequestErrorMessage(requestError));
@@ -78,7 +74,7 @@ export function AppearanceSettingsCard({
           }
         }}
       >
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2">
           <label className="space-y-2">
             <span className="text-sm font-medium text-[#1F2937] dark:text-slate-100">Tema</span>
             <select
@@ -96,24 +92,14 @@ export function AppearanceSettingsCard({
           </label>
 
           <label className="space-y-2">
-            <span className="text-sm font-medium text-[#1F2937] dark:text-slate-100">Densidade</span>
+            <span className="text-sm font-medium text-[#1F2937] dark:text-slate-100">Idioma</span>
             <select
-              value={density}
-              onChange={(event) => setDensity(event.target.value as InterfaceDensity)}
+              value={language}
+              onChange={(event) => setLanguage(event.target.value)}
               className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-[#1F2937] focus:border-[#2BB3A3] focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             >
-              <option value="COMFORTABLE">Confortável</option>
-              <option value="COMPACT">Compacta</option>
+              <option value="pt-BR">PortuguÃªs (Brasil)</option>
             </select>
-          </label>
-
-          <label className="space-y-2">
-            <span className="text-sm font-medium text-[#1F2937] dark:text-slate-100">Idioma</span>
-            <input
-              value="Português (Brasil)"
-              readOnly
-              className="w-full rounded-xl border border-gray-200 bg-[#F8FAFC] px-4 py-3 text-sm text-[#6B7280] outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400"
-            />
           </label>
         </div>
 
@@ -125,7 +111,7 @@ export function AppearanceSettingsCard({
           disabled={saving}
           className="inline-flex items-center justify-center rounded-xl bg-[#0F2A44] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#123253] disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#1E4E79] dark:hover:bg-[#25628F]"
         >
-          {saving ? "Salvando..." : "Salvar aparência"}
+          {saving ? "Salvando..." : "Salvar aparÃªncia"}
         </button>
       </form>
     </SettingsSectionCard>

@@ -1,7 +1,4 @@
-import {
-  InterfaceDensity,
-  ThemePreference,
-} from '@prisma/client';
+import { ThemePreference } from '@prisma/client';
 import {
   IsBoolean,
   IsEnum,
@@ -14,10 +11,6 @@ export class UpdateMySettingsDto {
   @IsOptional()
   @IsEnum(ThemePreference)
   theme?: ThemePreference;
-
-  @IsOptional()
-  @IsEnum(InterfaceDensity)
-  density?: InterfaceDensity;
 
   @IsOptional()
   @IsString()

@@ -1,3 +1,5 @@
+import { useNavigate } from "react-router-dom";
+import { clearSession, getSession } from "../../../store/app-store";
 import { DashboardLayout } from "../../dashboard/DashboardLayout";
 import { EmptyDashboardState } from "../../dashboard/components/EmptyDashboardState";
 import { useDashboardScope } from "../../dashboard/hooks/useDashboardScope";
@@ -8,10 +10,12 @@ import { NotificationSettingsCard } from "../components/NotificationSettingsCard
 import { SecuritySettingsCard } from "../components/SecuritySettingsCard";
 import { useSettings } from "../hooks/useSettings";
 import {
+  deleteCompany,
   updateCompanySettings,
   updatePersonalSettings,
 } from "../services/settings.service";
 import type {
+  DeleteCompanyPayload,
   UpdateCompanySettingsPayload,
   UpdatePersonalSettingsPayload,
 } from "../types/settings.types";
@@ -32,8 +36,10 @@ function LoadingState() {
 }
 
 export function SettingsPage() {
+  const navigate = useNavigate();
   const { data, loading, error, setData } = useSettings();
   const { permissions } = useDashboardScope(data?.permissions);
+  const directorEmail = getSession()?.user.email ?? "";
 
   if (loading && !data) {
     return (
@@ -47,8 +53,8 @@ export function SettingsPage() {
     return (
       <div className="min-h-screen bg-[#F5F7FA] p-4 sm:p-6 lg:p-8">
         <EmptyDashboardState
-          title="Configurações indisponíveis"
-          description={error ?? "Não foi possível carregar as configurações."}
+          title="ConfiguraÃ§Ãµes indisponÃ­veis"
+          description={error ?? "NÃ£o foi possÃ­vel carregar as configuraÃ§Ãµes."}
         />
       </div>
     );
@@ -82,14 +88,20 @@ export function SettingsPage() {
     );
   };
 
+  const handleDeleteCompany = async (payload: DeleteCompanyPayload) => {
+    const response = await deleteCompany(payload);
+    clearSession();
+    navigate(response.redirectTo, { replace: true });
+  };
+
   return (
     <DashboardLayout
       context={data.context}
       permissions={permissions}
       role={data.role}
-      pageEyebrow="Configurações"
-      pageTitle="Configurações do Sistema"
-      pageDescription="Gerencie preferências pessoais e, quando permitido, parâmetros administrativos da empresa."
+      pageEyebrow="ConfiguraÃ§Ãµes"
+      pageTitle="ConfiguraÃ§Ãµes do Sistema"
+      pageDescription="Gerencie preferÃªncias pessoais e, quando permitido, parÃ¢metros administrativos da empresa."
     >
       <div className="space-y-6">
         <div className="grid gap-6 xl:grid-cols-2">
@@ -114,9 +126,14 @@ export function SettingsPage() {
           ) : null}
         </div>
 
-        {data.role === "DIRECTOR" ? (
-          <DangerZoneCard message={data.meta.dangerZoneMessage} />
-        ) : null}
+        <DangerZoneCard
+          role={data.role}
+          companyName={data.company?.name ?? data.context.company?.name ?? null}
+          directorEmail={directorEmail}
+          message={data.meta.dangerZoneMessage}
+          companyDeletion={data.meta.companyDeletion}
+          onDeleteCompany={handleDeleteCompany}
+        />
       </div>
     </DashboardLayout>
   );
