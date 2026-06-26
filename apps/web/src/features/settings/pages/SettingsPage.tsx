@@ -53,8 +53,8 @@ export function SettingsPage() {
     return (
       <div className="min-h-screen bg-[#F5F7FA] p-4 sm:p-6 lg:p-8">
         <EmptyDashboardState
-          title="ConfiguraÃ§Ãµes indisponÃ­veis"
-          description={error ?? "NÃ£o foi possÃ­vel carregar as configuraÃ§Ãµes."}
+          title="Configurações indisponíveis"
+          description={error ?? "Não foi possível carregar as configurações."}
         />
       </div>
     );
@@ -99,9 +99,9 @@ export function SettingsPage() {
       context={data.context}
       permissions={permissions}
       role={data.role}
-      pageEyebrow="ConfiguraÃ§Ãµes"
-      pageTitle="ConfiguraÃ§Ãµes do Sistema"
-      pageDescription="Gerencie preferÃªncias pessoais e, quando permitido, parÃ¢metros administrativos da empresa."
+      pageEyebrow="Configurações"
+      pageTitle="Configurações do Sistema"
+      pageDescription="Gerencie preferências pessoais e, quando permitido, parâmetros administrativos da empresa."
     >
       <div className="space-y-6">
         <div className="grid gap-6 xl:grid-cols-2">

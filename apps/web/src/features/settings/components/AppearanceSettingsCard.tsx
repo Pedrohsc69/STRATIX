@@ -29,7 +29,7 @@ function getRequestErrorMessage(requestError: unknown) {
     return maybeError.response.data.message.join(", ");
   }
 
-  return "NÃ£o foi possÃ­vel salvar as preferÃªncias de aparÃªncia.";
+  return "Não foi possível salvar as preferências de aparência.";
 }
 
 export function AppearanceSettingsCard({
@@ -50,8 +50,8 @@ export function AppearanceSettingsCard({
 
   return (
     <SettingsSectionCard
-      title="AparÃªncia"
-      subtitle="Personalize a forma como o STRATIX Ã© apresentado para vocÃª."
+      title="Aparência"
+      subtitle="Personalize a forma como o STRATIX é apresentado para você."
       action={
         <MonitorCog className="h-5 w-5 text-[#1E4E79] dark:text-cyan-300" />
       }
@@ -65,7 +65,7 @@ export function AppearanceSettingsCard({
             setError(null);
             await onSave({ theme, language });
             setPreference(theme);
-            setMessage("PreferÃªncias de aparÃªncia salvas.");
+            setMessage("Preferências de aparência salvas.");
           } catch (requestError) {
             setMessage(null);
             setError(getRequestErrorMessage(requestError));
@@ -98,7 +98,7 @@ export function AppearanceSettingsCard({
               onChange={(event) => setLanguage(event.target.value)}
               className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-[#1F2937] focus:border-[#2BB3A3] focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             >
-              <option value="pt-BR">PortuguÃªs (Brasil)</option>
+              <option value="pt-BR">Português (Brasil)</option>
             </select>
           </label>
         </div>
@@ -111,7 +111,7 @@ export function AppearanceSettingsCard({
           disabled={saving}
           className="inline-flex items-center justify-center rounded-xl bg-[#0F2A44] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#123253] disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#1E4E79] dark:hover:bg-[#25628F]"
         >
-          {saving ? "Salvando..." : "Salvar aparÃªncia"}
+          {saving ? "Salvando..." : "Salvar aparência"}
         </button>
       </form>
     </SettingsSectionCard>

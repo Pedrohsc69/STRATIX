@@ -33,7 +33,7 @@ function getRequestErrorMessage(requestError: unknown) {
     return maybeError.response.data.message.join(", ");
   }
 
-  return "NÃ£o foi possÃ­vel excluir a empresa agora.";
+  return "Não foi possível excluir a empresa agora.";
 }
 
 export function DangerZoneCard({
@@ -114,7 +114,7 @@ export function DangerZoneCard({
     <>
       <SettingsSectionCard
         title="Zona de risco"
-        subtitle="AÃ§Ãµes irreversÃ­veis exigem confirmaÃ§Ã£o reforÃ§ada."
+        subtitle="Ações irreversíveis exigem confirmação reforçada."
         action={<AlertTriangle className="h-5 w-5 text-[#D97706]" />}
       >
         {canDeleteCompany ? (
@@ -124,7 +124,7 @@ export function DangerZoneCard({
                 <p className="text-sm font-semibold text-[#991B1B]">Excluir empresa</p>
                 <p className="mt-1 text-sm text-[#991B1B]">
                   {message ??
-                    "Esta aÃ§Ã£o Ã© irreversÃ­vel e remove todos os dados vinculados Ã  empresa."}
+                    "Esta ação é irreversível e remove todos os dados vinculados à empresa."}
                 </p>
               </div>
 
@@ -140,9 +140,9 @@ export function DangerZoneCard({
           </div>
         ) : (
           <div className="rounded-xl border border-[#FED7AA] bg-[#FFF7ED] px-4 py-4">
-            <p className="text-sm font-medium text-[#9A3412]">Nenhuma aÃ§Ã£o crÃ­tica disponÃ­vel</p>
+            <p className="text-sm font-medium text-[#9A3412]">Nenhuma ação crítica disponível</p>
             <p className="mt-1 text-sm text-[#9A3412]">
-              {message ?? "Nenhuma aÃ§Ã£o crÃ­tica estÃ¡ liberada nesta Ã¡rea."}
+              {message ?? "Nenhuma ação crítica está liberada nesta área."}
             </p>
           </div>
         )}
@@ -157,7 +157,7 @@ export function DangerZoneCard({
                   Zona de risco
                 </p>
                 <h2 className="mt-2 text-2xl font-semibold text-[#1F2937]">
-                  Confirmar exclusÃ£o da empresa
+                  Confirmar exclusão da empresa
                 </h2>
               </div>
               <button
@@ -171,9 +171,9 @@ export function DangerZoneCard({
 
             <form onSubmit={handleSubmit} className="space-y-5 px-6 py-6">
               <div className="rounded-2xl border border-[#FECACA] bg-[#FEF2F2] p-4 text-sm text-[#991B1B]">
-                <p className="font-semibold">Esta aÃ§Ã£o Ã© irreversÃ­vel.</p>
+                <p className="font-semibold">Esta ação é irreversível.</p>
                 <p className="mt-2">
-                  Todos os dados da empresa serÃ£o removidos, incluindo usuÃ¡rios,
+                  Todos os dados da empresa serão removidos, incluindo usuários,
                   departamentos, ciclos, objetivos, OKRs, convites e progresso.
                 </p>
               </div>
@@ -221,7 +221,7 @@ export function DangerZoneCard({
                     placeholder={directorEmail}
                   />
                   <p className="mt-2 text-xs text-[#6B7280]">
-                    Para esta conta, a confirmaÃ§Ã£o reforÃ§ada exige nome da empresa e e-mail do
+                    Para esta conta, a confirmação reforçada exige nome da empresa e e-mail do
                     Diretor.
                   </p>
                 </label>

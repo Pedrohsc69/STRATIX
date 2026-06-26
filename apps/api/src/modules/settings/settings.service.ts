@@ -430,8 +430,8 @@ export class SettingsService {
           user.role === UserRole.DIRECTOR ? Boolean(user.companyId) : false,
         dangerZoneMessage:
           user.role === UserRole.DIRECTOR
-            ? 'A exclusao da empresa remove permanentemente todos os dados vinculados.'
-            : 'Nenhuma acao critica disponivel para este perfil. Alteracoes de vinculo e remocao de conta devem ser realizadas pelo Diretor da empresa.',
+            ? 'A exclusão da empresa remove permanentemente todos os dados vinculados.'
+            : 'Nenhuma ação crítica disponível para este perfil. Alterações de vínculo e remoção de conta devem ser realizadas pelo Diretor da empresa.',
         companyDeletion:
           user.role === UserRole.DIRECTOR && user.companyId
             ? {
